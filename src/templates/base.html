@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{% block title %}BeyondBug{% endblock %}</title><link rel="stylesheet" href="/static/fonts.css"><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/workspace.css"><script src="/static/app.js" defer></script></head>
+<body>
+  <header class="site-header"><a class="brand" href="/">BeyondBug<span class="brand-mark" aria-hidden="true">✳</span></a><nav aria-label="Main navigation"><a href="/">Events</a><a href="/projects">Gallery</a>{% if principal %}<a href="/dashboard">Dashboard</a>{% else %}<a href="/account">Sign in</a>{% endif %}</nav></header>
+  <div id="flash" class="flash" role="status" aria-live="polite" hidden></div>
+  {% block content %}{% endblock %}
+  <footer class="site-footer wrap"><span>BeyondBug</span><span>Built for fair, self-hosted hackathons.</span></footer>
+</body></html>

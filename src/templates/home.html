@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ event.name }} · BeyondBug</title>
+  <link rel="stylesheet" href="/static/fonts.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header"><a class="brand" href="/">BeyondBug<span class="brand-mark" aria-hidden="true">✳</span></a><nav aria-label="Main navigation"><a href="/">Events</a><a href="/projects">Gallery</a><a href="/docs">API</a></nav></header>
+  <main>
+    <section class="event-hero wrap">
+      <div class="hero-copy"><p class="event-status">{{ 'Submissions closed' if closed else 'Open for submissions' }}</p><h1>{{ event.name }}</h1><p class="hero-description">A place to build, share, and judge what comes next.</p><div class="hero-actions"><a class="button button-primary" href="/projects">Explore {{ project_count }} projects</a><a class="text-link" href="#how-it-works">How it works</a></div></div>
+      <aside class="event-snapshot" aria-label="Event details"><span class="snapshot-label">Submission deadline</span><strong>{{ event.submissions_close[:10] }}</strong><span>18:00 UTC</span><div class="snapshot-rule"></div><span class="snapshot-label">Tracks</span><strong>{{ tracks|length }}</strong><span>Ways to build</span></aside>
+    </section>
+    <section class="phase-section wrap" aria-label="Event phases"><div class="phase"><span class="phase-dot"></span><strong>Register</strong><span>Join the event</span></div><div class="phase"><span class="phase-dot"></span><strong>Build</strong><span>Form a team</span></div><div class="phase"><span class="phase-dot"></span><strong>Submit</strong><span>Share your work</span></div><div class="phase"><span class="phase-dot"></span><strong>Judge</strong><span>Review fairly</span></div><div class="phase"><span class="phase-dot"></span><strong>Results</strong><span>Celebrate the work</span></div></section>
+    <section class="content-section wrap"><div class="section-heading"><div><p class="section-kicker">Choose your direction</p><h2>Tracks</h2></div><p>Every project belongs to a track. Browse the work and see where each team focused.</p></div><div class="track-grid">{% for track in tracks %}<a class="track-item" href="/projects?track={{ track.id }}"><span class="track-icon" aria-hidden="true">✳</span><strong>{{ track.name }}</strong><span class="track-arrow" aria-hidden="true">↗</span></a>{% endfor %}</div></section>
+    <section id="how-it-works" class="content-section how-section wrap"><div class="section-heading"><div><p class="section-kicker">From idea to outcome</p><h2>How it works</h2></div></div><div class="how-grid"><p><strong>Build with a team.</strong> Invite teammates and choose a track before the deadline.</p><p><strong>Submit your project.</strong> Save a draft, then share the final version when it is ready.</p><p><strong>Get a fair review.</strong> Assigned judges score against the event rubric. Organizers monitor coverage before publishing results.</p></div></section>
+  </main><footer class="site-footer wrap"><span>BeyondBug</span><span>A self-hosted event desk for hackathons.</span></footer>
+</body></html>

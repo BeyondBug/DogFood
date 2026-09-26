@@ -1,21 +1,29 @@
-# Five-minute demo plan — planning only
+# Five-minute demo recording guide
 
-Use a clean local deployment with the published fixture and a second event
-created through the portal. The fixture event is closed; it demonstrates
-historical data and deadline enforcement. The second event demonstrates a
-complete active lifecycle. Record actual behavior only.
+Record the running portal at a readable desktop resolution. Use separate
+browser profiles for organizer, participant, and judge so switching roles does
+not change another profile's session. The fixture event is historically
+closed; create a second event with a future submission deadline for the live
+lifecycle. Show real actions and responses from this build.
 
-| Time | Scene | Evidence to show |
+| Time | Browser or terminal action | Point to prove |
 | --- | --- | --- |
-| 0:00–0:35 | `docker compose up` and landing page | One-command boot, seeded gallery, no cloud login |
-| 0:35–1:15 | Organizer creates an event | Dates, track, prize, weighted rubric |
-| 1:15–2:10 | Participant joins team and submits | Invite link, draft/edit, submit, server deadline check |
-| 2:10–3:15 | Organizer assigns judges; judge scores | Track-aware assignment, progress, weighted criterion form |
-| 3:15–3:55 | Permission proof | Peer judge score request denied by backend; participant denied |
-| 3:55–4:35 | Organizer previews results | Raw vs normalized rank, review coverage, duplicate warning |
-| 4:35–5:00 | Publish and export | Public results, CSV, acceptance report and tier claim |
+| 0:00–0:30 | Run `docker compose up`; open `/` and `/projects` | One command, 41 seeded project records, no hosted login |
+| 0:30–1:10 | Sign in as demo organizer, create a new event with one track and a prize | Event setup uses real dates, tracks, prizes; new event appears in dashboard |
+| 1:10–2:00 | In participant profile, sign in as `priya1@example.org`, join the new event, create a team, create an invite link, save a draft, then submit | Team formation, draft/edit, submission state |
+| 2:00–2:45 | Organizer configures weights and creates a judge invite for `tomas.varga@example.org`; judge accepts it in their profile | Local invitation and role activation |
+| 2:45–3:35 | Organizer sets the judge's track and runs batch assignment; judge opens queue and submits a scorecard | Track-aware assignment, weighted review, progress |
+| 3:35–4:05 | Direct HTTP request as Judge B to Judge A's score URL returns 403; participant request also returns 403 | Backend isolation, not a hidden button |
+| 4:05–4:35 | Organizer previews the new event's result and publishes; open the public results page | Results hidden until deliberate publication |
+| 4:35–5:00 | Show fixture organizer ranking with raw/adjusted scores, CSV export, and `acceptance-report.txt` | Normalization proof, operations, seven passing checks |
 
-Use local, fake fixture accounts and visible role labels. Keep the terminal
-and browser readable at recording resolution. If a planned feature is cut,
-remove its demo scene rather than simulating it.
+Before recording, create the event and three profiles once as rehearsal on a
+disposable Compose volume. For the final recording, use a fresh volume or a
+new event so the actions are repeatable. The organizer of the new event must
+assign the judge's track after the invitation is accepted. One completed
+review is sufficient for the one-project demo; the default batch target is
+three, so set the UI's “Reviews per project” field to 1. This does not affect
+the fixture proof.
 
+The required video is a separate submission artifact. This file is a guide,
+not a claim that a video has been recorded.

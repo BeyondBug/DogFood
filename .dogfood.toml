@@ -1,0 +1,19 @@
+[portal]
+base_url = "http://localhost:8080"
+
+[tiers]
+claimed = ["T1", "T2"]
+pitch = "BeyondBug runs complete local hackathons with auditable, calibrated judging."
+
+[auth]
+organizer = "Authorization: Bearer bb_demo_organizer_2026_local_only"
+judge_a = "Authorization: Bearer bb_demo_judge_a_2026_local_only"
+judge_b = "Authorization: Bearer bb_demo_judge_b_2026_local_only"
+participant = "Authorization: Bearer bb_demo_participant_2026_local_only"
+
+[routes]
+gallery = "/projects"
+submit = "/api/events/evt_01/projects"
+judge_scores = "/api/judge/scores"
+peer_scores = "/api/judge/scores?judge=jdg_01"
+csv_export = "/api/events/evt_01/exports/projects.csv"

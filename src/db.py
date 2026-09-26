@@ -1,0 +1,216 @@
+"""SQLite connections and the first version of the local schema."""
+
+from __future__ import annotations
+
+import os
+import sqlite3
+from contextlib import closing
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def database_path() -> Path:
+    return Path(os.getenv("DOGFOOD_DB_PATH", "/data/portal.sqlite3"))
+
+
+def connect() -> sqlite3.Connection:
+    db = sqlite3.connect(database_path(), timeout=10)
+    db.row_factory = sqlite3.Row
+    db.execute("PRAGMA foreign_keys = ON")
+    db.execute("PRAGMA busy_timeout = 10000")
+    return db
+
+
+SCHEMA_V1 = """
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    name TEXT NOT NULL,
+    password_hash TEXT,
+    is_admin INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS events (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    registration_open TEXT,
+    registration_close TEXT,
+    submissions_open TEXT,
+    submissions_close TEXT NOT NULL,
+    judging_open TEXT,
+    judging_close TEXT,
+    results_published_at TEXT,
+    created_by TEXT REFERENCES users(id),
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS event_roles (
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK(role IN ('participant','judge','organizer')),
+    PRIMARY KEY(event_id, user_id, role)
+);
+CREATE TABLE IF NOT EXISTS tracks (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    UNIQUE(event_id, name)
+);
+CREATE TABLE IF NOT EXISTS prizes (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS teams (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    created_by TEXT REFERENCES users(id),
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS team_members (
+    team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK(role IN ('captain','member')),
+    joined_at TEXT NOT NULL,
+    PRIMARY KEY(team_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS team_invites (
+    token_hash TEXT PRIMARY KEY,
+    team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    created_by TEXT NOT NULL REFERENCES users(id),
+    expires_at TEXT NOT NULL,
+    max_uses INTEGER NOT NULL DEFAULT 1,
+    uses INTEGER NOT NULL DEFAULT 0,
+    revoked_at TEXT
+);
+CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    team_id TEXT NOT NULL REFERENCES teams(id),
+    track_id TEXT NOT NULL REFERENCES tracks(id),
+    title TEXT NOT NULL,
+    summary TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    repo_url TEXT NOT NULL DEFAULT '',
+    demo_url TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL CHECK(status IN ('draft','submitted')),
+    submitted_at TEXT,
+    updated_at TEXT NOT NULL,
+    duplicate_of TEXT REFERENCES projects(id)
+);
+CREATE INDEX IF NOT EXISTS ix_projects_event_status ON projects(event_id, status);
+CREATE INDEX IF NOT EXISTS ix_projects_team ON projects(team_id);
+CREATE TABLE IF NOT EXISTS judge_profiles (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'accepted',
+    UNIQUE(event_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS judge_tracks (
+    judge_id TEXT NOT NULL REFERENCES judge_profiles(id) ON DELETE CASCADE,
+    track_id TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+    PRIMARY KEY(judge_id, track_id)
+);
+CREATE TABLE IF NOT EXISTS rubrics (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    version INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    UNIQUE(event_id, version)
+);
+CREATE TABLE IF NOT EXISTS rubric_criteria (
+    id TEXT PRIMARY KEY,
+    rubric_id TEXT NOT NULL REFERENCES rubrics(id) ON DELETE CASCADE,
+    slug TEXT NOT NULL,
+    name TEXT NOT NULL,
+    weight REAL NOT NULL CHECK(weight > 0),
+    max_score REAL NOT NULL CHECK(max_score > 0),
+    sort_order INTEGER NOT NULL,
+    UNIQUE(rubric_id, slug)
+);
+CREATE TABLE IF NOT EXISTS judge_assignments (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    judge_id TEXT NOT NULL REFERENCES judge_profiles(id) ON DELETE CASCADE,
+    assigned_at TEXT NOT NULL,
+    reason TEXT NOT NULL DEFAULT '',
+    UNIQUE(project_id, judge_id)
+);
+CREATE TABLE IF NOT EXISTS scorecards (
+    id TEXT PRIMARY KEY,
+    assignment_id TEXT NOT NULL UNIQUE REFERENCES judge_assignments(id) ON DELETE CASCADE,
+    rubric_id TEXT NOT NULL REFERENCES rubrics(id),
+    status TEXT NOT NULL CHECK(status IN ('draft','submitted')),
+    comment TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL,
+    submitted_at TEXT
+);
+CREATE TABLE IF NOT EXISTS criterion_scores (
+    scorecard_id TEXT NOT NULL REFERENCES scorecards(id) ON DELETE CASCADE,
+    criterion_id TEXT NOT NULL REFERENCES rubric_criteria(id),
+    score REAL NOT NULL,
+    PRIMARY KEY(scorecard_id, criterion_id)
+);
+CREATE TABLE IF NOT EXISTS audit_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id TEXT REFERENCES events(id),
+    actor_user_id TEXT REFERENCES users(id),
+    action TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    details_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+"""
+
+SCHEMA_V2 = """
+CREATE TABLE IF NOT EXISTS judge_invites (
+    token_hash TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    email TEXT NOT NULL COLLATE NOCASE,
+    created_by TEXT NOT NULL REFERENCES users(id),
+    expires_at TEXT NOT NULL,
+    accepted_at TEXT
+);
+CREATE TABLE IF NOT EXISTS judge_conflicts (
+    judge_id TEXT NOT NULL REFERENCES judge_profiles(id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    reason TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY(judge_id, project_id)
+);
+"""
+
+
+def initialize() -> None:
+    path = database_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with closing(connect()) as db:
+        db.execute("PRAGMA journal_mode = WAL")
+        version = db.execute("PRAGMA user_version").fetchone()[0]
+        if version > 2:
+            raise RuntimeError(f"Database schema version {version} is newer than this app")
+        if version == 0:
+            db.executescript(SCHEMA_V1)
+            db.execute("PRAGMA user_version = 1")
+            version = 1
+        if version == 1:
+            db.executescript(SCHEMA_V2)
+            db.execute("PRAGMA user_version = 2")
+        db.commit()

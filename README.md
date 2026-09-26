@@ -1,68 +1,122 @@
-# BeyondBug — Dogfood 2026
+# BeyondBug
 
-BeyondBug is a registered team planning an open-source, self-hostable
-hackathon submission and judging portal for
-[Dogfood 2026](https://dogfoodhack.com/).
+BeyondBug is an open-source, self-hosted hackathon portal built for DOGFOOD
+2026. It covers registration, teams, submissions, the public gallery, judge
+assignment, weighted scoring, normalized rankings, and result publication.
+The portal runs on one laptop with FastAPI, SQLite, and locally bundled assets.
 
-> **Pre-kickoff status (2026-09-26):** This repository contains planning and
-> design documents only. There is no working application, no tier claim, and
-> no acceptance report yet. The organizer postponed coding to 18:00 UTC on
-> September 26; code freeze is 18:00 UTC on September 29.
+## Run it
 
-## What we intend to deliver
+```sh
+docker compose up
+```
 
-A portal that takes an event from registration and team formation through
-submission, judge assignment, weighted scoring, normalized results, and
-publication. It must start from `docker compose up`, seed the organizer's
-fixture data, and run without a hosted service or runtime network access.
+Open [http://localhost:8080](http://localhost:8080). On first boot the app
+creates its SQLite database and loads the official `fixtures.json`: one closed
+event, 8 tracks, 30 judges, 40 teams, 41 project records, and 126 historical
+scorecards. The fixture event's original submission deadline is retained, so
+late submissions are rejected. To demonstrate a live submission, sign in and
+create a new event with a future deadline.
 
-The first delivery target is **complete T1 and T2**. T3/T4 work is conditional
-on correctness and time. The [published checker](https://dogfoodhack.com/spec/)
-currently contains seven T1/T2 probes; manual judging covers the wider tier
-requirements. We will report any gaps honestly.
+The image installs pinned Python wheels from `vendor/wheels`; fonts, scripts,
+templates, and fixture data are also local. The container makes no external
+runtime requests. A first offline *build* needs the `python:3.12-slim` base
+image already present in Docker's local image store. No cloud account,
+hosted database, authentication provider, or external API is used.
 
-## Planned stack
+## Demo access
 
-- Python, FastAPI, SQLite, Jinja templates, minimal JavaScript
-- Docker Compose for the single-command local deployment
-- Cookie sessions and server-enforced roles
-- Idempotent fixture import; local database volume
+The default Compose file enables local demo mode. These accounts all use the
+password `BeyondBugDemo2026!` on the seeded portal:
 
-These are design choices, not claims of implemented features. The exact
-dependencies and startup instructions will be recorded after implementation.
-
-## Repository workflow
-
-The team uses three branches, with these exact names:
-
-| Branch | Purpose | Promotion gate |
+| Role | Email | Main page |
 | --- | --- | --- |
-| `Features` | All feature code and bug fixes | A coherent part is ready for integration. |
-| `Develop` | Integration and testing | Acceptance and relevant regression tests pass. |
-| `main` | Stable, reviewable release | The part has been checked on `Develop`. |
+| Organizer | `organizer@beyondbug.local` | `/organizer/evt_01` |
+| Judge A | `tomas.varga@example.org` | `/judge/evt_01` |
+| Judge B | `wei.lindqvist@example.org` | `/judge/evt_01` |
+| Participant | `priya1@example.org` | `/workspace/evt_01` |
 
-The flow is `Features` → `Develop` → `main`. One human teammate and the AI
-assistant are doing the active work now; other registered members may join
-later. Shared schema and route changes should be coordinated when they do.
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the merge checklist.
+Startup logs also print the four bearer headers used in `.dogfood.toml`.
+Those fixed credentials are **demo only**. For a real deployment, use a fresh
+volume, set `DOGFOOD_DEMO_MODE=0`, and configure
+`DOGFOOD_BOOTSTRAP_EMAIL` and `DOGFOOD_BOOTSTRAP_PASSWORD` (at least 12
+characters). Set `DOGFOOD_COOKIE_SECURE=1` when serving through HTTPS.
+Disabling demo mode removes its known sessions and passwords from an existing
+database too.
 
-## Documents
+## Walk through one event
 
-- [PLAN.md](PLAN.md) — scope, schedule, acceptance contract, and ownership
-- [DELIVERY-BOARD.md](DELIVERY-BOARD.md) — gates, work packages, and test matrix
-- [API-CONTRACT.md](API-CONTRACT.md) — planned routes and permission contracts
-- [ARCHITECTURE.md](ARCHITECTURE.md) — proposed components and trust boundaries
-- [DATA-MODEL.md](DATA-MODEL.md) — proposed entities, constraints, and data flow
-- [JUDGING.md](JUDGING.md) — proposed assignment and normalization method
-- [DEMO-SCRIPT.md](DEMO-SCRIPT.md) — planned five-minute lifecycle recording
-- [UI-DESIGN.md](UI-DESIGN.md) — event page and role-specific interface plan
-- [SECURITY-PLAN.md](SECURITY-PLAN.md) — planned controls and abuse tests
+1. Sign in as the organizer, open `/dashboard`, and create an event with a
+   future submission deadline, tracks, and optional prizes.
+2. Sign in as a participant, open the new event page, join, create a team,
+   and copy a single-use invite link. Save a project draft, then submit it.
+3. In the organizer desk, set rubric weights, create judge invites, choose
+   their tracks, and batch assign projects. The desk shows missing coverage.
+4. As an invited judge, open the judge desk, score only assigned projects,
+   and submit a review. Another judge cannot read that scorecard.
+5. The organizer reviews raw and calibrated rankings and publishes results.
+   Public result routes return 404 until that action. Submitted scores lock
+   after publication.
 
-## Release checklist
+The API driving these actions is documented at `/docs`, `/openapi.json`, and
+the committed [OpenAPI specification](openapi.json).
+The server enforces event roles, team membership, assignment ownership, and
+deadlines for direct API requests as well as browser actions.
 
-Before submission, this README must be updated with the real startup steps,
-seed credentials, tested tier claims, known gaps, demo link, and exact results
-of `python3 run.py .dogfood.toml > acceptance-report.txt`. The repository must
-also contain `.dogfood.toml`, `acceptance-report.txt`, tests, and an OSI-approved
-license. The acceptance report is generated by the official checker, not
-written by hand.
+## Tests and acceptance
+
+With the portal running:
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 run.py .dogfood.toml > acceptance-report.txt
+```
+
+`run.py` is the organizer's standard-library checker. The committed
+`acceptance-report.txt` is its unedited output. Our tier claim is **T1 and
+T2**. The checker verifies seven HTTP behaviors; the additional tests cover
+the event lifecycle, deadline and role denials, publication lock, exports,
+and normalization edge cases. The official checker does not assess every
+manual tier requirement, so the code and demo remain part of the evidence.
+
+## Operate and extend
+
+- Data lives in the named Compose volume at `/data/portal.sqlite3`. SQLite
+  uses WAL, foreign keys, and schema migrations. Restarting does not replace
+  user edits with fixture values.
+- For a consistent live backup, run
+  `docker compose exec portal python -m src.backup /data/portal-backup.sqlite3`,
+  then `docker compose cp portal:/data/portal-backup.sqlite3 ./portal-backup.sqlite3`.
+- Organizer CSV exports cover projects, teams, assignments, scorecards, and
+  raw/adjusted rankings. Open them from the organizer desk or use the API.
+- The default service binds only to `127.0.0.1:8080`. Put a TLS reverse proxy
+  in front of it for a shared deployment; disable demo mode first.
+
+The active team develops on `Features`, tests integrations on `Develop`, and
+promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Known limits
+
+- T3 voting/comments and T4 webhooks, certificates, widgets, and bulk import
+  are not claimed.
+- Invite links are copied by an organizer or captain; the portal does not send
+  email. There is no outbound email dependency.
+- SQLite with one application worker suits small and medium self-hosted
+  events. Multi-host deployment needs a different database and queue design.
+- Published scores are locked. Correcting a submitted review after publication
+  requires an explicit future workflow; this release does not provide one.
+- Duplicate repository URLs are flagged and excluded from rankings pending
+  organizer review. The heuristic can flag legitimate forks or miss copied
+  work under a different URL.
+
+## Project documents
+
+- [ARCHITECTURE.md](ARCHITECTURE.md): deployment, trust boundaries, and choices
+- [DATA-MODEL.md](DATA-MODEL.md): schema, seed import, exports, and migrations
+- [JUDGING.md](JUDGING.md): assignment, score math, normalization, fixture proof
+- [THREAT-MODEL.md](THREAT-MODEL.md): abuse cases, controls, and residual risks
+- [UI-DESIGN.md](UI-DESIGN.md): visual direction and screen inventory
+- [DEMO-SCRIPT.md](DEMO-SCRIPT.md): five-minute lifecycle recording plan
+
+Licensed under [MIT](LICENSE). The bundled IBM Plex Sans files have their
+own [SIL Open Font License](src/static/fonts/OFL.txt).
