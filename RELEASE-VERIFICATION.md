@@ -66,3 +66,8 @@ mobile gallery screenshots were reviewed.
 The committed `openapi.json` was regenerated after those routes changed. A
 test now compares the artifact with FastAPI's current schema so future route
 changes cannot leave the published API description stale.
+
+The judging integrity pass blocks batch assignment until submissions close,
+blocks new assignments after publication, and rejects non-finite criterion
+scores. The 16-test suite and all seven official checks pass after rebuilding
+with these rules.

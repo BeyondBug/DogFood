@@ -8,7 +8,10 @@ for the numeric proof below.
 
 An organizer invites judges with a single-use email-bound link, selects their
 eligible tracks, and runs batch assignment with a configurable target (default
-three reviews per project). For each submitted, nonduplicate project, the
+three reviews per project). Assignment and scoring open only after the
+submission deadline. This freezes both project content and team membership
+before conflict checks and reviews begin. Published results lock further
+assignment and score changes. For each submitted, nonduplicate project, the
 algorithm considers only accepted judges who:
 
 - opted into the project's track;

@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import math
 import secrets
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
@@ -187,6 +188,11 @@ def batch_assign(event_id: str, payload: BatchInput, request: Request):
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
         require_event_role(db, principal, event_id, "organizer")
+        event = db.execute("SELECT submissions_close,results_published_at FROM events WHERE id=?", (event_id,)).fetchone()
+        if event["results_published_at"]:
+            raise HTTPException(status_code=409, detail="Results are published; assignments are locked")
+        if datetime.now(timezone.utc) < time_value(event["submissions_close"]):
+            raise HTTPException(status_code=409, detail="Submissions must close before assigning judges")
         rubric = db.execute("SELECT id FROM rubrics WHERE event_id=? AND is_active=1", (event_id,)).fetchone()
         if rubric is None:
             raise HTTPException(status_code=409, detail="Configure a rubric first")
@@ -248,7 +254,7 @@ def save_scorecard(assignment_id: str, payload: ScorecardInput, request: Request
         raise HTTPException(status_code=422, detail="Status must be draft or submitted")
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
-        assignment = db.execute("SELECT a.*,j.user_id,e.judging_open,e.judging_close,e.results_published_at"
+        assignment = db.execute("SELECT a.*,j.user_id,e.submissions_close,e.judging_open,e.judging_close,e.results_published_at"
                                 " FROM judge_assignments a JOIN judge_profiles j ON j.id=a.judge_id"
                                 " JOIN events e ON e.id=a.event_id WHERE a.id=?", (assignment_id,)).fetchone()
         if assignment is None:
@@ -260,6 +266,8 @@ def save_scorecard(assignment_id: str, payload: ScorecardInput, request: Request
             raise HTTPException(status_code=409, detail="This assignment has a declared conflict")
         if assignment["results_published_at"]:
             raise HTTPException(status_code=409, detail="Results are published; scores are locked")
+        if datetime.now(timezone.utc) < time_value(assignment["submissions_close"]):
+            raise HTTPException(status_code=409, detail="Submissions must close before judging")
         if assignment["judging_open"] and datetime.now(timezone.utc) < time_value(assignment["judging_open"]):
             raise HTTPException(status_code=409, detail="Judging has not opened")
         if assignment["judging_close"] and datetime.now(timezone.utc) >= time_value(assignment["judging_close"]):
@@ -272,8 +280,8 @@ def save_scorecard(assignment_id: str, payload: ScorecardInput, request: Request
         if payload.status == "submitted" and set(payload.criteria) != set(by_slug):
             raise HTTPException(status_code=422, detail="Score every criterion before submitting")
         for slug, value in payload.criteria.items():
-            if value < 0 or value > by_slug[slug]["max_score"]:
-                raise HTTPException(status_code=422, detail=f"{slug} must be between 0 and 5")
+            if not math.isfinite(value) or value < 0 or value > by_slug[slug]["max_score"]:
+                raise HTTPException(status_code=422, detail=f"{slug} must be a finite score between 0 and 5")
         existing = db.execute("SELECT id,rubric_id FROM scorecards WHERE assignment_id=?", (assignment_id,)).fetchone()
         if existing and existing["rubric_id"] != rubric["id"]:
             raise HTTPException(status_code=409, detail="Assignment uses a different rubric version")

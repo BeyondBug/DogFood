@@ -51,6 +51,12 @@ class ConflictTests(unittest.TestCase):
         self.assertEqual(call("PUT", f"/api/events/{event_id}/judges/{judge_id}/tracks", {
             "tracks": [track_id],
         }, organizer)[0], 200)
+        self.assertEqual(call("POST", f"/api/events/{event_id}/assignments/batch", {
+            "reviews_per_project": 1,
+        }, organizer)[0], 409)
+        self.assertEqual(call("PATCH", f"/api/events/{event_id}", {
+            "submissions_close": (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(),
+        }, organizer)[0], 200)
         status, assigned, _ = call("POST", f"/api/events/{event_id}/assignments/batch", {
             "reviews_per_project": 1,
         }, organizer)

@@ -88,8 +88,9 @@
       </details>
       <form data-action="batch" data-event="{{ event.id }}" class="inline-form">
         <label>Reviews per project<input type="number" name="reviews_per_project" value="3" min="1" max="10"></label>
-        <button class="button button-primary" type="submit">Assign judges</button>
+        <button class="button button-primary" type="submit" {% if not submissions_closed or event.results_published_at %}disabled{% endif %}>Assign judges</button>
       </form>
+      {% if not submissions_closed %}<p class="muted">Assignment opens after submissions close, when projects and team rosters stop changing.</p>{% elif event.results_published_at %}<p class="muted">Assignments are locked after results are published.</p>{% endif %}
     </section>
   </div>
 

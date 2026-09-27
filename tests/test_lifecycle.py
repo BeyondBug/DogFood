@@ -177,6 +177,16 @@ class LifecycleTests(unittest.TestCase):
             "tracks": [track_id],
         }, organizer_cookie)
         self.assertEqual(status, 200)
+        status, _, _ = call("POST", f"/api/events/{event_id}/assignments/batch", {
+            "reviews_per_project": 1,
+        }, organizer_cookie)
+        self.assertEqual(status, 409)
+        status, _, _ = call("POST", f"/api/events/{event_id}/results/publish", {}, organizer_cookie)
+        self.assertEqual(status, 409)
+        status, _, _ = call("PATCH", f"/api/events/{event_id}", {
+            "submissions_close": (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(),
+        }, organizer_cookie)
+        self.assertEqual(status, 200)
         status, assigned, _ = call("POST", f"/api/events/{event_id}/assignments/batch", {
             "reviews_per_project": 1,
         }, organizer_cookie)
@@ -187,6 +197,11 @@ class LifecycleTests(unittest.TestCase):
             "criteria": {"quality": 5, "impact": 1}, "status": "submitted",
         }, organizer_cookie)
         self.assertEqual(status, 403)
+        for invalid in (float("nan"), float("inf")):
+            status, _, _ = call("PUT", f"/api/judge/assignments/{assignment_id}/scorecard", {
+                "criteria": {"quality": invalid, "impact": 1}, "status": "submitted",
+            }, judge_cookie)
+            self.assertEqual(status, 422)
         status, scorecard, _ = call("PUT", f"/api/judge/assignments/{assignment_id}/scorecard", {
             "criteria": {"quality": 5, "impact": 1}, "status": "submitted",
         }, judge_cookie)
@@ -203,14 +218,12 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(status, 403)
         status, _, _ = call("GET", f"/api/events/{event_id}/rankings", cookie=judge_cookie)
         self.assertEqual(status, 403)
-        status, _, _ = call("POST", f"/api/events/{event_id}/results/publish", {}, organizer_cookie)
-        self.assertEqual(status, 409)
-        status, _, _ = call("PATCH", f"/api/events/{event_id}", {
-            "submissions_close": (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(),
-        }, organizer_cookie)
-        self.assertEqual(status, 200)
         status, published, _ = call("POST", f"/api/events/{event_id}/results/publish", {}, organizer_cookie)
         self.assertEqual(status, 200, published)
+        status, _, _ = call("POST", f"/api/events/{event_id}/assignments/batch", {
+            "reviews_per_project": 1,
+        }, organizer_cookie)
+        self.assertEqual(status, 409)
         status, results, _ = call("GET", f"/api/events/{event_id}/results")
         self.assertEqual(status, 200, results)
         status, _, _ = call("PUT", f"/api/judge/assignments/{assignment_id}/scorecard", {

@@ -257,6 +257,7 @@ def organizer_workspace(event_id: str, request: Request):
         "judges": judge_items, "coverage": [dict(row) for row in coverage],
         "rubric": dict(rubric) if rubric else None, "criteria": [dict(row) for row in criteria],
         "ranking": ranking, "audit": [dict(row) for row in audit], "vote_summary": vote_summary,
+        "submissions_closed": datetime.now(timezone.utc) >= time_value(event["submissions_close"]),
     })
 
 

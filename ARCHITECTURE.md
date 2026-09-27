@@ -87,7 +87,10 @@ are organizer-only until publication; public vote results then become visible.
   keeping judge conflict checks tied to a fixed membership roster.
 - Each scorecard belongs to one assignment and rubric version. A judge cannot
   score another assignment, an unassigned project, or a project with a
-  declared conflict. All criteria are required for final submission.
+  declared conflict. Assignment and scoring wait until submissions close, so
+  a review cannot target a project or team roster that participants can still
+  edit. All criteria are required for final submission, and scores must be
+  finite values on the rubric scale.
 - Batch assignment considers accepted judges with matching tracks and excludes
   team members and declared conflicts. It reports uncovered projects instead
   of silently assigning ineligible judges.
