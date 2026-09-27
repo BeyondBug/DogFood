@@ -122,6 +122,35 @@ individual review values behind each moved project. Its JSON source is
 `/api/events/evt_01/judging-insight` and is organizer-only. A positive
 displayed adjustment means the model identified a comparatively strict judge;
 the stored scorecard itself does not change.
+
+### Review attention
+
+The organizer desk also highlights submitted reviews that differ substantially
+from an agreeing peer group. For each review, it computes that review's
+calibrated 0–5 score and the median of **other** calibrated reviews for the
+same project. A signal appears only when there are at least two peers, the
+absolute gap is at least 1.5 points, and the peers' median absolute deviation
+is at most 0.5 points. Projects with fewer than three completed reviews cannot
+trigger this signal. The desk shows the original score, peer median and peer
+count, then links to the unmodified criterion scores and comment. The detail
+page and API require organizer authorization; judges cannot use them to read
+peer scorecards.
+
+These thresholds are a deterministic triage rule, not evidence of misconduct.
+The peer median excludes the candidate review, but the displayed calibration
+offsets come from the full ranking model. A connected group and a consistent
+strict judge can still create unusual gaps. Organizers should inspect the
+rubric, project and written review before acting. Neither the rule nor the
+view changes scoring, assignment, publication, or awards.
+
+The proposed machine-learning architecture remains a research option. The
+current schema does not record review duration or edit counts, so those cannot
+be used as live features. Synthetic examples must use the actual 0–5 rubric
+and stable per-judge behavior. Any trained model would need an offline bundle,
+event-separated evaluation, a deterministic baseline comparison, and measured
+false-positive rates for consistently strict judges before it could replace
+or supplement this rule. No ML-based integrity claim is made for this release.
+
 The `rankings.csv` export includes raw and adjusted values. The pure scoring
 tests cover constant, sparse, and disconnected cases.
 

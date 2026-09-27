@@ -3,7 +3,7 @@
 import math
 import unittest
 
-from src.scoring import Review, normalize
+from src.scoring import Review, normalize, review_attention
 
 
 class ScoringTests(unittest.TestCase):
@@ -33,6 +33,22 @@ class ScoringTests(unittest.TestCase):
         self.assertEqual(len(result["components"]), 2)
         self.assertEqual(result["adjusted"]["a"], 4)
         self.assertEqual(result["adjusted"]["b"], 2)
+
+    def test_attention_uses_only_agreeing_peers(self):
+        reviews = [Review("one", "p", 4, "s1"), Review("two", "p", 4, "s2"),
+                   Review("three", "p", 1, "s3")]
+        result = review_attention(reviews, {})
+        self.assertEqual([item["scorecard_id"] for item in result["items"]], ["s3"])
+        self.assertEqual(result["items"][0]["peer_count"], 2)
+        self.assertEqual(result["items"][0]["peer_median"], 4)
+
+    def test_attention_requires_evidence_and_uses_calibration(self):
+        sparse = [Review("one", "p", 5), Review("two", "p", 1)]
+        self.assertEqual(review_attention(sparse, {})["items"], [])
+        self.assertEqual(review_attention(sparse, {})["limited_evidence_projects"], 1)
+        reviews = [Review("strict", "p", 2), Review("two", "p", 4), Review("three", "p", 4)]
+        self.assertEqual(review_attention(reviews, {})["items"][0]["judge"], "strict")
+        self.assertEqual(review_attention(reviews, {"strict": -1.0})["items"], [])
 
 
 if __name__ == "__main__":

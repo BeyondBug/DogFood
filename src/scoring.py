@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from sqlite3 import Connection
+from statistics import median
 
 
 @dataclass(frozen=True)
@@ -12,6 +13,7 @@ class Review:
     judge: str
     project: str
     raw: float
+    scorecard_id: str = ""
 
 
 def connected_components(reviews: list[Review]) -> list[dict[str, list[str]]]:
@@ -99,8 +101,52 @@ def load_reviews(db: Connection, event_id: str) -> list[Review]:
             continue
         weight = sum(item["weight"] for item in criteria)
         raw = sum(item["weight"] * 5 * item["score"] / item["max_score"] for item in criteria) / weight
-        result.append(Review(row["judge_id"], row["project_id"], raw))
+        result.append(Review(row["judge_id"], row["project_id"], raw, row["scorecard_id"]))
     return result
+
+
+def review_attention(reviews: list[Review], offsets: dict[str, float],
+                     project_names: dict[str, str] | None = None,
+                     judge_names: dict[str, str] | None = None) -> dict:
+    """Surface large deviations from an agreeing peer group for human review.
+
+    The candidate is excluded from its peer median. Offsets are the same
+    regularized estimates used by the ranking and never alter scorecards.
+    """
+    project_names = project_names or {}
+    judge_names = judge_names or {}
+    by_project: dict[str, list[tuple[Review, float]]] = defaultdict(list)
+    for review in reviews:
+        calibrated = min(5.0, max(0.0, review.raw - offsets.get(review.judge, 0.0)))
+        by_project[review.project].append((review, calibrated))
+    items = []
+    limited = 0
+    for project_id, entries in by_project.items():
+        if len(entries) < 3:
+            limited += 1
+            continue
+        for index, (review, calibrated) in enumerate(entries):
+            peers = [value for peer_index, (_, value) in enumerate(entries) if peer_index != index]
+            peer_median = median(peers)
+            peer_mad = median(abs(value - peer_median) for value in peers)
+            gap = abs(calibrated - peer_median)
+            if gap < 1.5 or peer_mad > 0.5:
+                continue
+            items.append({
+                "scorecard_id": review.scorecard_id,
+                "project_id": project_id,
+                "project": project_names.get(project_id, project_id),
+                "judge": judge_names.get(review.judge, review.judge),
+                "original_score": review.raw,
+                "calibrated_score": calibrated,
+                "peer_median": peer_median,
+                "peer_count": len(peers),
+                "peer_mad": peer_mad,
+                "gap": gap,
+            })
+    items.sort(key=lambda item: (-item["gap"], item["project_id"], item["judge"]))
+    return {"items": items, "limited_evidence_projects": limited,
+            "rule": "At least two other reviews, calibrated gap >= 1.5/5, peer median absolute deviation <= 0.5/5"}
 
 
 def event_ranking(db: Connection, event_id: str) -> dict:
@@ -177,6 +223,8 @@ def judging_insight(db: Connection, event_id: str, ranking: dict | None = None) 
     } for judge_id, values in judge_values.items()]
     judges.sort(key=lambda row: (row["adjustment"], row["name"]))
     unique_projects = [row for row in ranking["projects"] if row["duplicate_of"] is None]
+    attention = review_attention(reviews, offsets,
+                                 {row["id"]: row["title"] for row in ranking["projects"]}, names)
     return {
         "coverage": {"reviewed": sum(row["review_count"] > 0 for row in unique_projects),
                      "total": len(unique_projects),
@@ -184,4 +232,28 @@ def judging_insight(db: Connection, event_id: str, ranking: dict | None = None) 
         "overlap_components": ranking["overlap_components"],
         "movements": movements,
         "judges": judges,
+        "attention": attention,
     }
+
+
+def scorecard_detail(db: Connection, event_id: str, scorecard_id: str) -> dict | None:
+    """Return the original submitted review, scoped to one event."""
+    row = db.execute(
+        "SELECT s.id,s.status,s.comment,s.submitted_at,s.updated_at,"
+        "a.project_id,p.title AS project_title,j.id AS judge_id,u.name AS judge_name,"
+        "r.name AS rubric_name"
+        " FROM scorecards s JOIN judge_assignments a ON a.id=s.assignment_id"
+        " JOIN projects p ON p.id=a.project_id"
+        " JOIN judge_profiles j ON j.id=a.judge_id"
+        " JOIN users u ON u.id=j.user_id JOIN rubrics r ON r.id=s.rubric_id"
+        " WHERE s.id=? AND a.event_id=? AND s.status='submitted'",
+        (scorecard_id, event_id),
+    ).fetchone()
+    if row is None:
+        return None
+    criteria = db.execute(
+        "SELECT c.name,c.weight,c.max_score,cs.score FROM rubric_criteria c"
+        " JOIN criterion_scores cs ON cs.criterion_id=c.id"
+        " WHERE cs.scorecard_id=? ORDER BY c.sort_order,c.id", (scorecard_id,),
+    ).fetchall()
+    return {**dict(row), "criteria": [dict(item) for item in criteria]}

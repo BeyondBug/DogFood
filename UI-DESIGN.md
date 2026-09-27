@@ -82,6 +82,13 @@ verification code. The organizer assigns a configured prize to a project,
 then issues certificates from the published event. The recipient can download
 the vector certificate or print it as a PDF.
 
+The organizer's Judging insight uses a compact review-attention list: project
+and judge at left, original score and calibrated peer median in aligned
+numeric columns, evidence count at right. The original scorecard opens in a
+separate organizer-only view. Plain language keeps the signal advisory; color
+does not imply a disciplinary finding. Desktop and narrow mobile renderings
+were reviewed against the fixture's two qualifying signals.
+
 ### Guided event setup
 
 The first event form uses the existing event desk palette and a four-step

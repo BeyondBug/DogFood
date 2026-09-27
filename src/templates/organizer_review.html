@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Review · {{ review.project_title }}{% endblock %}
+{% block content %}
+<main class="wrap workspace-main review-detail-main">
+  <div class="page-heading">
+    <div>
+      <p class="section-kicker">Organizer review · {{ event.name }}</p>
+      <h1>{{ review.project_title }}</h1>
+      <p>Original submitted scorecard from {{ review.judge_name }}.</p>
+    </div>
+    <a class="button button-secondary" href="/organizer/{{ event.id }}#judging-insight">Judging insight</a>
+  </div>
+  <div class="review-detail-meta">
+    <span><strong>Judge</strong>{{ review.judge_name }}</span>
+    <span><strong>Rubric</strong>{{ review.rubric_name }}</span>
+    <span><strong>Submitted</strong>{{ review.submitted_at[:16].replace('T', ' ') }} UTC</span>
+  </div>
+  <section class="table-section">
+    <div class="table-heading"><div><h2>Criterion scores</h2><p>As recorded when the judge submitted this review.</p></div><a class="text-link" href="/projects/{{ review.project_id }}">View project</a></div>
+    <div class="table-scroll"><table><thead><tr><th>Criterion</th><th>Weight</th><th>Score</th></tr></thead><tbody>
+      {% for criterion in review.criteria %}<tr><td>{{ criterion.name }}</td><td>{{ criterion.weight }}</td><td>{{ '%.1f'|format(criterion.score) }} / {{ '%.0f'|format(criterion.max_score) }}</td></tr>{% endfor %}
+    </tbody></table></div>
+    <div class="review-comment"><h3>Judge comment</h3><p>{{ review.comment if review.comment else 'No comment was submitted.' }}</p></div>
+  </section>
+</main>
+{% endblock %}

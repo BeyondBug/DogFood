@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 from .auth import has_event_role, require_event_role, require_login
 from .core import audit, csv_safe, identifier, time_value
 from .db import connect, utc_now
-from .scoring import event_ranking, judging_insight
+from .scoring import event_ranking, judging_insight, scorecard_detail
 
 
 router = APIRouter(prefix="/api")
@@ -339,6 +339,17 @@ def private_judging_insight(event_id: str, request: Request):
     with closing(connect()) as db:
         require_event_role(db, principal, event_id, "organizer")
         return judging_insight(db, event_id)
+
+
+@router.get("/events/{event_id}/scorecards/{scorecard_id}")
+def organizer_scorecard(event_id: str, scorecard_id: str, request: Request):
+    principal = require_login(request)
+    with closing(connect()) as db:
+        require_event_role(db, principal, event_id, "organizer")
+        detail = scorecard_detail(db, event_id, scorecard_id)
+        if detail is None:
+            raise HTTPException(status_code=404, detail="Submitted scorecard not found")
+        return detail
 
 
 @router.post("/events/{event_id}/results/publish")

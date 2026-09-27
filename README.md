@@ -78,6 +78,9 @@ database too.
    submitting; the assignment is removed and the organizer can reassign it.
    Another judge cannot read that scorecard.
 5. The organizer reviews raw and calibrated rankings and publishes results.
+   Judging insight highlights reviews that differ from an agreeing peer group;
+   opening a signal shows the original scorecard. This is advisory and cannot
+   change a score or ranking.
    Submissions must be closed first. Public result routes return 404 until
    publication; project edits and submitted scores then lock.
 6. For an event with an active voting window, the organizer chooses invited

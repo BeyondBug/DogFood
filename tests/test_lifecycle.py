@@ -460,6 +460,23 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(insight["coverage"]["total"], 40)
         self.assertTrue(any(row["title"] == "Iron Switch" and row["raw_rank"] == 2
                             and row["adjusted_rank"] == 1 for row in insight["movements"]))
+        self.assertIn("rule", insight["attention"])
+        self.assertGreater(len(insight["attention"]["items"]), 0)
+        candidate = insight["attention"]["items"][0]
+        self.assertGreaterEqual(candidate["peer_count"], 2)
+        scorecard_path = f"/api/events/evt_01/scorecards/{candidate['scorecard_id']}"
+        page_path = f"/organizer/evt_01/reviews/{candidate['scorecard_id']}"
+        status, review, _ = call("GET", scorecard_path, cookie=organizer)
+        self.assertEqual(status, 200)
+        self.assertEqual(review["project_title"], candidate["project"])
+        self.assertTrue(review["criteria"])
+        status, page, _ = call("GET", page_path, cookie=organizer)
+        self.assertEqual(status, 200)
+        self.assertIn(review["project_title"], page)
+        self.assertIn("Criterion scores", page)
+        for denied in (judge_a, participant):
+            self.assertEqual(call("GET", scorecard_path, cookie=denied)[0], 403)
+            self.assertEqual(call("GET", page_path, cookie=denied)[0], 403)
         status, _, _ = call("GET", "/api/events/evt_01/judging-insight", cookie=judge_a)
         self.assertEqual(status, 403)
         status, organizer_page, _ = call("GET", "/organizer/evt_01?activity=Judging", cookie=organizer)

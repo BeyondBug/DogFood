@@ -233,6 +233,29 @@ td a{font-weight:700;color:var(--blue)}
 .insight-summary strong{font-size:1.8rem;letter-spacing:-.05em;line-height:1}
 .insight-summary span{font-size:.82rem;color:var(--muted)}
 .insight-warning{border-left:4px solid var(--coral);background:var(--warning-bg);color:var(--warning-ink);padding:14px 18px;margin:0 0 18px}
+.attention-heading{display:flex;justify-content:space-between;align-items:start;gap:24px;margin:34px 0 15px}
+.attention-heading h3{font-size:1.36rem;letter-spacing:-.035em;margin:0 0 4px}
+.attention-heading p{max-width:72ch;margin:0;color:var(--muted);font-size:.88rem;line-height:1.55}
+.attention-heading>span{color:var(--warning-ink);font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap}
+.attention-list{border-top:2px solid var(--ink);border-bottom:1px solid var(--rule)}
+.attention-row{display:grid;grid-template-columns:minmax(0,1fr) 130px 140px 110px;gap:16px;align-items:center;padding:16px 12px;border-bottom:1px solid var(--rule)}
+.attention-row:last-child{border-bottom:0}
+.attention-row:hover,.attention-row:focus-visible{background:var(--shade)}
+.attention-project strong,.attention-project small,.attention-measure strong,.attention-measure small{display:block}
+.attention-project strong{font-size:1rem}
+.attention-project small,.attention-measure small{color:var(--muted);font-size:.77rem;margin-top:3px}
+.attention-measure strong{font-size:1.2rem;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.attention-peers{text-align:right;color:var(--teal);font-size:.84rem;font-weight:700}
+.attention-peers span{padding-left:7px}
+.attention-method,.attention-empty{font-size:.82rem;line-height:1.6;color:var(--muted);max-width:88ch;margin:13px 0 30px}
+.attention-method a{color:var(--blue);text-decoration:underline}
+.review-detail-main{max-width:1080px}
+.review-detail-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:20px 0;margin-bottom:28px}
+.review-detail-meta span{font-size:.95rem}
+.review-detail-meta strong{display:block;color:var(--muted);font-size:.77rem;font-weight:650;margin-bottom:4px}
+.review-comment{padding:24px 0 4px}
+.review-comment h3{margin:0 0 8px;font-size:1.05rem}
+.review-comment p{white-space:pre-wrap;line-height:1.65;max-width:76ch}
 .movement-list{border-top:1px solid var(--rule)}
 .movement-row{border-bottom:1px solid var(--rule)}
 .movement-row summary{display:grid;grid-template-columns:minmax(0,1fr) 110px 100px;align-items:center;gap:15px;padding:17px 10px;cursor:pointer;list-style:none}
@@ -349,5 +372,7 @@ td a{font-weight:700;color:var(--blue)}
 @media(max-width:620px){.event-directory-search>div{flex-direction:column}.event-directory-search button{width:100%}.event-directory-heading span:last-child{display:none}.event-directory-row{grid-template-columns:1fr 1fr;gap:10px 14px;padding:22px 4px}.event-directory-name{grid-column:1/-1}.event-directory-pages{flex-wrap:wrap;gap:12px}.event-directory-pages span{order:-1;flex-basis:100%;text-align:center}}
 @media(max-width:620px){.gallery-pages{flex-wrap:wrap;gap:12px}.gallery-pages span{order:-1;flex-basis:100%;text-align:center}}
 @media(max-width:620px){.certificate-heading{gap:10px}.certificate-art{padding:5px}.certificate-actions{align-items:stretch;flex-direction:column}.certificate-actions .button{width:100%}.certificate-list>a{grid-template-columns:1fr auto;gap:5px 12px}.certificate-list-type{grid-column:1/-1}.award-grid{grid-template-columns:1fr}.certificate-count{align-self:flex-start}}
+@media(max-width:780px){.attention-row{grid-template-columns:minmax(0,1fr) 105px 105px;gap:10px}.attention-peers{grid-column:1/-1;text-align:left}.review-detail-meta{grid-template-columns:1fr;gap:12px}}
+@media(max-width:620px){.attention-heading{flex-direction:column;gap:8px}.attention-row{grid-template-columns:minmax(0,1fr) 82px 82px;padding:14px 4px}.attention-measure strong{font-size:1.05rem}.attention-measure small{font-size:.69rem}}
 @page{size:A4 landscape;margin:0}
 @media print{.site-header,.site-footer,.certificate-heading,.certificate-actions,.certificate-code,.flash{display:none!important}.certificate-main{padding:0;width:100%;max-width:none}.certificate-art{padding:0;border:0;max-width:none}.certificate-art img{width:100%;height:auto;break-inside:avoid}body{background:white}}

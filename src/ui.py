@@ -19,7 +19,7 @@ from .auth import current_principal, require_event_role
 from .backup import write_backup
 from .core import time_value
 from .db import connect, database_path
-from .scoring import event_ranking, judging_insight
+from .scoring import event_ranking, judging_insight, scorecard_detail
 from .audit_view import event_activity
 from .public import _eligible, _vote_summary, _window_open, ballot as load_ballot
 
@@ -388,6 +388,22 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
         "pending_invites": pending_invites, "coverage_gaps": coverage_gaps,
         "incomplete_reviews": incomplete_reviews,
         "judge_invites": judge_invites[:30], "judge_invite_total": len(judge_invites),
+    })
+
+
+@router.get("/organizer/{event_id}/reviews/{scorecard_id}", response_class=HTMLResponse)
+def organizer_review(event_id: str, scorecard_id: str, request: Request):
+    principal = current_principal(request)
+    if principal is None:
+        return RedirectResponse("/account", status_code=303)
+    with closing(connect()) as db:
+        event = _event(db, event_id)
+        require_event_role(db, principal, event_id, "organizer")
+        review = scorecard_detail(db, event_id, scorecard_id)
+        if review is None:
+            raise HTTPException(status_code=404, detail="Submitted scorecard not found")
+    return templates.TemplateResponse(request, "organizer_review.html", {
+        "principal": principal, "event": dict(event), "review": review,
     })
 
 
