@@ -12,7 +12,6 @@
         button.setAttribute('aria-pressed', String(dark));
         button.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
         button.querySelector('[data-theme-label]').textContent = dark ? 'Light mode' : 'Dark mode';
-        button.querySelector('[data-theme-icon]').textContent = dark ? '☼' : '◐';
       });
     };
     buttons.forEach(button => button.addEventListener('click', () => {

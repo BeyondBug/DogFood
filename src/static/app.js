@@ -39,6 +39,84 @@ function fields(form) { return Object.fromEntries(new FormData(form)); }
 function list(value) { return value.split(',').map(item => item.trim()).filter(Boolean); }
 function refresh() { window.location.reload(); }
 
+const setupKey = 'beyondbug-event-setup-draft';
+function showSetupStep(form, index) {
+  const steps = [...form.querySelectorAll('.setup-step')];
+  const step = Math.max(0, Math.min(index, steps.length - 1));
+  form.dataset.setupStep = String(step);
+  steps.forEach((item, position) => { item.hidden = position !== step; item.classList.toggle('active', position === step); });
+  const rail = [...form.closest('.setup-wizard').querySelectorAll('.setup-rail li')];
+  rail.forEach((item, position) => { item.classList.toggle('active', position === step); item.classList.toggle('done', position < step); });
+  form.closest('.setup-wizard').querySelector('[data-setup-progress]').textContent = `Step ${step + 1} of ${steps.length}`;
+  form.querySelector('[data-setup-back]').hidden = step === 0;
+  form.querySelector('[data-setup-next]').hidden = step === steps.length - 1;
+  form.querySelector('[data-setup-create]').hidden = step !== steps.length - 1;
+  if (step === steps.length - 1) {
+    const data = fields(form);
+    const review = form.querySelector('[data-setup-review]');
+    review.replaceChildren();
+    for (const [label, value] of [
+      ['Event', data.name], ['Submission deadline (UTC)', data.submissions_close],
+      ['Tracks', data.tracks], ['Prizes', data.prizes || 'None configured'],
+    ]) {
+      const row = document.createElement('div');
+      const term = document.createElement('strong');
+      const description = document.createElement('span');
+      term.textContent = label;
+      description.textContent = value || 'Not set';
+      row.append(term, description);
+      review.append(row);
+    }
+  }
+}
+function advanceSetupWizard(form) {
+  const index = Number(form.dataset.setupStep || 0);
+  const step = form.querySelector(`.setup-step[data-step="${index}"]`);
+  if (![...step.querySelectorAll('input,textarea,select')].every(input => input.reportValidity())) return;
+  if (index === 2 && !list(form.elements.tracks.value).length) {
+    form.elements.tracks.setCustomValidity('Add at least one track.');
+    form.elements.tracks.reportValidity();
+    form.elements.tracks.setCustomValidity('');
+    return;
+  }
+  showSetupStep(form, index + 1);
+}
+function saveSetupDraft(form) {
+  const status = form.querySelector('.setup-save-state');
+  try {
+    localStorage.setItem(setupKey, JSON.stringify({ values: fields(form), step: Number(form.dataset.setupStep || 0) }));
+    status.textContent = 'Draft saved in this browser';
+  } catch { status.textContent = 'Draft stays on this page'; }
+}
+function initSetupWizard() {
+  const form = document.querySelector('form[data-setup-wizard]');
+  if (!form) return;
+  let step = 0;
+  try {
+    const draft = JSON.parse(localStorage.getItem(setupKey) || '{}');
+    for (const [name, value] of Object.entries(draft.values || {})) {
+      if (form.elements[name]) form.elements[name].value = value;
+    }
+    step = Number.isInteger(draft.step) ? Math.max(0, Math.min(draft.step, 3)) : 0;
+    for (let index = 0; index < step; index++) {
+      const inputs = form.querySelectorAll(`.setup-step[data-step="${index}"] input,.setup-step[data-step="${index}"] textarea`);
+      if (![...inputs].every(input => input.checkValidity())) { step = index; break; }
+    }
+  } catch {}
+  showSetupStep(form, step);
+  form.addEventListener('input', () => saveSetupDraft(form));
+  form.addEventListener('change', () => saveSetupDraft(form));
+}
+document.addEventListener('DOMContentLoaded', initSetupWizard);
+document.addEventListener('keydown', event => {
+  const form = event.target.closest('form[data-setup-wizard]');
+  if (form && event.key === 'Enter' && event.target.tagName === 'INPUT' && form.dataset.setupStep !== '3') {
+    event.preventDefault();
+    advanceSetupWizard(form);
+    saveSetupDraft(form);
+  }
+});
+
 const autosaves = new WeakMap();
 function scorecardPayload(form, status) {
   const data = fields(form);
@@ -100,6 +178,16 @@ function previewLink(anchor, value) {
   } catch { anchor.hidden = true; anchor.removeAttribute('href'); }
 }
 document.addEventListener('click', event => {
+  if (event.target.closest('[data-setup-next]')) {
+    const form = event.target.closest('form[data-setup-wizard]');
+    advanceSetupWizard(form);
+    saveSetupDraft(form);
+  }
+  if (event.target.closest('[data-setup-back]')) {
+    const form = event.target.closest('form[data-setup-wizard]');
+    showSetupStep(form, Number(form.dataset.setupStep || 0) - 1);
+    saveSetupDraft(form);
+  }
   if (event.target.closest('[data-preview-submission]')) {
     const form = document.querySelector('#submission-form');
     const dialog = document.querySelector('.submission-preview');
@@ -129,6 +217,11 @@ document.addEventListener('submit', async event => {
   event.preventDefault();
   const action = form.dataset.action;
   const submitter = event.submitter;
+  if (action === 'create-event' && form.dataset.setupStep !== '3') {
+    advanceSetupWizard(form);
+    saveSetupDraft(form);
+    return;
+  }
   if (action === 'publish' && !window.confirm('Publish final results? Rankings and vote totals become public. Project and score edits lock, and this action is recorded in the audit log.')) return;
   if (action === 'vote' && !window.confirm('Cast this final vote? You cannot change it later.')) return;
   const buttons = [...form.querySelectorAll('button')];
@@ -154,6 +247,7 @@ document.addEventListener('submit', async event => {
           else delete data[name];
         }
         result = await api('POST', '/api/events', data);
+        try { localStorage.removeItem(setupKey); } catch {}
         window.location.assign(`/organizer/${result.id}`);
         return;
       case 'event-settings':

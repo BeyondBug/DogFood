@@ -127,9 +127,13 @@ API to produce a consistent copy while the portal is running. Migrations run
 forward at startup; take a backup before upgrading. CSV exports provide paths
 out for teams, projects, assignments, scorecards, and rankings. Fixture JSON
 is an initial import format, not a general bulk import facility.
+The admin overview reads disk and database size and offers an on-demand
+`PRAGMA quick_check`; it does not schedule or perform backups from the browser.
 
 The event is served by a single process on one host. A larger deployment would
 need shared database, job queue, dedicated rate limiting, observability, and
 an explicit result correction/versioning workflow. Audit entries help an
 organizer understand actions, but a database administrator can alter them;
 they are not tamper-evident records.
+The short read-only gallery probe and its measured limits are recorded in
+[CAPACITY.md](CAPACITY.md). It is not evidence for concurrent write capacity.

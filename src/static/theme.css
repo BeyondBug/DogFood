@@ -3,7 +3,10 @@ html[data-theme=dark]{color-scheme:dark;--canvas:#0d1921;--paper:#172b35;--ink:#
 .site-header nav{align-items:center;gap:26px}
 .theme-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:5px 10px;border:1px solid var(--rule);border-radius:3px;background:var(--paper);color:var(--ink);font:inherit;font-size:.82rem;font-weight:700;white-space:nowrap}
 .theme-toggle:hover{border-color:var(--teal);color:var(--teal)}
-.theme-toggle [data-theme-icon]{font-size:1.2rem;line-height:1}
+.theme-toggle [data-theme-icon]{display:block;width:19px;height:19px;flex:none}
+.theme-toggle .theme-sun{display:none}
+html[data-theme=dark] .theme-toggle .theme-moon{display:none}
+html[data-theme=dark] .theme-toggle .theme-sun{display:block}
 .button-primary{background:var(--button-fill);color:#fff}
 .button-primary:hover{background:var(--button-fill-hover)}
 .button-secondary:hover{background:var(--shade)}

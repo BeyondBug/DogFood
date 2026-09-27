@@ -12,6 +12,7 @@
 | Runtime with container network disabled | **PASS:** local health OK, schema 5, 41 projects |
 | OpenAPI artifact synchronization | **PASS:** test compares committed JSON to FastAPI schema |
 | Desktop and mobile visual review | **PASS:** light/dark certificates, organizer insight, readiness, and mobile layout |
+| Local gallery read probe | **PASS:** 500/500 at 20 workers and 1,000/1,000 at 50 workers; see [CAPACITY.md](CAPACITY.md) |
 
 The canonical [acceptance-report.txt](acceptance-report.txt) is the unedited
 checker output against localhost:8080. `.dogfood.toml` claims only T1/T2.

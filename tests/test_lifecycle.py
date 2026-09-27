@@ -195,6 +195,10 @@ class LifecycleTests(unittest.TestCase):
         email = f"review-judge-{suffix}@example.org"
         status, invitation, _ = call("POST", f"/api/events/{event_id}/judges/invites", {"email": email}, organizer_cookie)
         self.assertEqual(status, 201, invitation)
+        status, pending_page, _ = call("GET", f"/organizer/{event_id}", cookie=organizer_cookie)
+        self.assertEqual(status, 200)
+        self.assertIn("Judge invitations (1)", pending_page)
+        self.assertIn("Pending", pending_page)
         status, _, judge_cookie = call("POST", "/api/auth/register", {
             "name": "Review judge", "email": email, "password": "Another-long-test-password!",
         })
@@ -203,6 +207,9 @@ class LifecycleTests(unittest.TestCase):
         token = invitation["invite_url"].split("/")[-1]
         status, accepted, _ = call("POST", f"/api/judge-invites/{token}/accept", {}, judge_cookie)
         self.assertEqual(status, 200, accepted)
+        status, accepted_page, _ = call("GET", f"/organizer/{event_id}", cookie=organizer_cookie)
+        self.assertEqual(status, 200)
+        self.assertIn("Accepted", accepted_page)
         status, _, _ = call("PUT", f"/api/events/{event_id}/judges/{accepted['judge_id']}/tracks", {
             "tracks": [track_id],
         }, organizer_cookie)
@@ -414,6 +421,12 @@ class LifecycleTests(unittest.TestCase):
         status, landing, _ = call("GET", "/", cookie=participant)
         self.assertEqual(status, 200)
         self.assertIn('href="/dashboard">Dashboard', landing)
+        status, dashboard, _ = call("GET", "/dashboard", cookie=participant)
+        self.assertEqual(status, 200)
+        self.assertIn('data-setup-wizard', dashboard)
+        self.assertIn('Review before creating', dashboard)
+        status, _, _ = call("GET", "/admin?check=1", cookie=participant)
+        self.assertEqual(status, 403)
         status, gallery, _ = call("GET", "/projects?page=9999")
         self.assertEqual(status, 200)
         self.assertIn("Showing 1–41 of 41 projects", gallery)

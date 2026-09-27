@@ -607,6 +607,18 @@
       "get": {
         "summary": "Admin Page",
         "operationId": "admin_page_admin_get",
+        "parameters": [
+          {
+            "name": "check",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Check"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -614,6 +626,16 @@
               "text/html": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }

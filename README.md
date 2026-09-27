@@ -62,12 +62,14 @@ database too.
 ## Walk through one event
 
 1. Sign in as the organizer, open `/dashboard`, and create an event with a
-   future submission deadline, tracks, and optional prizes. The organizer desk
+   guided four-step form for the description, UTC schedule, tracks, and prizes.
+   Its unfinished values stay in this browser. The organizer desk
    has an Event details panel for later schedule and description edits.
 2. Sign in as a participant, open the new event page, join, create a team,
    and copy a single-use invite link. Save a project draft, then submit it.
 3. In the organizer desk, set rubric weights, create judge invites, choose
-   their tracks, and batch assign projects. The desk shows setup readiness,
+   their tracks, and batch assign projects. Invite status shows pending,
+   accepted, and expired links. The desk shows setup readiness,
    its recommended next action, missing coverage, and pending reviews.
 4. As an invited judge, open the judge desk, score only assigned projects,
    and submit a review. Drafts save after a short pause, while final submission
@@ -127,6 +129,13 @@ map.
   raw/adjusted rankings. Open them from the organizer desk or use the API.
 - The default service binds only to `127.0.0.1:8080`. Put a TLS reverse proxy
   in front of it for a shared deployment; disable demo mode first.
+- [CAPACITY.md](CAPACITY.md) gives measured local gallery throughput and the
+  limits of the single-host SQLite design; this release does not claim a
+  multi-instance load balancer.
+- A locally bootstrapped global admin can open `/admin` to inspect event totals,
+  data volume size and free space, and run an on-demand SQLite integrity
+  check. The page also shows the backup command; no scheduled backup is
+  claimed.
 
 The active team develops on `Features`, tests integrations on `Develop`, and
 promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -165,6 +174,7 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 - [T3-EVIDENCE.md](T3-EVIDENCE.md): independently tested public-voting features
 - [DEMO-SCRIPT.md](DEMO-SCRIPT.md): five-minute lifecycle recording plan
 - [RELEASE-VERIFICATION.md](RELEASE-VERIFICATION.md): fresh-start and offline evidence
+- [CAPACITY.md](CAPACITY.md): reproducible local read probe and scaling boundary
 
 Licensed under [MIT](LICENSE). The bundled IBM Plex Sans files have their
 own [SIL Open Font License](src/static/fonts/OFL.txt).

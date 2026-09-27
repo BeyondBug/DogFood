@@ -6,6 +6,8 @@ from contextlib import closing
 from hashlib import sha256
 from datetime import datetime, timezone
 from pathlib import Path
+import os
+import shutil
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -13,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from .auth import current_principal, require_event_role
 from .core import time_value
-from .db import connect
+from .db import connect, database_path
 from .scoring import event_ranking, judging_insight
 from .audit_view import event_activity
 from .public import _eligible, _vote_summary, _window_open, ballot as load_ballot
@@ -91,7 +93,7 @@ def event_directory(request: Request, q: str = "", page: int = Query(default=1, 
 
 
 @router.get("/admin", response_class=HTMLResponse)
-def admin_page(request: Request):
+def admin_page(request: Request, check: bool = False):
     principal = current_principal(request)
     if principal is None:
         return RedirectResponse("/account", status_code=303)
@@ -99,13 +101,21 @@ def admin_page(request: Request):
         raise HTTPException(status_code=403, detail="Administrator access required")
     with closing(connect()) as db:
         users = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        schema_version = db.execute("PRAGMA user_version").fetchone()[0]
+        integrity = db.execute("PRAGMA quick_check(1)").fetchone()[0] if check else None
         events = db.execute("SELECT e.id,e.name,e.created_at,COUNT(DISTINCT p.id) AS projects,"
                             " COUNT(DISTINCT j.id) AS judges FROM events e"
                             " LEFT JOIN projects p ON p.event_id=e.id"
                             " LEFT JOIN judge_profiles j ON j.event_id=e.id"
                             " GROUP BY e.id ORDER BY e.created_at DESC").fetchall()
+    path = database_path()
+    database_bytes = path.stat().st_size if path.exists() else 0
+    free_bytes = shutil.disk_usage(path.parent).free
     return templates.TemplateResponse(request, "admin.html", {
         "principal": principal, "user_count": users, "events": [dict(row) for row in events],
+        "system": {"database_bytes": database_bytes, "free_bytes": free_bytes,
+                   "schema_version": schema_version, "storage_writable": os.access(path.parent, os.W_OK),
+                   "integrity": integrity},
     })
 
 
@@ -256,6 +266,8 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
             item["track_ids"] = {entry["track_id"] for entry in db.execute(
                 "SELECT track_id FROM judge_tracks WHERE judge_id=?", (row["id"],))}
             judge_items.append(item)
+        invite_rows = db.execute("SELECT email,expires_at,accepted_at FROM judge_invites"
+                                 " WHERE event_id=? ORDER BY expires_at DESC", (event_id,)).fetchall()
         coverage = db.execute("SELECT p.id,p.title,p.duplicate_of,COUNT(a.id) AS assigned,"
                               " SUM(CASE WHEN s.status='submitted' THEN 1 ELSE 0 END) AS submitted"
                               " FROM projects p LEFT JOIN judge_assignments a ON a.project_id=p.id"
@@ -280,9 +292,12 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
             " AND duplicate_of IS NULL ORDER BY title,id", (event_id,),
         ).fetchall()
         certificate_count = db.execute("SELECT COUNT(*) FROM certificates WHERE event_id=?", (event_id,)).fetchone()[0]
-        pending_invites = db.execute("SELECT COUNT(*) FROM judge_invites WHERE event_id=? AND accepted_at IS NULL",
-                                     (event_id,)).fetchone()[0]
-    submissions_closed = datetime.now(timezone.utc) >= time_value(event["submissions_close"])
+    now = datetime.now(timezone.utc)
+    judge_invites = [{**dict(row), "status": ("Accepted" if row["accepted_at"] else
+                     "Expired" if time_value(row["expires_at"]) <= now else "Pending")}
+                     for row in invite_rows]
+    pending_invites = sum(row["status"] == "Pending" for row in judge_invites)
+    submissions_closed = now >= time_value(event["submissions_close"])
     unique_coverage = [row for row in coverage if row["duplicate_of"] is None]
     coverage_gaps = sum(row["assigned"] == 0 for row in unique_coverage)
     incomplete_reviews = sum(max(0, row["assigned"] - row["submitted"]) for row in unique_coverage)
@@ -326,6 +341,7 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
         "setup_checks": setup_checks, "next_action": next_action,
         "pending_invites": pending_invites, "coverage_gaps": coverage_gaps,
         "incomplete_reviews": incomplete_reviews,
+        "judge_invites": judge_invites[:30], "judge_invite_total": len(judge_invites),
     })
 
 

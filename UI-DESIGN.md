@@ -82,6 +82,17 @@ verification code. The organizer assigns a configured prize to a project,
 then issues certificates from the published event. The recipient can download
 the vector certificate or print it as a PDF.
 
+### Guided event setup
+
+The first event form uses the existing event desk palette and a three-step
+progress rail: identity, schedule, and tracks/prizes. The final state previews
+the entries before the event is created; the organizer desk then shows a
+readiness list for rubric and judges. The rail is a real sequence, so numbered
+steps describe progress rather than decorate the page. Layout stays left
+aligned, with one primary Continue/Create action and a quiet Back action.
+The draft is kept in this browser only until creation, avoiding a half-created
+server event. The design does not imply that a draft has been published.
+
 ## One coherent product, five key surfaces
 
 | Surface | What the user must immediately understand | Primary action |

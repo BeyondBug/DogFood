@@ -57,6 +57,7 @@
         <label>Judge email<input name="email" type="email" required></label>
         <button class="button button-secondary" type="submit">Create judge invite</button>
       </form>
+      {% if judge_invites %}<details class="invite-status"><summary>Judge invitations ({{ judge_invite_total }})</summary><div class="invite-status-list">{% for invite in judge_invites %}<div><span>{{ invite.email }}</span><strong class="{{ 'invite-accepted' if invite.status == 'Accepted' else 'invite-expired' if invite.status == 'Expired' else '' }}">{{ invite.status }}</strong><small>{{ 'Accepted ' ~ invite.accepted_at[:16].replace('T',' ') ~ ' UTC' if invite.accepted_at else 'Expires ' ~ invite.expires_at[:16].replace('T',' ') ~ ' UTC' }}</small></div>{% endfor %}</div><p class="muted">{% if judge_invite_total > 30 %}Showing the 30 most recent invitations. {% endif %}Invite links are shown only when created. To share a fresh link, enter the email above again.</p></details>{% endif %}
       <h3 class="subheading">Accepted judges</h3>
       {% if judges %}
       <div class="judge-list">
