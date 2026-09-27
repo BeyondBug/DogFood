@@ -8,7 +8,7 @@ The image installs pinned wheels from `vendor/wheels` with `--no-index` and
 serves Jinja templates, JavaScript, CSS, and IBM Plex Sans from its own
 filesystem. There are no outbound runtime calls or hosted services.
 
-Startup applies SQLite schema migrations (`PRAGMA user_version` 1 and 2),
+Startup applies SQLite schema migrations (`PRAGMA user_version` 1 through 3),
 loads `fixtures.json` if its event is absent, and prints the demo auth headers
 when demo mode is enabled. A restart leaves user changes intact. The health
 route checks database access. A one-worker process keeps SQLite write
@@ -43,10 +43,10 @@ The application distinguishes five actors:
 
 | Actor | Scope |
 | --- | --- |
-| Visitor | Public event pages, submitted projects, published results only |
-| Participant | Their event membership, team, draft and submission before deadline |
+| Visitor | Public event pages, submitted projects, published results and visible comments |
+| Participant | Their event membership, team, draft and submission before deadline; a ballot when eligible |
 | Judge | Their assigned projects and their own scorecards only |
-| Organizer | Event setup, invitations, progress, all reviews, private ranking, publication and exports for their event |
+| Organizer | Event setup, invitations, progress, all reviews, private ranking and vote tally, comment moderation, publication and exports for their event |
 | Admin | Cross-event oversight and event administration |
 
 The critical isolation path is `/api/judge/scores`: the requested judge ID
@@ -54,6 +54,8 @@ must belong to the current session. The assigned-scorecard write route checks
 the assignment's judge user ID. Organizer exports and rankings require the
 organizer role. Public results return 404 until publication. Result
 publication locks later score edits, so visible rankings cannot drift.
+During a configured voting window, publication is also blocked. Ballot totals
+are organizer-only until publication; public vote results then become visible.
 
 ## Main modules
 
@@ -65,6 +67,7 @@ publication locks later score edits, so visible rankings cannot drift.
 | `src/core.py` | Accounts, events, registration, teams, invites, project edits |
 | `src/judging.py` | Judge invitation, rubric, assignments, scorecards, progress, exports, publication |
 | `src/scoring.py` | Weighted averages, cross-judge calibration, ranking |
+| `src/public.py` | Voting configuration, eligibility, ballots, attempts, comments, moderation |
 | `src/ui.py` | Public and role workspaces from live records |
 | `src/main.py` | Application assembly, gallery, acceptance routes |
 
@@ -85,6 +88,13 @@ publication locks later score edits, so visible rankings cannot drift.
 - Public pages query rankings only after publication. Publishing results
   requires at least one completed review per nonduplicate project and records
   an audit entry.
+- A ballot belongs to exactly one account and event by database constraint.
+  Eligible choices exclude the voter's team and flagged duplicates. A secret
+  event seed drives stable per-voter HMAC ordering. Attempt logs store a keyed
+  IP digest instead of the address, and rate limits use account and digest.
+- Voting eligibility and the window are rechecked inside the vote transaction.
+  Organizer configuration locks once ballots exist. Comments are accepted only
+  during voting, are rate limited, and can be hidden with an audit entry.
 
 ## Operations and limits
 

@@ -46,6 +46,7 @@ document.addEventListener('submit', async event => {
   const action = form.dataset.action;
   const submitter = event.submitter;
   if (action === 'publish' && !window.confirm('Publish these results for everyone? Scores will be locked.')) return;
+  if (action === 'vote' && !window.confirm('Cast this final vote? You cannot change it later.')) return;
   const buttons = [...form.querySelectorAll('button')];
   buttons.forEach(button => { button.disabled = true; });
   try {
@@ -127,12 +128,34 @@ document.addEventListener('submit', async event => {
       case 'publish':
         await api('POST', `/api/events/${form.dataset.event}/results/publish`, {});
         refresh(); return;
+      case 'voting-config':
+        data.opens_at = `${data.opens_at}:00Z`;
+        data.closes_at = `${data.closes_at}:00Z`;
+        await api('PUT', `/api/events/${form.dataset.event}/voting`, data);
+        refresh(); return;
+      case 'voter-invite':
+        result = await api('POST', `/api/events/${form.dataset.event}/voter-invites`, data);
+        notice('Share this private ballot invite with the named email address:', false, window.location.origin + result.invite_url);
+        return;
+      case 'vote':
+        if (!data.project_id) throw new Error('Choose a project first.');
+        await api('POST', `/api/events/${form.dataset.event}/votes`, { project_id: data.project_id });
+        refresh(); return;
+      case 'comment':
+        await api('POST', `/api/projects/${form.dataset.project}/comments`, { body: data.body });
+        refresh(); return;
+      case 'hide-comment':
+        await api('DELETE', `/api/comments/${form.dataset.comment}`);
+        refresh(); return;
       case 'accept-invite':
         result = await api('POST', form.dataset.kind === 'team'
           ? `/api/team-invites/${form.dataset.token}/join`
-          : `/api/judge-invites/${form.dataset.token}/accept`, {});
-        window.location.assign(form.dataset.kind === 'team'
-          ? '/dashboard' : `/judge/${result.event_id}`);
+          : form.dataset.kind === 'judge'
+            ? `/api/judge-invites/${form.dataset.token}/accept`
+            : `/api/voter-invites/${form.dataset.token}/accept`, {});
+        window.location.assign(form.dataset.kind === 'team' ? '/dashboard'
+          : form.dataset.kind === 'judge' ? `/judge/${result.event_id}`
+            : `/vote/${result.event_id}`);
         return;
       default:
         throw new Error('This action is unavailable.');

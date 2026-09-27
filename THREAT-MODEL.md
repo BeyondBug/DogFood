@@ -3,7 +3,7 @@
 ## Scope and assets
 
 BeyondBug protects accounts, team drafts, judge assignments and scorecards,
-private rankings, and the publication decision. The browser and any direct
+private rankings and ballot totals, and the publication decision. The browser and any direct
 HTTP client are untrusted. The local operator controls the Docker host and
 SQLite file; this release does not claim to resist a malicious host operator.
 The main boundary is between public routes, event-scoped roles, and the
@@ -22,7 +22,9 @@ database transaction that changes records.
 | Password guessing or account creation spam | Passwords use salted PBKDF2; sessions are random, hashed in storage, expiring and revocable. | No login rate limit, account verification, or recovery flow yet. Restrict network exposure until these are added. |
 | Submission scraping | The gallery intentionally exposes submitted titles, summaries, teams, and links. Drafts and scores are not public. | Public content can be copied; future per-IP limits or robots policy can reduce automated load, not prevent copying. |
 | Duplicate submissions and copied repositories | Equal repository URLs in an event are flagged; duplicates remain visible but are unranked pending organizer review. | A changed URL can bypass detection, and legitimate forks can be flagged. Human review is required. |
-| Sybil voting or ballot stuffing | There is no voting endpoint in this T1/T2 release, so no community ballot exists to stuff. | Before T3, add verified eligibility, one vote per eligible identity, rate limits, randomized ballot order, duplicate detection, and a privacy-conscious audit trail. Email alone would not stop Sybils. |
+| Sybil voting or ballot stuffing | Organizers can choose curated email-bound invite links or participants registered before voting opens. The database permits one ballot per account and event. The write route checks eligibility and rejects self-votes and duplicate projects. Account and keyed IP-digest limits count failed and successful attempts, and organizer-only attempt summaries expose suspicious patterns. | Email matching does not prove inbox ownership. Earlier fake accounts, shared networks, coordinated voters, and invitation sharing remain possible. A trusted voter roster or offline identity verification is needed for high-stakes awards. |
+| Ballot position bias or premature results | A per-event secret seeds a stable HMAC order for each voter. Vote totals and judge rankings are restricted to organizers until publication, and publication waits for voting close. | Organizers can see interim totals and may influence decisions. A malicious host operator can read or alter them. |
+| Comment spam or harassment | Comments require a login, open only during voting, reject exact repeats, and limit each account to five per hour. Organizers can hide comments; creation and moderation are audited. | Multiple accounts can bypass limits. There is no automated content screening or appeal flow. |
 | Host/database tampering | Audit rows show actor, entity, action, time, and details to organizers. A consistent backup can be taken with `src.backup`. | SQLite and its audit rows are mutable by the host operator. A signed external transparency log would be needed for tamper evidence. |
 
 ## Review priorities before wider deployment
@@ -33,5 +35,6 @@ database transaction that changes records.
    result republication.
 3. Test reverse proxy headers and Secure cookies under the intended HTTPS
    deployment, then remove demo mode and its fixed credentials.
-4. If community voting is built, model the adversary before exposing a ballot.
-   One-account-one-vote is not sufficient when accounts are cheap to create.
+4. For high-stakes community awards, curate the voter roster and add offline
+   identity checks. One-account-one-vote is insufficient when accounts are
+   cheap to create.

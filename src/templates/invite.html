@@ -1,2 +1,15 @@
-{% extends "base.html" %}{% block title %}Invitation · BeyondBug{% endblock %}
-{% block content %}<main class="wrap invite-main"><section class="panel"><p class="section-kicker">{{ event_name }}</p><h1>{{ 'Join the team' if kind == 'team' else 'Review this event' }}</h1><p>{{ title }}</p>{% if principal %}<form data-action="accept-invite" data-kind="{{ kind }}" data-token="{{ token }}"><button class="button button-primary" type="submit">{{ 'Join team' if kind == 'team' else 'Accept judge invitation' }}</button></form>{% else %}<p>Sign in with the invited email address to continue.</p><a class="button button-primary" href="/account?next={{ request.url.path|urlencode }}">Sign in or create account</a>{% endif %}</section></main>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Invitation · BeyondBug{% endblock %}
+{% block content %}
+<main class="wrap invite-main"><section class="panel">
+  <p class="section-kicker">{{ event_name }}</p>
+  <h1>{{ 'Join the team' if kind == 'team' else 'Review this event' if kind == 'judge' else 'Join the ballot' }}</h1>
+  <p>{{ title }}</p>
+  {% if principal %}
+    <form data-action="accept-invite" data-kind="{{ kind }}" data-token="{{ token }}"><button class="button button-primary" type="submit">{{ 'Join team' if kind == 'team' else 'Accept judge invitation' if kind == 'judge' else 'Accept voter invitation' }}</button></form>
+  {% else %}
+    <p>Sign in with the invited email address to continue.</p>
+    <a class="button button-primary" href="/account?next={{ request.url.path|urlencode }}">Sign in or create account</a>
+  {% endif %}
+</section></main>
+{% endblock %}

@@ -122,7 +122,8 @@ Judges can query only their own scorecards and assigned project queue. A
 different judge ID in `/api/judge/scores?judge=...` returns 403. Participants
 also receive 403. The organizer can see the audit trail, judge progress,
 assignment shortages, and raw/adjusted rankings. Public results return 404
-until publication, which locks score editing. CSV exports require organizer
+until publication, which locks score editing. When community voting is
+configured, publication also waits until its window closes. CSV exports require organizer
 access and escape spreadsheet formulas in text fields.
 
 An additive model only corrects a consistent leniency or strictness effect.

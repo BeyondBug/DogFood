@@ -2,7 +2,8 @@
 
 BeyondBug is an open-source, self-hosted hackathon portal built for DOGFOOD
 2026. It covers registration, teams, submissions, the public gallery, judge
-assignment, weighted scoring, normalized rankings, and result publication.
+assignment, weighted scoring, normalized rankings, community voting, comments,
+and result publication.
 The portal runs on one laptop with FastAPI, SQLite, and locally bundled assets.
 
 ## Run it
@@ -57,6 +58,10 @@ database too.
 5. The organizer reviews raw and calibrated rankings and publishes results.
    Public result routes return 404 until that action. Submitted scores lock
    after publication.
+6. For an event with an active voting window, the organizer chooses invited
+   voters or existing participants. Eligible voters receive a stable shuffled
+   ballot, cast one vote, and can comment on projects. The organizer sees
+   attempt signals and moderates comments. Publishing waits until voting closes.
 
 The API driving these actions is documented at `/docs`, `/openapi.json`, and
 the committed [OpenAPI specification](openapi.json).
@@ -76,8 +81,10 @@ python3 run.py .dogfood.toml > acceptance-report.txt
 `acceptance-report.txt` is its unedited output. Our tier claim is **T1 and
 T2**. The checker verifies seven HTTP behaviors; the additional tests cover
 the event lifecycle, deadline and role denials, publication lock, exports,
-and normalization edge cases. The official checker does not assess every
-manual tier requirement, so the code and demo remain part of the evidence.
+normalization edge cases, and voting abuse controls. The official checker has
+no T3 assertions. Community voting and comments are implemented and covered
+by our integration tests, but we leave T3 unclaimed because the checker cannot
+verify it. The code and demo remain part of the evidence.
 
 ## Operate and extend
 
@@ -97,8 +104,13 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Known limits
 
-- T3 voting/comments and T4 webhooks, certificates, widgets, and bulk import
-  are not claimed.
+- T3 is not claimed in `.dogfood.toml`: its voting and comment features work,
+  but the supplied checker has no T3 checks. T4 webhooks, certificates,
+  widgets, and bulk import are not implemented.
+- Community voting cannot establish one human per account. Invite acceptance
+  matches an account email but does not verify inbox ownership; participant
+  mode excludes accounts created after voting opens, but earlier fake accounts
+  remain possible. Use curated invites for high-stakes public prizes.
 - Invite links are copied by an organizer or captain; the portal does not send
   email. There is no outbound email dependency.
 - SQLite with one application worker suits small and medium self-hosted

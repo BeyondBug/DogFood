@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
 
 def database_path() -> Path:
@@ -197,6 +197,53 @@ CREATE TABLE IF NOT EXISTS judge_conflicts (
 );
 """
 
+SCHEMA_V3 = """
+ALTER TABLE events ADD COLUMN voting_open TEXT;
+ALTER TABLE events ADD COLUMN voting_close TEXT;
+ALTER TABLE events ADD COLUMN voting_mode TEXT NOT NULL DEFAULT 'disabled'
+    CHECK(voting_mode IN ('disabled','invite_only','participants'));
+ALTER TABLE events ADD COLUMN ballot_seed TEXT;
+CREATE TABLE voter_invites (
+    token_hash TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    email TEXT NOT NULL COLLATE NOCASE,
+    created_by TEXT NOT NULL REFERENCES users(id),
+    expires_at TEXT NOT NULL,
+    accepted_at TEXT,
+    voter_user_id TEXT REFERENCES users(id),
+    UNIQUE(event_id,email)
+);
+CREATE TABLE ballots (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    voter_user_id TEXT NOT NULL REFERENCES users(id),
+    project_id TEXT NOT NULL REFERENCES projects(id),
+    cast_at TEXT NOT NULL,
+    UNIQUE(event_id,voter_user_id)
+);
+CREATE TABLE vote_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    voter_user_id TEXT NOT NULL REFERENCES users(id),
+    ip_hash TEXT NOT NULL,
+    outcome TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX ix_vote_attempts_user_time ON vote_attempts(event_id,voter_user_id,created_at);
+CREATE INDEX ix_vote_attempts_ip_time ON vote_attempts(event_id,ip_hash,created_at);
+CREATE TABLE comments (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    hidden_at TEXT,
+    hidden_by TEXT REFERENCES users(id)
+);
+CREATE INDEX ix_comments_project_time ON comments(project_id,created_at);
+"""
+
 
 def initialize() -> None:
     path = database_path()
@@ -204,7 +251,7 @@ def initialize() -> None:
     with closing(connect()) as db:
         db.execute("PRAGMA journal_mode = WAL")
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        if version > 2:
+        if version > 3:
             raise RuntimeError(f"Database schema version {version} is newer than this app")
         if version == 0:
             db.executescript(SCHEMA_V1)
@@ -213,4 +260,8 @@ def initialize() -> None:
         if version == 1:
             db.executescript(SCHEMA_V2)
             db.execute("PRAGMA user_version = 2")
+            version = 2
+        if version == 2:
+            db.executescript(SCHEMA_V3)
+            db.execute("PRAGMA user_version = 3")
         db.commit()

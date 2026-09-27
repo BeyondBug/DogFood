@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Your ballot · {{ event.name }}{% endblock %}
+{% block content %}
+<main class="wrap workspace-main ballot-main">
+  <div class="page-heading"><div><p class="section-kicker">Community ballot · {{ event.name }}</p><h1>Your choice.</h1><p>Projects appear in a private, randomized order. You may cast one final vote, and you cannot vote for your own team.</p></div><a class="text-link" href="/events/{{ event.id }}">Event page</a></div>
+  <div class="rubric-bar"><strong>{{ 'Your vote is recorded' if ballot.has_voted else 'Voting is open' }}</strong><span>Closes {{ ballot.closes_at[:16].replace('T', ' ') }} UTC</span></div>
+  {% if ballot.has_voted %}
+    <div class="empty-state"><h2>Thanks for voting</h2><p>Your ballot is sealed. The public tally stays hidden until the organizer publishes results.</p><a href="/projects?event={{ event.id }}">Browse projects</a></div>
+  {% elif ballot.projects %}
+    <form data-action="vote" data-event="{{ event.id }}" class="ballot-form">
+      <fieldset><legend>Choose one project</legend>
+        <div class="ballot-choices">{% for item in ballot.projects %}<div class="ballot-choice"><label class="ballot-select"><input type="radio" name="project_id" value="{{ item.id }}" required><span><small>{{ item.track }} · {{ item.team }}</small><strong>{{ item.title }}</strong><span>{{ item.summary }}</span></span></label><a href="/projects/{{ item.id }}" target="_blank" rel="noopener noreferrer">View project ↗</a></div>{% endfor %}</div>
+      </fieldset>
+      <button class="button button-primary" type="submit">Cast your vote</button>
+    </form>
+  {% else %}
+    <div class="empty-state"><h2>No eligible projects</h2><p>Your own team's project is excluded. There are no other submitted projects to vote for.</p></div>
+  {% endif %}
+</main>
+{% endblock %}

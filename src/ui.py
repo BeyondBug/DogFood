@@ -14,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 from .auth import current_principal, require_event_role
 from .db import connect
 from .scoring import event_ranking
+from .public import _eligible, _vote_summary, _window_open, ballot as load_ballot
 
 
 router = APIRouter()
@@ -80,6 +81,7 @@ def event_page(event_id: str, request: Request):
                               " ORDER BY p.submitted_at DESC LIMIT 3", (event_id,)).fetchall()
         roles = [row["role"] for row in db.execute("SELECT role FROM event_roles WHERE event_id=? AND user_id=?", (event_id, principal.user_id)).fetchall()] if principal else []
         count = db.execute("SELECT COUNT(*) FROM projects WHERE event_id=? AND status='submitted'", (event_id,)).fetchone()[0]
+        can_vote = bool(principal and _window_open(event) and _eligible(db, event, principal.user_id))
     now = datetime.now(timezone.utc)
     closed = now >= datetime.fromisoformat(event["submissions_close"].replace("Z", "+00:00"))
     if event["results_published_at"]:
@@ -94,20 +96,30 @@ def event_page(event_id: str, request: Request):
         "principal": principal, "event": dict(event), "tracks": [dict(row) for row in tracks],
         "prizes": [dict(row) for row in prizes], "projects": [dict(row) for row in projects],
         "roles": roles, "project_count": count, "closed": closed, "phase_index": phase_index,
+        "can_vote": can_vote, "voting_open": _window_open(event),
     })
 
 
 @router.get("/projects/{project_id}", response_class=HTMLResponse)
 def project_page(project_id: str, request: Request):
+    principal = current_principal(request)
     with closing(connect()) as db:
-        project = db.execute("SELECT p.*,t.name AS team,tr.name AS track,e.name AS event_name"
+        project = db.execute("SELECT p.*,t.name AS team,tr.name AS track,e.name AS event_name,"
+                             " e.voting_mode,e.voting_open,e.voting_close"
                              " FROM projects p JOIN teams t ON t.id=p.team_id"
                              " JOIN tracks tr ON tr.id=p.track_id JOIN events e ON e.id=p.event_id"
                              " WHERE p.id=? AND p.status='submitted'", (project_id,)).fetchone()
         if project is None:
             raise HTTPException(status_code=404, detail="Project not found")
+        comments = db.execute("SELECT c.id,c.body,c.created_at,u.name AS author"
+                              " FROM comments c JOIN users u ON u.id=c.user_id"
+                              " WHERE c.project_id=? AND c.hidden_at IS NULL ORDER BY c.created_at,c.id LIMIT 200",
+                              (project_id,)).fetchall()
+        is_organizer = bool(principal and db.execute("SELECT 1 FROM event_roles WHERE event_id=? AND user_id=? AND role='organizer'",
+                                                      (project["event_id"], principal.user_id)).fetchone())
     return templates.TemplateResponse(request, "project.html", {
-        "principal": current_principal(request), "project": dict(project),
+        "principal": principal, "project": dict(project), "comments": [dict(row) for row in comments],
+        "comments_open": _window_open(project), "is_organizer": is_organizer,
     })
 
 
@@ -180,6 +192,12 @@ def organizer_workspace(event_id: str, request: Request):
                             " LEFT JOIN judge_assignments a ON a.judge_id=j.id"
                             " LEFT JOIN scorecards s ON s.assignment_id=a.id"
                             " WHERE j.event_id=? GROUP BY j.id ORDER BY u.name", (event_id,)).fetchall()
+        judge_items = []
+        for row in judges:
+            item = dict(row)
+            item["track_ids"] = {entry["track_id"] for entry in db.execute(
+                "SELECT track_id FROM judge_tracks WHERE judge_id=?", (row["id"],))}
+            judge_items.append(item)
         coverage = db.execute("SELECT p.id,p.title,p.duplicate_of,COUNT(a.id) AS assigned,"
                               " SUM(CASE WHEN s.status='submitted' THEN 1 ELSE 0 END) AS submitted"
                               " FROM projects p LEFT JOIN judge_assignments a ON a.project_id=p.id"
@@ -189,11 +207,12 @@ def organizer_workspace(event_id: str, request: Request):
         criteria = db.execute("SELECT slug,name,weight FROM rubric_criteria WHERE rubric_id=? ORDER BY sort_order", (rubric["id"],)).fetchall() if rubric else []
         ranking = event_ranking(db, event_id)
         audit = db.execute("SELECT action,entity_type,entity_id,created_at FROM audit_entries WHERE event_id=? ORDER BY id DESC LIMIT 12", (event_id,)).fetchall()
+        vote_summary = _vote_summary(db, event_id)
     return templates.TemplateResponse(request, "organizer.html", {
         "principal": principal, "event": dict(event), "tracks": [dict(row) for row in tracks],
-        "judges": [dict(row) for row in judges], "coverage": [dict(row) for row in coverage],
+        "judges": judge_items, "coverage": [dict(row) for row in coverage],
         "rubric": dict(rubric) if rubric else None, "criteria": [dict(row) for row in criteria],
-        "ranking": ranking, "audit": [dict(row) for row in audit],
+        "ranking": ranking, "audit": [dict(row) for row in audit], "vote_summary": vote_summary,
     })
 
 
@@ -204,8 +223,23 @@ def results_page(event_id: str, request: Request):
         if event["results_published_at"] is None:
             raise HTTPException(status_code=404, detail="Results are not published")
         ranking = event_ranking(db, event_id)
+        vote_summary = _vote_summary(db, event_id) if event["voting_mode"] != "disabled" else None
     return templates.TemplateResponse(request, "results.html", {
         "principal": current_principal(request), "event": dict(event), "ranking": ranking,
+        "vote_summary": vote_summary,
+    })
+
+
+@router.get("/vote/{event_id}", response_class=HTMLResponse)
+def ballot_page(event_id: str, request: Request):
+    principal = current_principal(request)
+    if principal is None:
+        return RedirectResponse(f"/account?next=/vote/{event_id}", status_code=303)
+    ballot_data = load_ballot(event_id, request)
+    with closing(connect()) as db:
+        event = _event(db, event_id)
+    return templates.TemplateResponse(request, "ballot.html", {
+        "principal": principal, "event": dict(event), "ballot": ballot_data,
     })
 
 
@@ -233,5 +267,19 @@ def judge_invite_page(token: str, request: Request):
         raise HTTPException(status_code=404, detail="Invite not found")
     return templates.TemplateResponse(request, "invite.html", {
         "principal": current_principal(request), "kind": "judge", "token": token,
+        "title": invitation["email"], "event_name": invitation["event"],
+    })
+
+
+@router.get("/vote-invite/{token}", response_class=HTMLResponse)
+def voter_invite_page(token: str, request: Request):
+    with closing(connect()) as db:
+        invitation = db.execute("SELECT i.email,e.name AS event FROM voter_invites i"
+                                " JOIN events e ON e.id=i.event_id WHERE i.token_hash=?",
+                                (sha256(token.encode()).hexdigest(),)).fetchone()
+    if invitation is None:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    return templates.TemplateResponse(request, "invite.html", {
+        "principal": current_principal(request), "kind": "voter", "token": token,
         "title": invitation["email"], "event_name": invitation["event"],
     })

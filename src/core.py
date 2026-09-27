@@ -155,6 +155,17 @@ class EventCreate(BaseModel):
     prizes: list[str] = Field(default_factory=list)
 
 
+class EventPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=3, max_length=160)
+    description: str | None = Field(default=None, max_length=2000)
+    registration_open: str | None = None
+    registration_close: str | None = None
+    submissions_open: str | None = None
+    submissions_close: str | None = None
+    judging_open: str | None = None
+    judging_close: str | None = None
+
+
 @router.get("/events")
 def list_events():
     with closing(connect()) as db:
@@ -210,7 +221,48 @@ def get_event(event_id: str):
             raise HTTPException(status_code=404, detail="Event not found")
         tracks = db.execute("SELECT id,name FROM tracks WHERE event_id=? ORDER BY name", (event_id,)).fetchall()
         prizes = db.execute("SELECT id,name,description FROM prizes WHERE event_id=? ORDER BY name", (event_id,)).fetchall()
-    return {"event": dict(event), "tracks": [dict(row) for row in tracks], "prizes": [dict(row) for row in prizes]}
+    public_event = dict(event)
+    public_event.pop("ballot_seed", None)
+    return {"event": public_event, "tracks": [dict(row) for row in tracks], "prizes": [dict(row) for row in prizes]}
+
+
+@router.patch("/events/{event_id}")
+def update_event(event_id: str, payload: EventPatch, request: Request):
+    principal = require_login(request)
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=422, detail="Provide at least one field to update")
+    date_fields = {"registration_open", "registration_close", "submissions_open", "submissions_close", "judging_open", "judging_close"}
+    for key in date_fields & updates.keys():
+        updates[key] = time_value(updates[key]).isoformat() if updates[key] else None
+    if "submissions_close" in updates and updates["submissions_close"] is None:
+        raise HTTPException(status_code=422, detail="Submissions must have a deadline")
+    with closing(connect()) as db:
+        db.execute("BEGIN IMMEDIATE")
+        event = db.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
+        if event is None:
+            raise HTTPException(status_code=404, detail="Event not found")
+        require_event_role(db, principal, event_id, "organizer")
+        if event["results_published_at"]:
+            raise HTTPException(status_code=409, detail="Published events are locked")
+        merged = dict(event) | updates
+        for opening, closing_name in (("registration_open", "registration_close"),
+                                      ("submissions_open", "submissions_close"),
+                                      ("judging_open", "judging_close")):
+            if merged[opening] and merged[closing_name] and time_value(merged[opening]) >= time_value(merged[closing_name]):
+                raise HTTPException(status_code=422, detail=f"{closing_name} must be after {opening}")
+        if "name" in updates:
+            if updates["name"] is None or len(updates["name"].strip()) < 3:
+                raise HTTPException(status_code=422, detail="Event name must have at least three characters")
+            updates["name"] = updates["name"].strip()
+        if "description" in updates:
+            updates["description"] = (updates["description"] or "").strip()
+        assignments = ",".join(f"{key}=?" for key in updates)
+        db.execute(f"UPDATE events SET {assignments} WHERE id=?", (*updates.values(), event_id))
+        audit(db, event_id, principal.user_id, "event.updated", "event", event_id,
+              {"fields": sorted(updates)})
+        db.commit()
+    return {"id": event_id, "updated": sorted(updates)}
 
 
 @router.post("/events/{event_id}/registration", status_code=201)

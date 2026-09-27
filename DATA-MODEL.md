@@ -1,7 +1,7 @@
 # Data model
 
 SQLite is the source of truth. `src/db.py` contains the exact versioned SQL
-schema; `PRAGMA user_version` advances from 0 to 1 to 2 at startup. Every
+schema; `PRAGMA user_version` advances from 0 to 1 to 2 to 3 at startup. Every
 connection enables foreign keys and a busy timeout. Event-scoped APIs check
 the event ID as well as the acting user's role.
 
@@ -11,7 +11,7 @@ the event ID as well as the acting user's role.
 | --- | --- | --- |
 | `users` | ID, case-insensitive unique email, name, password hash, global admin flag | Passwords are salted PBKDF2 hashes |
 | `sessions` | SHA-256 token digest, user ID, expiry | Raw token appears only in cookie or bearer header |
-| `events` | Name, description, registration/submission/judging dates, publication time, creator | All stored timestamps include UTC offset |
+| `events` | Name, description, registration/submission/judging/voting dates, voting mode, ballot seed, publication time, creator | All stored timestamps include UTC offset |
 | `event_roles` | Event ID, user ID, participant/judge/organizer role | Composite primary key permits distinct roles per event |
 | `tracks`, `prizes` | Event ID and name | Track names are unique within an event |
 | `teams`, `team_members` | Event, captain/creator, member role | Membership and team-size checks are transactional |
@@ -24,6 +24,10 @@ the event ID as well as the acting user's role.
 | `judge_assignments` | Event, project, judge, timestamp, reason | Unique judge/project pair |
 | `scorecards`, `criterion_scores` | Assignment, rubric version, draft/submitted state, comment, per-criterion value | A submitted card requires every criterion |
 | `audit_entries` | Event, actor, action, entity, JSON details, UTC time | Organizer-readable history of consequential writes |
+| `voter_invites` | Hashed token, event, invited email, creator, expiry, acceptance and voter account | One accepted invitation per event and email |
+| `ballots` | Event, voter account, project, cast time | Unique event and voter pair; one final vote per account |
+| `vote_attempts` | Event, voter account, keyed IP digest, outcome, time | Countable signals for throttling and organizer review |
+| `comments` | Event, project, author, body, creation and moderation fields | Hidden comments stay in the database for audit |
 
 Generated IDs are opaque strings with prefixes such as `evt_`, `tm_`, and
 `prj_`. Published fixture IDs are preserved verbatim to make acceptance and
@@ -73,7 +77,9 @@ reconcile duplicates before modifying live events.
 ## Migration and retention
 
 Version 1 created the core tables. Version 2 added judge invitations and
-conflicts. Migrations run before fixture seeding. `rubrics.version` and each
+conflicts. Version 3 added voting windows, invite eligibility, ballots,
+attempt signals, and comments. Migrations run before fixture seeding.
+`rubrics.version` and each
 scorecard's `rubric_id` preserve scoring context, but changing a rubric is
 currently blocked once assignments exist. Published results lock scorecard
 changes; a correction workflow and historical result snapshots are future

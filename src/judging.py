@@ -330,6 +330,9 @@ def publish_results(event_id: str, request: Request):
         event = db.execute("SELECT results_published_at FROM events WHERE id=?", (event_id,)).fetchone()
         if event["results_published_at"]:
             raise HTTPException(status_code=409, detail="Results are already published")
+        voting = db.execute("SELECT voting_mode,voting_close FROM events WHERE id=?", (event_id,)).fetchone()
+        if voting["voting_mode"] != "disabled" and voting["voting_close"] and time_value(voting["voting_close"]) > datetime.now(timezone.utc):
+            raise HTTPException(status_code=409, detail="Voting must close before results are published")
         ranking = event_ranking(db, event_id)
         missing = [row["id"] for row in ranking["projects"] if row["duplicate_of"] is None and row["review_count"] == 0]
         if missing:
