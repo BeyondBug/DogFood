@@ -7,7 +7,7 @@ from hashlib import sha256
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -48,6 +48,44 @@ def dashboard(request: Request):
         events = db.execute("SELECT id,name,description,submissions_close FROM events ORDER BY created_at DESC LIMIT 20").fetchall()
     return templates.TemplateResponse(request, "dashboard.html", {
         "principal": principal, "roles": [dict(row) for row in roles], "events": [dict(row) for row in events],
+    })
+
+
+@router.get("/events", response_class=HTMLResponse)
+def event_directory(request: Request, q: str = "", page: int = Query(default=1, ge=1)):
+    query = q.strip()[:120]
+    search = f"%{query}%"
+    with closing(connect()) as db:
+        total = db.execute(
+            "SELECT COUNT(*) FROM events e WHERE e.name LIKE ? OR e.description LIKE ?",
+            (search, search),
+        ).fetchone()[0]
+        page_size = 20
+        last_page = max(1, (total + page_size - 1) // page_size)
+        current_page = min(page, last_page)
+        rows = db.execute(
+            "SELECT e.id,e.name,e.description,e.submissions_open,e.submissions_close,"
+            "e.results_published_at,"
+            "(SELECT COUNT(*) FROM tracks t WHERE t.event_id=e.id) AS track_count,"
+            "(SELECT COUNT(*) FROM projects p WHERE p.event_id=e.id AND p.status='submitted') AS project_count"
+            " FROM events e WHERE e.name LIKE ? OR e.description LIKE ?"
+            " ORDER BY e.created_at DESC,e.id DESC LIMIT ? OFFSET ?",
+            (search, search, page_size, (current_page - 1) * page_size),
+        ).fetchall()
+    now = datetime.now(timezone.utc)
+    events = []
+    for row in rows:
+        event = dict(row)
+        event["phase"] = ("Results published" if event["results_published_at"] else
+                          "Submissions closed" if now >= time_value(event["submissions_close"]) else
+                          "Submissions upcoming" if event["submissions_open"] and now < time_value(event["submissions_open"]) else
+                          "Open for submissions")
+        events.append(event)
+    return templates.TemplateResponse(request, "events.html", {
+        "principal": current_principal(request), "events": events, "query": query,
+        "total": total, "page": current_page, "last_page": last_page,
+        "first_result": (current_page - 1) * page_size + 1 if total else 0,
+        "last_result": min(current_page * page_size, total),
     })
 
 

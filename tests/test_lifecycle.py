@@ -243,6 +243,13 @@ class LifecycleTests(unittest.TestCase):
         }, cookie)
         self.assertEqual(status, 201, event)
         event_id = event["id"]
+        status, directory, _ = call("GET", f"/events?q=Lifecycle%20{suffix}")
+        self.assertEqual(status, 200)
+        self.assertIn(f'href="/events/{event_id}"', directory)
+        self.assertIn(f"Lifecycle {suffix}", directory)
+        status, last_page, _ = call("GET", "/events?page=9999")
+        self.assertEqual(status, 200)
+        self.assertIn("Showing ", last_page)
         status, detail, _ = call("GET", f"/api/events/{event_id}")
         self.assertEqual(status, 200)
         track_id = detail["tracks"][0]["id"]
@@ -282,6 +289,7 @@ class LifecycleTests(unittest.TestCase):
         judge_b = "session=bb_demo_judge_b_2026_local_only"
         status, landing, _ = call("GET", "/")
         self.assertEqual(status, 200)
+        self.assertIn('href="/events">Events', landing)
         self.assertIn('href="/account">Sign in', landing)
         self.assertIn('href="/projects?event=evt_01', landing)
         status, landing, _ = call("GET", "/", cookie=participant)

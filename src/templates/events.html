@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Events · BeyondBug{% endblock %}
+{% block content %}
+<main class="wrap workspace-main">
+  <div class="page-heading">
+    <div>
+      <p class="section-kicker">Public event directory</p>
+      <h1>Find your event.</h1>
+      <p>Explore current and past hackathons, then open an event to see its tracks, projects, and results.</p>
+    </div>
+    {% if principal %}<a class="button button-secondary" href="/dashboard">Create an event</a>{% else %}<a class="button button-secondary" href="/account">Sign in to create an event</a>{% endif %}
+  </div>
+
+  <form class="event-directory-search" method="get" action="/events" role="search">
+    <label for="event-search">Search events</label>
+    <div><input id="event-search" name="q" value="{{ query }}" placeholder="Name or description"><button class="button button-primary" type="submit">Search</button></div>
+  </form>
+
+  <div class="event-directory-heading"><span>{% if total %}Showing {{ first_result }}–{{ last_result }} of {{ total }} event{{ '' if total == 1 else 's' }}{% else %}No events{% endif %}{% if query %} matching “{{ query }}”{% endif %}</span><span>Most recently created first</span></div>
+  {% if events %}
+  <div class="event-directory-list">
+    {% for event in events %}
+    <a class="event-directory-row" href="/events/{{ event.id }}">
+      <span class="event-directory-phase">{{ event.phase }}</span>
+      <span class="event-directory-name"><strong>{{ event.name }}</strong><small>{{ event.description or 'Open the event to see its tracks and projects.' }}</small></span>
+      <span class="event-directory-count"><strong>{{ event.project_count }}</strong><small>projects</small></span>
+      <span class="event-directory-date"><strong>{{ event.submissions_close[:10] }}</strong><small>deadline · {{ event.submissions_close[11:16] }} UTC</small></span>
+      <span class="event-directory-arrow" aria-hidden="true">↗</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% if last_page > 1 %}
+  <nav class="event-directory-pages" aria-label="Event pages">
+    {% if page > 1 %}<a class="button button-secondary" href="/events?q={{ query|urlencode }}&amp;page={{ page - 1 }}">Previous page</a>{% endif %}
+    <span>Page {{ page }} of {{ last_page }}</span>
+    {% if page < last_page %}<a class="button button-secondary" href="/events?q={{ query|urlencode }}&amp;page={{ page + 1 }}">Next page</a>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+  <div class="empty-state"><h2>No events found</h2><p>Try another name or clear the search.</p><a href="/events">Show all events</a></div>
+  {% endif %}
+</main>
+{% endblock %}

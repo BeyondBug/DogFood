@@ -5,6 +5,8 @@ BeyondBug is an open-source, self-hosted hackathon portal built for DOGFOOD
 assignment, weighted scoring, normalized rankings, community voting, comments,
 and result publication.
 The portal runs on one laptop with FastAPI, SQLite, and locally bundled assets.
+Public visitors can browse and search events at `/events`; each event has its
+own page and event-scoped gallery links.
 
 Watch the [five-minute silent lifecycle demo](media/beyondbug-demo-silent.mp4),
 captured from a running local event. Its captions show event creation, team
