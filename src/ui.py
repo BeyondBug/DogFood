@@ -252,14 +252,20 @@ def ballot_page(event_id: str, request: Request):
 @router.get("/join/{token}", response_class=HTMLResponse)
 def team_invite_page(token: str, request: Request):
     with closing(connect()) as db:
-        invitation = db.execute("SELECT t.name AS team,e.name AS event FROM team_invites i"
+        invitation = db.execute("SELECT t.name AS team,e.name AS event,e.submissions_close,"
+                                "i.expires_at,i.revoked_at,i.uses,i.max_uses FROM team_invites i"
                                 " JOIN teams t ON t.id=i.team_id JOIN events e ON e.id=t.event_id"
                                 " WHERE i.token_hash=?", (sha256(token.encode()).hexdigest(),)).fetchone()
     if invitation is None:
         raise HTTPException(status_code=404, detail="Invite not found")
+    now = datetime.now(timezone.utc)
+    available = (not invitation["revoked_at"] and invitation["uses"] < invitation["max_uses"]
+                 and now < time_value(invitation["expires_at"])
+                 and now < time_value(invitation["submissions_close"]))
     return templates.TemplateResponse(request, "invite.html", {
         "principal": current_principal(request), "kind": "team", "token": token,
         "title": invitation["team"], "event_name": invitation["event"],
+        "available": available,
     })
 
 

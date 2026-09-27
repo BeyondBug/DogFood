@@ -19,11 +19,13 @@ scorecards. The fixture event's original submission deadline is retained, so
 late submissions are rejected. To demonstrate a live submission, sign in and
 create a new event with a future deadline.
 
-The image installs pinned Python wheels from `vendor/wheels`; fonts, scripts,
-templates, and fixture data are also local. The container makes no external
-runtime requests. A first offline *build* needs the `python:3.12-slim` base
-image already present in Docker's local image store. No cloud account,
-hosted database, authentication provider, or external API is used.
+The image installs pinned Python wheels from `vendor/wheels` for Linux x86-64
+and ARM64; fonts, scripts, templates, and fixture data are also local. The
+container makes no external runtime requests. A first offline *build* needs
+the matching `python:3.12-slim` base image already present in Docker's local
+image store. No cloud account, hosted database, authentication provider, or
+external API is used. [Release verification](RELEASE-VERIFICATION.md) records
+the clean-build, fresh-volume, restart, and network-disabled checks.
 
 ## Demo access
 
@@ -133,6 +135,7 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 - [THREAT-MODEL.md](THREAT-MODEL.md): abuse cases, controls, and residual risks
 - [UI-DESIGN.md](UI-DESIGN.md): visual direction and screen inventory
 - [DEMO-SCRIPT.md](DEMO-SCRIPT.md): five-minute lifecycle recording plan
+- [RELEASE-VERIFICATION.md](RELEASE-VERIFICATION.md): fresh-start and offline evidence
 
 Licensed under [MIT](LICENSE). The bundled IBM Plex Sans files have their
 own [SIL Open Font License](src/static/fonts/OFL.txt).
