@@ -1,7 +1,7 @@
 # Data model
 
 SQLite is the source of truth. `src/db.py` contains the exact versioned SQL
-schema; `PRAGMA user_version` advances from 0 to 1 to 2 to 3 at startup. Every
+schema; `PRAGMA user_version` advances from 0 through 5 at startup. Every
 connection enables foreign keys and a busy timeout. Event-scoped APIs check
 the event ID as well as the acting user's role.
 
@@ -28,6 +28,9 @@ the event ID as well as the acting user's role.
 | `ballots` | Event, voter account, project, cast time | Unique event and voter pair; one final vote per account |
 | `vote_attempts` | Event, voter account, keyed IP digest, outcome, time | Countable signals for throttling and organizer review |
 | `comments` | Event, project, author, body, creation and moderation fields | Hidden comments stay in the database for audit |
+| `event_awards` | Configured prize, event, submitted winning project, assigning organizer and time | One selected project per prize; selection locks after winner certificates issue |
+| `certificates` | Opaque ID, event, recipient, project, participant/winner kind, optional prize, issuance time | Unique participant record per event/recipient and unique winner record per event/recipient/prize |
+| `app_keys`, `login_attempts` | Local HMAC secret; account and IP digests, outcome, timestamp | Failed logins and lockouts persist across process restarts without storing raw IPs |
 
 Generated IDs are opaque strings with prefixes such as `evt_`, `tm_`, and
 `prj_`. Published fixture IDs are preserved verbatim to make acceptance and
@@ -68,6 +71,9 @@ environment variables.
 | `/api/events/{id}/exports/scores.csv` | Criterion-level scorecard rows | Organizer |
 | `/api/events/{id}/exports/rankings.csv` | Raw and adjusted scores, coverage, duplicates | Organizer |
 | `python -m src.backup DESTINATION` | Consistent SQLite database copy | Local operator |
+| `/api/events/{id}/certificates` | Issued certificate metadata | Organizer |
+| `/api/certificates/{id}/verify` | Public database-backed verification JSON | Public |
+| `/certificates/{id}.svg` | Vector certificate for print or download | Public |
 
 CSV columns have stable headers, use Python's CSV quoting, and prefix text
 that would otherwise open as a spreadsheet formula. No bulk import or full
@@ -78,7 +84,9 @@ reconcile duplicates before modifying live events.
 
 Version 1 created the core tables. Version 2 added judge invitations and
 conflicts. Version 3 added voting windows, invite eligibility, ballots,
-attempt signals, and comments. Migrations run before fixture seeding.
+attempt signals, and comments. Version 4 added prize assignments and
+certificates. Version 5 added persistent login throttling. Migrations run
+before fixture seeding.
 `rubrics.version` and each
 scorecard's `rubric_id` preserve scoring context, but changing a rubric is
 currently blocked once assignments exist. Published results lock scorecard

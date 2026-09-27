@@ -39,13 +39,97 @@ function fields(form) { return Object.fromEntries(new FormData(form)); }
 function list(value) { return value.split(',').map(item => item.trim()).filter(Boolean); }
 function refresh() { window.location.reload(); }
 
+const autosaves = new WeakMap();
+function scorecardPayload(form, status) {
+  const data = fields(form);
+  const criteria = {};
+  for (const [name, value] of Object.entries(data)) {
+    if (name.startsWith('criterion_') && value !== '') criteria[name.slice(10)] = Number(value);
+  }
+  return { criteria, comment: data.comment || '', status };
+}
+function scheduleScorecardSave(form) {
+  if (form.dataset.autosave !== 'true' || form.dataset.finalizing === 'true') return;
+  const state = autosaves.get(form) || {};
+  clearTimeout(state.timer);
+  const indicator = form.querySelector('.autosave-state');
+  indicator.textContent = 'Unsaved changes';
+  state.timer = setTimeout(() => {
+    indicator.textContent = 'Saving…';
+    state.pending = api('PUT', `/api/judge/assignments/${form.dataset.assignment}/scorecard`,
+      scorecardPayload(form, 'draft'))
+      .then(() => { indicator.textContent = `Saved ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`; })
+      .catch(() => { indicator.textContent = 'Draft not saved. Use Save draft to retry.'; });
+  }, 1200);
+  autosaves.set(form, state);
+}
+document.addEventListener('input', event => {
+  const form = event.target.closest('form[data-action="scorecard"]');
+  if (form) scheduleScorecardSave(form);
+  if (event.target.closest('#submission-form')) updateSubmissionCheck();
+});
+document.addEventListener('change', event => {
+  if (event.target.closest('#submission-form')) updateSubmissionCheck();
+});
+
+const submissionLabels = {
+  title: 'Project title', track_id: 'Track', summary: 'Short summary',
+  description: 'Full description', repo_url: 'Repository link', demo_url: 'Demo link',
+};
+function updateSubmissionCheck() {
+  const form = document.querySelector('#submission-form');
+  if (!form) return;
+  const data = fields(form);
+  const checks = [...form.querySelectorAll('[data-check]')];
+  let completed = 0;
+  checks.forEach(item => {
+    const key = item.dataset.check;
+    const filled = Boolean((data[key] || '').trim());
+    if (filled) completed++;
+    item.textContent = `${filled ? '✓' : '○'} ${submissionLabels[key]}${item.dataset.required ? ' · required' : ' · recommended'}`;
+    item.classList.toggle('check-done', filled);
+  });
+  form.querySelector('[data-check-count]').textContent = `${completed} / ${checks.length} details added`;
+}
+function previewLink(anchor, value) {
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Invalid protocol');
+    anchor.href = url.href;
+    anchor.hidden = false;
+  } catch { anchor.hidden = true; anchor.removeAttribute('href'); }
+}
+document.addEventListener('click', event => {
+  if (event.target.closest('[data-preview-submission]')) {
+    const form = document.querySelector('#submission-form');
+    const dialog = document.querySelector('.submission-preview');
+    if (!form || !dialog) return;
+    const data = fields(form);
+    dialog.querySelector('[data-preview="title"]').textContent = data.title || 'Untitled project';
+    dialog.querySelector('[data-preview="track"]').textContent = form.querySelector('[name="track_id"]').selectedOptions[0]?.textContent || 'No track';
+    dialog.querySelector('[data-preview="summary"]').textContent = data.summary || 'No summary added.';
+    dialog.querySelector('[data-preview="description"]').textContent = data.description || 'No full description added.';
+    previewLink(dialog.querySelector('[data-preview="repo"]'), data.repo_url);
+    previewLink(dialog.querySelector('[data-preview="demo"]'), data.demo_url);
+    dialog.showModal();
+  }
+  if (event.target.closest('[data-close-preview]')) document.querySelector('.submission-preview')?.close();
+});
+document.addEventListener('DOMContentLoaded', () => {
+  updateSubmissionCheck();
+  try {
+    const message = sessionStorage.getItem('beyondbug-flash');
+    if (message) { sessionStorage.removeItem('beyondbug-flash'); notice(message); }
+  } catch {}
+});
+
 document.addEventListener('submit', async event => {
   const form = event.target.closest('form[data-action]');
   if (!form) return;
   event.preventDefault();
   const action = form.dataset.action;
   const submitter = event.submitter;
-  if (action === 'publish' && !window.confirm('Publish these results for everyone? Scores will be locked.')) return;
+  if (action === 'publish' && !window.confirm('Publish final results? Rankings and vote totals become public. Project and score edits lock, and this action is recorded in the audit log.')) return;
   if (action === 'vote' && !window.confirm('Cast this final vote? You cannot change it later.')) return;
   const buttons = [...form.querySelectorAll('button')];
   buttons.forEach(button => { button.disabled = true; });
@@ -122,14 +206,14 @@ document.addEventListener('submit', async event => {
         notice(`${result.created.length} assignments created; ${result.shortages.length} projects still need judges.`);
         setTimeout(refresh, 1400); return;
       case 'scorecard': {
-        const criteria = {};
-        for (const [name, value] of Object.entries(data)) {
-          if (name.startsWith('criterion_') && value !== '') criteria[name.slice(10)] = Number(value);
-        }
-        await api('PUT', `/api/judge/assignments/${form.dataset.assignment}/scorecard`, {
-          criteria, comment: data.comment || '', status: submitter?.value || 'draft',
-        });
-        refresh(); return;
+        form.dataset.finalizing = 'true';
+        const state = autosaves.get(form);
+        if (state) { clearTimeout(state.timer); if (state.pending) await state.pending; }
+        const status = submitter?.value || 'draft';
+        await api('PUT', `/api/judge/assignments/${form.dataset.assignment}/scorecard`, scorecardPayload(form, status));
+        try { sessionStorage.setItem('beyondbug-flash', status === 'submitted' ? 'Review submitted. Continue with the next project.' : 'Draft saved.'); } catch {}
+        window.location.assign(`/judge/${form.dataset.event}#next-review`);
+        return;
       }
       case 'judge-conflict':
         if (!window.confirm('Report this conflict and remove your assignment?')) return;
@@ -138,6 +222,15 @@ document.addEventListener('submit', async event => {
       case 'publish':
         await api('POST', `/api/events/${form.dataset.event}/results/publish`, {});
         refresh(); return;
+      case 'award-winner':
+        await api('PUT', `/api/events/${form.dataset.event}/prizes/${form.dataset.prize}/winner`, {
+          project_id: data.project_id,
+        });
+        refresh(); return;
+      case 'issue-certificates':
+        result = await api('POST', `/api/events/${form.dataset.event}/certificates/issue`, {});
+        notice(`${result.total_created} new certificates issued.`);
+        setTimeout(refresh, 1200); return;
       case 'voting-config':
         data.opens_at = `${data.opens_at}:00Z`;
         data.closes_at = `${data.closes_at}:00Z`;

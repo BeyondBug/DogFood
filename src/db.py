@@ -244,6 +244,50 @@ CREATE TABLE comments (
 CREATE INDEX ix_comments_project_time ON comments(project_id,created_at);
 """
 
+SCHEMA_V4 = """
+CREATE TABLE event_awards (
+    prize_id TEXT PRIMARY KEY REFERENCES prizes(id) ON DELETE CASCADE,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL REFERENCES projects(id),
+    assigned_by TEXT NOT NULL REFERENCES users(id),
+    assigned_at TEXT NOT NULL
+);
+CREATE INDEX ix_event_awards_event ON event_awards(event_id);
+CREATE TABLE certificates (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    project_id TEXT NOT NULL REFERENCES projects(id),
+    kind TEXT NOT NULL CHECK(kind IN ('participant','winner')),
+    prize_id TEXT REFERENCES prizes(id),
+    issued_at TEXT NOT NULL,
+    CHECK((kind='participant' AND prize_id IS NULL) OR
+          (kind='winner' AND prize_id IS NOT NULL))
+);
+CREATE UNIQUE INDEX ix_certificates_participant ON certificates(event_id,user_id)
+    WHERE kind='participant';
+CREATE UNIQUE INDEX ix_certificates_winner ON certificates(event_id,user_id,prize_id)
+    WHERE kind='winner';
+CREATE INDEX ix_certificates_user ON certificates(user_id,event_id);
+"""
+
+SCHEMA_V5 = """
+CREATE TABLE app_keys (
+    name TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+INSERT INTO app_keys(name,value) VALUES('auth_rate_secret',lower(hex(randomblob(32))));
+CREATE TABLE login_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_digest TEXT NOT NULL,
+    ip_digest TEXT NOT NULL,
+    outcome TEXT NOT NULL CHECK(outcome IN ('failed','rate_limited')),
+    created_at TEXT NOT NULL
+);
+CREATE INDEX ix_login_attempts_account_time ON login_attempts(account_digest,created_at);
+CREATE INDEX ix_login_attempts_ip_time ON login_attempts(ip_digest,created_at);
+"""
+
 
 def initialize() -> None:
     path = database_path()
@@ -251,7 +295,7 @@ def initialize() -> None:
     with closing(connect()) as db:
         db.execute("PRAGMA journal_mode = WAL")
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        if version > 3:
+        if version > 5:
             raise RuntimeError(f"Database schema version {version} is newer than this app")
         if version == 0:
             db.executescript(SCHEMA_V1)
@@ -264,4 +308,12 @@ def initialize() -> None:
         if version == 2:
             db.executescript(SCHEMA_V3)
             db.execute("PRAGMA user_version = 3")
+            version = 3
+        if version == 3:
+            db.executescript(SCHEMA_V4)
+            db.execute("PRAGMA user_version = 4")
+            version = 4
+        if version == 4:
+            db.executescript(SCHEMA_V5)
+            db.execute("PRAGMA user_version = 5")
         db.commit()

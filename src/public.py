@@ -51,6 +51,14 @@ def _eligible(db, event, user_id: str) -> bool:
     return False
 
 
+def order_ballot(projects: list[dict], seed: str, user_id: str) -> list[dict]:
+    """Stable private order per voter, independent of project insertion order."""
+    key = bytes.fromhex(seed)
+    return sorted(projects, key=lambda row: hmac.new(
+        key, f"{user_id}:{row['id']}".encode(), hashlib.sha256,
+    ).digest())
+
+
 @router.put("/events/{event_id}/voting")
 def configure_voting(event_id: str, payload: VotingConfig, request: Request):
     principal = require_login(request)
@@ -154,9 +162,8 @@ def ballot(event_id: str, request: Request):
         own = {row["project_id"] for row in db.execute(
             "SELECT p.id AS project_id FROM projects p JOIN team_members m ON m.team_id=p.team_id"
             " WHERE p.event_id=? AND m.user_id=?", (event_id, principal.user_id))}
-    key = bytes.fromhex(event["ballot_seed"])
     choices = [dict(row) for row in projects if row["id"] not in own]
-    choices.sort(key=lambda row: hmac.new(key, f"{principal.user_id}:{row['id']}".encode(), hashlib.sha256).digest())
+    choices = order_ballot(choices, event["ballot_seed"], principal.user_id)
     return {"event_id": event_id, "closes_at": event["voting_close"],
             "has_voted": existing is not None, "projects": choices}
 

@@ -20,6 +20,7 @@ from .auth import current_principal, require_event_role, require_login
 from .core import csv_safe, require_web_url, router as core_router
 from .judging import router as judging_router
 from .public import router as public_router
+from .certificates import router as certificate_router
 from .ui import router as ui_router
 from .db import connect, initialize, utc_now
 from .seed import seed
@@ -251,3 +252,4 @@ def export_projects(event_id: str, request: Request):
 # Keep the parameterized workflow CSV route after the exact project CSV route.
 app.include_router(judging_router)
 app.include_router(public_router)
+app.include_router(certificate_router)

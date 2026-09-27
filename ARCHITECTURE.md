@@ -8,7 +8,7 @@ The image installs pinned wheels from `vendor/wheels` with `--no-index` and
 serves Jinja templates, JavaScript, CSS, and IBM Plex Sans from its own
 filesystem. There are no outbound runtime calls or hosted services.
 
-Startup applies SQLite schema migrations (`PRAGMA user_version` 1 through 3),
+Startup applies SQLite schema migrations (`PRAGMA user_version` 1 through 5),
 loads `fixtures.json` if its event is absent, and prints the demo auth headers
 when demo mode is enabled. A restart leaves user changes intact. The health
 route checks database access. A one-worker process keeps SQLite write
@@ -36,6 +36,9 @@ SHA-256 digest. Passwords use salted PBKDF2-HMAC-SHA256 with 260,000 rounds.
 Login cookies are HttpOnly, SameSite=Strict, and optionally Secure behind
 HTTPS. Requests presenting an `Origin` header from a different origin are
 rejected for writes. Session tokens expire and logout removes the record.
+Failed logins are counted per account and keyed client-IP digest in SQLite;
+five failures per account or twenty per IP in ten minutes return 429. The
+HMAC key is generated locally and persists with the database.
 
 Admin authority is a global `users.is_admin` flag provisioned through local
 bootstrap environment variables; ordinary event roles live in `event_roles`.
@@ -67,7 +70,9 @@ are organizer-only until publication; public vote results then become visible.
 | `src/core.py` | Accounts, events, registration, teams, invites, project edits |
 | `src/judging.py` | Judge invitation, rubric, assignments, scorecards, progress, exports, publication |
 | `src/scoring.py` | Weighted averages, cross-judge calibration, ranking |
+| `src/audit_view.py` | Plain-language actor, action, target and category presentation for organizers |
 | `src/public.py` | Voting configuration, eligibility, ballots, attempts, comments, moderation |
+| `src/certificates.py` | Prize assignment, certificate issuance and public verification |
 | `src/ui.py` | Public and role workspaces from live records |
 | `src/main.py` | Application assembly, gallery, acceptance routes |
 
@@ -108,6 +113,12 @@ are organizer-only until publication; public vote results then become visible.
 - Voting eligibility and the window are rechecked inside the vote transaction.
   Organizer configuration locks once ballots exist. Comments are accepted only
   during voting, are rate limited, and can be hidden with an audit entry.
+- Only an organizer can assign a configured prize to a submitted, nonduplicate
+  project after results publication. Certificate issuance runs in one write
+  transaction, joins actual project team members, and is idempotent under
+  unique indexes. Award assignments lock after winner records issue. Public
+  verification looks up the opaque certificate ID against the local database;
+  these records are not cryptographically signed.
 
 ## Operations and limits
 

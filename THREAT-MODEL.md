@@ -19,7 +19,7 @@ database transaction that changes records.
 | Score manipulation through incomplete or out-of-range data | A submitted scorecard needs every rubric criterion and values in 0–5. Only its assigned judge may write. Publication requires closed submissions and locks both scores and projects. | A judge can still give dishonest valid scores; normalization is not a fraud detector. |
 | CSV injection into an organizer's spreadsheet | Exports use CSV quoting and prefix dangerous text beginning with `=`, `+`, `-`, or `@`. | Spreadsheet programs vary; open exports in a trusted viewer when handling untrusted content. |
 | Cross-site write using browser cookies | Cookies are HttpOnly and SameSite=Strict. An explicit foreign `Origin` on a write is rejected. | There is no dedicated CSRF token. Deploy behind one HTTPS origin and set `DOGFOOD_COOKIE_SECURE=1`. |
-| Password guessing or account creation spam | Passwords use salted PBKDF2; sessions are random, hashed in storage, expiring and revocable. | No login rate limit, account verification, or recovery flow yet. Restrict network exposure until these are added. |
+| Password guessing or account creation spam | Passwords use salted PBKDF2; sessions are random, hashed in storage, expiring and revocable. SQLite tracks failed logins by keyed account and client-IP digests; five failures per account or twenty per IP in ten minutes block further attempts, including a correct password. Unknown accounts run a dummy password check. | Shared IPs can be temporarily blocked, and multiple IPs can bypass per-IP limits. There is no account verification, MFA, or recovery flow yet. The login limiter does not limit account registration. |
 | Submission scraping | The gallery intentionally exposes submitted titles, summaries, teams, and links. Drafts and scores are not public. | Public content can be copied; future per-IP limits or robots policy can reduce automated load, not prevent copying. |
 | Duplicate submissions and copied repositories | Equal repository URLs in an event are flagged; duplicates remain visible but are unranked pending organizer review. | A changed URL can bypass detection, and legitimate forks can be flagged. Human review is required. |
 | Sybil voting or ballot stuffing | Organizers can choose curated email-bound invite links or participants registered before voting opens. The database permits one ballot per account and event. The write route checks eligibility and rejects self-votes and duplicate projects. Account and keyed IP-digest limits count failed and successful attempts, and organizer-only attempt summaries expose suspicious patterns. | Email matching does not prove inbox ownership. Earlier fake accounts, shared networks, coordinated voters, and invitation sharing remain possible. A trusted voter roster or offline identity verification is needed for high-stakes awards. |
@@ -29,8 +29,8 @@ database transaction that changes records.
 
 ## Review priorities before wider deployment
 
-1. Add login rate limiting and account verification without creating a hosted
-   dependency; document recovery for lost passwords.
+1. Add account verification and a local recovery flow without creating a
+   hosted dependency; decide how operators should handle lost passwords.
 2. Add a workflow for submitted conflicts, score corrections, and versioned
    result republication.
 3. Test reverse proxy headers and Secure cookies under the intended HTTPS

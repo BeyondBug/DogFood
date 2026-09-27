@@ -116,6 +116,12 @@ with an offset of about `+0.209`.
 
 Reproduce the table by starting the portal and opening the organizer desk for
 `evt_01`, or calling `/api/events/evt_01/rankings` as the demo organizer.
+The organizer's **Judging insight** view displays coverage, overlap warnings,
+raw-to-adjusted rank movement, per-judge severity adjustments, and the
+individual review values behind each moved project. Its JSON source is
+`/api/events/evt_01/judging-insight` and is organizer-only. A positive
+displayed adjustment means the model identified a comparatively strict judge;
+the stored scorecard itself does not change.
 The `rankings.csv` export includes raw and adjusted values. The pure scoring
 tests cover constant, sparse, and disconnected cases.
 

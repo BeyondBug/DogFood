@@ -3,19 +3,21 @@
 {% block content %}
 <main class="wrap workspace-main">
   <div class="page-heading">
-    <div><p class="section-kicker">Judge desk · {{ event.name }}</p><h1>Your reviews</h1><p>Only your assigned projects and scorecards appear here.</p></div>
+    <div><p class="section-kicker">Judge desk · {{ event.name }}</p><h1>Your reviews</h1><p>Only your assigned projects and scorecards appear here.</p>{% if assignments|length > submitted_count %}<a class="button button-primary judge-next" href="#next-review">Continue judging</a>{% endif %}</div>
     <div class="progress-number"><strong>{{ submitted_count }} / {{ assignments|length }}</strong><span>Submitted reviews</span></div>
   </div>
   {% if rubric %}<div class="rubric-bar"><strong>{{ rubric.name }}</strong><span>{% for criterion in criteria %}{{ criterion.name }} {{ criterion.weight }}{% if not loop.last %} · {% endif %}{% endfor %}</span></div>{% endif %}
   {% if assignments %}
   <div class="review-list">
     {% for item in assignments %}
-    <article class="review-item">
+    <article class="review-item" {% if loop.first and item.status != 'submitted' %}id="next-review"{% endif %}>
       <div class="review-context">
         <span class="track-tag">{{ item.track }}</span>
         <h2>{{ item.title }}</h2>
         <p>{{ item.summary }}</p>
+        {% if item.description %}<p class="review-description">{{ item.description }}</p>{% endif %}
         {% if item.repo_url %}<a href="{{ item.repo_url }}" target="_blank" rel="noopener noreferrer">View repository ↗</a>{% endif %}
+        {% if item.demo_url %}<a href="{{ item.demo_url }}" target="_blank" rel="noopener noreferrer">View demo ↗</a>{% endif %}
         <span class="status-pill">{{ item.status|capitalize if item.status else 'To review' }}</span>
         {% if item.status != 'submitted' %}
         <details class="conflict-disclosure">
@@ -28,13 +30,13 @@
         </details>
         {% endif %}
       </div>
-      <form data-action="scorecard" data-assignment="{{ item.id }}" class="score-form">
+      {% if judging_editable %}<form data-action="scorecard" data-event="{{ event.id }}" data-assignment="{{ item.id }}" data-autosave="{{ 'true' if item.status != 'submitted' else 'false' }}" class="score-form">
         <div class="criterion-grid">
           {% for criterion in criteria %}<label>{{ criterion.name }} <small>Weight {{ criterion.weight }}</small><input type="number" name="criterion_{{ criterion.slug }}" min="0" max="5" step="0.5" value="{{ item.scores.get(criterion.slug, '') }}" placeholder="0–5"></label>{% endfor %}
         </div>
         <label>Feedback<textarea name="comment" rows="3" placeholder="What worked? What could improve?">{{ item.comment or '' }}</textarea></label>
-        <div class="form-actions"><button class="button button-secondary" type="submit" name="status" value="draft">Save draft</button><button class="button button-primary" type="submit" name="status" value="submitted">Submit review</button></div>
-      </form>
+        <div class="form-actions">{% if item.status != 'submitted' %}<button class="button button-secondary" type="submit" name="status" value="draft">Save draft</button>{% endif %}<button class="button button-primary" type="submit" name="status" value="submitted">{{ 'Update review' if item.status == 'submitted' else 'Submit review' }}</button><span class="autosave-state" role="status" aria-live="polite">{{ 'Submitted' if item.status == 'submitted' else 'Changes save automatically' }}</span></div>
+      </form>{% else %}<p class="muted">Judging is closed; this review is read-only.</p>{% endif %}
     </article>
     {% endfor %}
   </div>

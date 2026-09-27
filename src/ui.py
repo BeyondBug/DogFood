@@ -14,7 +14,8 @@ from fastapi.templating import Jinja2Templates
 from .auth import current_principal, require_event_role
 from .core import time_value
 from .db import connect
-from .scoring import event_ranking
+from .scoring import event_ranking, judging_insight
+from .audit_view import event_activity
 from .public import _eligible, _vote_summary, _window_open, ballot as load_ballot
 
 
@@ -176,6 +177,11 @@ def participant_workspace(event_id: str, request: Request):
         members = db.execute("SELECT u.name,m.role FROM team_members m JOIN users u ON u.id=m.user_id WHERE m.team_id=? ORDER BY m.joined_at",
                              (team["id"],)).fetchall() if team else []
         project = db.execute("SELECT * FROM projects WHERE team_id=? ORDER BY updated_at DESC LIMIT 1", (team["id"],)).fetchone() if team else None
+        certificates = db.execute(
+            "SELECT c.id,c.kind,pr.name AS prize_name FROM certificates c"
+            " LEFT JOIN prizes pr ON pr.id=c.prize_id WHERE c.event_id=? AND c.user_id=?"
+            " ORDER BY c.kind,c.id", (event_id, principal.user_id),
+        ).fetchall()
     now = datetime.now(timezone.utc)
     closed = bool(event["results_published_at"] or now >= time_value(event["submissions_close"]))
     not_open = bool(event["submissions_open"] and now < time_value(event["submissions_open"]))
@@ -185,6 +191,7 @@ def participant_workspace(event_id: str, request: Request):
         "project": dict(project) if project else None, "can_edit": not closed and not not_open,
         "team_editable": not closed,
         "closed": closed, "not_open": not_open,
+        "certificates": [dict(row) for row in certificates],
     })
 
 
@@ -201,7 +208,7 @@ def judge_workspace(event_id: str, request: Request):
             raise HTTPException(status_code=403, detail="Judge profile not found")
         rubric = db.execute("SELECT id,name,version FROM rubrics WHERE event_id=? AND is_active=1", (event_id,)).fetchone()
         criteria = db.execute("SELECT slug,name,weight,max_score FROM rubric_criteria WHERE rubric_id=? ORDER BY sort_order", (rubric["id"],)).fetchall() if rubric else []
-        assignments = db.execute("SELECT a.id,p.id AS project_id,p.title,p.summary,p.repo_url,t.name AS track,"
+        assignments = db.execute("SELECT a.id,p.id AS project_id,p.title,p.summary,p.description,p.repo_url,p.demo_url,t.name AS track,"
                                  " s.status,s.comment FROM judge_assignments a JOIN projects p ON p.id=a.project_id"
                                  " JOIN tracks t ON t.id=p.track_id LEFT JOIN scorecards s ON s.assignment_id=a.id"
                                  " WHERE a.judge_id=? ORDER BY CASE s.status WHEN 'submitted' THEN 2 WHEN 'draft' THEN 1 ELSE 0 END,p.title",
@@ -214,15 +221,22 @@ def judge_workspace(event_id: str, request: Request):
                                 " JOIN scorecards s ON s.id=cs.scorecard_id WHERE s.assignment_id=?", (row["id"],)).fetchall()
             item["scores"] = {score["slug"]: score["score"] for score in scores}
             items.append(item)
+    now = datetime.now(timezone.utc)
+    judging_editable = not event["results_published_at"] and now >= time_value(event["submissions_close"])
+    if event["judging_open"]:
+        judging_editable = judging_editable and now >= time_value(event["judging_open"])
+    if event["judging_close"]:
+        judging_editable = judging_editable and now < time_value(event["judging_close"])
     return templates.TemplateResponse(request, "judge.html", {
         "principal": principal, "event": dict(event), "rubric": dict(rubric) if rubric else None,
         "criteria": [dict(row) for row in criteria], "assignments": items, "judge_id": judge["id"],
         "submitted_count": sum(item["status"] == "submitted" for item in items),
+        "judging_editable": judging_editable,
     })
 
 
 @router.get("/organizer/{event_id}", response_class=HTMLResponse)
-def organizer_workspace(event_id: str, request: Request):
+def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
     principal = current_principal(request)
     if principal is None:
         return RedirectResponse("/account", status_code=303)
@@ -250,14 +264,68 @@ def organizer_workspace(event_id: str, request: Request):
         rubric = db.execute("SELECT id,name,version FROM rubrics WHERE event_id=? AND is_active=1", (event_id,)).fetchone()
         criteria = db.execute("SELECT slug,name,weight FROM rubric_criteria WHERE rubric_id=? ORDER BY sort_order", (rubric["id"],)).fetchall() if rubric else []
         ranking = event_ranking(db, event_id)
-        audit = db.execute("SELECT action,entity_type,entity_id,created_at FROM audit_entries WHERE event_id=? ORDER BY id DESC LIMIT 12", (event_id,)).fetchall()
+        insight = judging_insight(db, event_id, ranking)
+        activity_filter = activity if activity in ("All", "Judging", "Voting", "Certificates", "Event and submissions") else "All"
+        audit = event_activity(db, event_id, activity_filter)
         vote_summary = _vote_summary(db, event_id)
+        prizes = db.execute(
+            "SELECT pr.id,pr.name,a.project_id,p.title AS winner_title,"
+            "(SELECT COUNT(*) FROM certificates c WHERE c.prize_id=pr.id) AS issued_count"
+            " FROM prizes pr LEFT JOIN event_awards a ON a.prize_id=pr.id"
+            " LEFT JOIN projects p ON p.id=a.project_id WHERE pr.event_id=? ORDER BY pr.id",
+            (event_id,),
+        ).fetchall()
+        eligible_projects = db.execute(
+            "SELECT id,title FROM projects WHERE event_id=? AND status='submitted'"
+            " AND duplicate_of IS NULL ORDER BY title,id", (event_id,),
+        ).fetchall()
+        certificate_count = db.execute("SELECT COUNT(*) FROM certificates WHERE event_id=?", (event_id,)).fetchone()[0]
+        pending_invites = db.execute("SELECT COUNT(*) FROM judge_invites WHERE event_id=? AND accepted_at IS NULL",
+                                     (event_id,)).fetchone()[0]
+    submissions_closed = datetime.now(timezone.utc) >= time_value(event["submissions_close"])
+    unique_coverage = [row for row in coverage if row["duplicate_of"] is None]
+    coverage_gaps = sum(row["assigned"] == 0 for row in unique_coverage)
+    incomplete_reviews = sum(max(0, row["assigned"] - row["submitted"]) for row in unique_coverage)
+    setup_checks = [
+        {"label": "Event description", "ok": bool(event["description"].strip()), "href": "#event-settings"},
+        {"label": "Submission deadline", "ok": bool(event["submissions_close"]), "href": "#event-settings"},
+        {"label": "At least one track", "ok": bool(tracks), "href": "#event-settings"},
+        {"label": "Judging rubric", "ok": rubric is not None, "href": "#rubric-and-assignments"},
+        {"label": "At least one accepted judge", "ok": bool(judges), "href": "#judges"},
+    ]
+    if not rubric:
+        next_action = {"label": "Configure rubric", "href": "#rubric-and-assignments",
+                       "reason": "Judges need a scoring method before assignments begin."}
+    elif not judges:
+        next_action = {"label": "Invite judges", "href": "#judges",
+                       "reason": "An accepted judge is needed before reviews can be assigned."}
+    elif not submissions_closed:
+        next_action = {"label": "Review submissions", "href": "#review-coverage",
+                       "reason": "Assignments open after the submission deadline."}
+    elif coverage_gaps:
+        next_action = {"label": "Fix assignments", "href": "#rubric-and-assignments",
+                       "reason": f"{coverage_gaps} submitted projects have no assigned judge."}
+    elif incomplete_reviews:
+        next_action = {"label": "View judging progress", "href": "#review-coverage",
+                       "reason": f"{incomplete_reviews} assigned reviews remain unfinished."}
+    elif not event["results_published_at"]:
+        next_action = {"label": "Review final rankings", "href": "#private-rankings",
+                       "reason": "Coverage is complete. Inspect the ranking before publication."}
+    else:
+        next_action = {"label": "Issue certificates", "href": "#certificates",
+                       "reason": "Results are public. Record winners and issue certificates."}
     return templates.TemplateResponse(request, "organizer.html", {
         "principal": principal, "event": dict(event), "tracks": [dict(row) for row in tracks],
         "judges": judge_items, "coverage": [dict(row) for row in coverage],
         "rubric": dict(rubric) if rubric else None, "criteria": [dict(row) for row in criteria],
-        "ranking": ranking, "audit": [dict(row) for row in audit], "vote_summary": vote_summary,
-        "submissions_closed": datetime.now(timezone.utc) >= time_value(event["submissions_close"]),
+        "ranking": ranking, "insight": insight, "audit": audit,
+        "activity_filter": activity_filter, "vote_summary": vote_summary,
+        "submissions_closed": submissions_closed,
+        "prizes": [dict(row) for row in prizes], "eligible_projects": [dict(row) for row in eligible_projects],
+        "certificate_count": certificate_count,
+        "setup_checks": setup_checks, "next_action": next_action,
+        "pending_invites": pending_invites, "coverage_gaps": coverage_gaps,
+        "incomplete_reviews": incomplete_reviews,
     })
 
 

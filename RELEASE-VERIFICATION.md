@@ -1,8 +1,29 @@
 # Release verification
 
+## Current status — 27 September 2026
+
+| Check | Result |
+| --- | --- |
+| Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
+| Independent unit and HTTP integration suite | **18/18 PASS** |
+| Fresh Compose volume on port 18080 | **PASS:** schema 5, 1 fixture event, 41 projects, 30 judges |
+| Fresh portal checked by official `run.py` | **7/7 PASS** |
+| Restart persistence | **PASS:** same event, project, judge, and local secret counts |
+| Runtime with container network disabled | **PASS:** local health OK, schema 5, 41 projects |
+| OpenAPI artifact synchronization | **PASS:** test compares committed JSON to FastAPI schema |
+| Desktop and mobile visual review | **PASS:** light/dark certificates, organizer insight, readiness, and mobile layout |
+
+The canonical [acceptance-report.txt](acceptance-report.txt) is the unedited
+checker output against localhost:8080. `.dogfood.toml` claims only T1/T2.
+[T3-EVIDENCE.md](T3-EVIDENCE.md) records separately tested capabilities that
+the supplied checker does not test. All checks above ran after the current
+schema, certificates, theme, judging insight, and login-throttling changes.
+
+## Verification history
+
 Verified on 2026-09-27 after kickoff, on Linux x86-64. The checks below were
-repeated after the final application and wheel changes, before promotion to
-`Develop` and `main`.
+run during earlier implementation passes before promotion to `Develop` and
+`main`.
 
 ## Clean build and seed
 

@@ -3,7 +3,10 @@
 BeyondBug is an open-source, self-hosted hackathon portal built for DOGFOOD
 2026. It covers registration, teams, submissions, the public gallery, judge
 assignment, weighted scoring, normalized rankings, community voting, comments,
-and result publication.
+and result publication. Organizers can assign configured prizes after
+publication and issue distinct participant and winner certificates. Each
+public certificate ID can be checked against the local database. Visitors can
+switch between light and dark modes; their choice persists in the browser.
 The portal runs on one laptop with FastAPI, SQLite, and locally bundled assets.
 Public visitors can browse and search events at `/events`; each event has its
 own page and event-scoped gallery links. Galleries paginate beyond 48 projects,
@@ -64,9 +67,12 @@ database too.
 2. Sign in as a participant, open the new event page, join, create a team,
    and copy a single-use invite link. Save a project draft, then submit it.
 3. In the organizer desk, set rubric weights, create judge invites, choose
-   their tracks, and batch assign projects. The desk shows missing coverage.
+   their tracks, and batch assign projects. The desk shows setup readiness,
+   its recommended next action, missing coverage, and pending reviews.
 4. As an invited judge, open the judge desk, score only assigned projects,
-   and submit a review. A judge can report a conflict from their queue before
+   and submit a review. Drafts save after a short pause, while final submission
+   remains explicit. The queue links directly to the next unfinished review.
+   A judge can report a conflict from their queue before
    submitting; the assignment is removed and the organizer can reassign it.
    Another judge cannot read that scorecard.
 5. The organizer reviews raw and calibrated rankings and publishes results.
@@ -76,12 +82,18 @@ database too.
    voters or existing participants. Eligible voters receive a stable shuffled
    ballot, cast one vote, and can comment on projects. The organizer sees
    attempt signals and moderates comments. Publishing waits until voting closes.
+7. After publication, select winning projects for configured prizes and issue
+   certificates. Team members can open `/my/certificates`, download vector
+   artwork, or print from a public verification page.
 
 The API driving these actions is documented at `/docs`, `/openapi.json`, and
 the committed [OpenAPI specification](openapi.json).
 The server enforces event roles, team membership, assignment ownership, and
 deadlines for direct API requests as well as browser actions. Team membership
 freezes at submission close, and published events reject project changes.
+The participant workspace checks required and recommended submission fields
+and previews the information a judge will see. It does not make external
+requests to validate repository or demo links.
 
 ## Tests and acceptance
 
@@ -100,6 +112,8 @@ normalization edge cases, and voting abuse controls. The official checker has
 no T3 assertions. Community voting and comments are implemented and covered
 by our integration tests, but we leave T3 unclaimed because the checker cannot
 verify it. The code and demo remain part of the evidence.
+See [T3-EVIDENCE.md](T3-EVIDENCE.md) for the requirement-by-requirement test
+map.
 
 ## Operate and extend
 
@@ -120,8 +134,10 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Known limits
 
 - T3 is not claimed in `.dogfood.toml`: its voting and comment features work,
-  but the supplied checker has no T3 checks. T4 webhooks, certificates,
-  widgets, and bulk import are not implemented.
+  but the supplied checker has no T3 checks. T4 is not claimed: certificates
+  are implemented, while webhooks, signed judge records, widgets, and bulk
+  import remain absent. Certificate verification depends on the local
+  database, so it is not a cryptographic signature.
 - Community voting cannot establish one human per account. Invite acceptance
   matches an account email but does not verify inbox ownership; participant
   mode excludes accounts created after voting opens, but earlier fake accounts
@@ -130,6 +146,9 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
   email. There is no outbound email dependency.
 - SQLite with one application worker suits small and medium self-hosted
   events. Multi-host deployment needs a different database and queue design.
+- Login throttling persists in SQLite: five failed attempts per account or
+  twenty per client IP in ten minutes return 429. Account recovery and email
+  verification remain operator workflows, not built-in features.
 - Published scores are locked. Correcting a submitted review after publication
   requires an explicit future workflow; this release does not provide one.
 - Duplicate repository URLs are flagged and excluded from rankings pending
@@ -143,6 +162,7 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 - [JUDGING.md](JUDGING.md): assignment, score math, normalization, fixture proof
 - [THREAT-MODEL.md](THREAT-MODEL.md): abuse cases, controls, and residual risks
 - [UI-DESIGN.md](UI-DESIGN.md): visual direction and screen inventory
+- [T3-EVIDENCE.md](T3-EVIDENCE.md): independently tested public-voting features
 - [DEMO-SCRIPT.md](DEMO-SCRIPT.md): five-minute lifecycle recording plan
 - [RELEASE-VERIFICATION.md](RELEASE-VERIFICATION.md): fresh-start and offline evidence
 

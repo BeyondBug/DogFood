@@ -6,9 +6,19 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from test_lifecycle import call
+from src.public import order_ballot
 
 
 class VotingTests(unittest.TestCase):
+    def test_ballot_order_is_stable_and_varies_by_voter(self):
+        projects = [{"id": f"prj_{letter}"} for letter in "abcde"]
+        seed = "11" * 32
+        first = [row["id"] for row in order_ballot(projects, seed, "voter-a")]
+        second = [row["id"] for row in order_ballot(projects, seed, "voter-b")]
+        self.assertEqual(first, ["prj_d", "prj_a", "prj_e", "prj_b", "prj_c"])
+        self.assertEqual(second, ["prj_d", "prj_c", "prj_e", "prj_b", "prj_a"])
+        self.assertEqual(first, [row["id"] for row in order_ballot(list(reversed(projects)), seed, "voter-a")])
+
     def test_participant_ballot_blocks_self_vote_sybil_and_retries(self):
         suffix = uuid.uuid4().hex[:10]
 
@@ -141,6 +151,8 @@ class VotingTests(unittest.TestCase):
             "email": voter_email,
         }, organizer)
         self.assertEqual(status, 201, invite)
+        status, _, _ = call("GET", f"/api/events/{event_id}/ballot", cookie=voter)
+        self.assertEqual(status, 403)
         token = invite["invite_url"].split("/")[-1]
         status, accepted, _ = call("POST", f"/api/voter-invites/{token}/accept", {}, voter)
         self.assertEqual(status, 200, accepted)
@@ -183,6 +195,18 @@ class VotingTests(unittest.TestCase):
         status, comments, _ = call("GET", f"/api/projects/{first_project}/comments")
         self.assertEqual(status, 200)
         self.assertEqual(len(comments["comments"]), 0)
+        for index in range(4):
+            status, _, _ = call("POST", f"/api/projects/{first_project}/comments", {
+                "body": f"Different discussion point {index} about the project.",
+            }, voter)
+            self.assertEqual(status, 201)
+        status, _, _ = call("POST", f"/api/projects/{first_project}/comments", {
+            "body": "One comment above the hourly limit.",
+        }, voter)
+        self.assertEqual(status, 429)
+        status, audit, _ = call("GET", f"/api/events/{event_id}/audit", cookie=organizer)
+        self.assertEqual(status, 200)
+        self.assertTrue(any(row["action"] == "comment.hidden" for row in audit["entries"]))
 
         judge_email, judge = account("Voting judge", "vjudge")
         status, judge_invite, _ = call("POST", f"/api/events/{event_id}/judges/invites", {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 import secrets
@@ -78,6 +79,19 @@ class LoginInput(BaseModel):
     password: str
 
 
+# A non-existent account performs the same expensive password check as a
+# known account. The value is deliberately impossible to match.
+_DUMMY_PASSWORD_HASH = "pbkdf2_sha256$260000$" + "00" * 16 + "$" + "00" * 32
+
+
+def _login_digests(db, email: str, ip: str) -> tuple[str, str]:
+    secret = bytes.fromhex(db.execute(
+        "SELECT value FROM app_keys WHERE name='auth_rate_secret'",
+    ).fetchone()[0])
+    return (hmac.new(secret, email.encode(), hashlib.sha256).hexdigest(),
+            hmac.new(secret, ip.encode(), hashlib.sha256).hexdigest())
+
+
 def _make_session(db, user_id: str) -> str:
     token = secrets.token_urlsafe(32)
     now = datetime.now(timezone.utc)
@@ -111,11 +125,37 @@ def register(payload: RegisterInput, response: Response):
 
 
 @router.post("/auth/login")
-def login(payload: LoginInput, response: Response):
+def login(payload: LoginInput, response: Response, request: Request):
+    email = payload.email.strip().casefold()
+    ip = request.client.host if request.client else "unknown"
     with closing(connect()) as db:
-        user = db.execute("SELECT id,name,password_hash FROM users WHERE email=? COLLATE NOCASE", (payload.email.strip(),)).fetchone()
-        if user is None or not verify_password(payload.password, user["password_hash"]):
+        db.execute("BEGIN IMMEDIATE")
+        account_digest, ip_digest = _login_digests(db, email, ip)
+        cutoff = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        db.execute("DELETE FROM login_attempts WHERE created_at<?", (cutoff,))
+        account_failures = db.execute(
+            "SELECT COUNT(*) FROM login_attempts WHERE account_digest=? AND outcome='failed' AND created_at>=?",
+            (account_digest, cutoff),
+        ).fetchone()[0]
+        ip_failures = db.execute(
+            "SELECT COUNT(*) FROM login_attempts WHERE ip_digest=? AND outcome='failed' AND created_at>=?",
+            (ip_digest, cutoff),
+        ).fetchone()[0]
+        if account_failures >= 5 or ip_failures >= 20:
+            db.execute("INSERT INTO login_attempts(account_digest,ip_digest,outcome,created_at) VALUES(?,?,?,?)",
+                       (account_digest, ip_digest, "rate_limited", utc_now()))
+            db.commit()
+            raise HTTPException(status_code=429, detail="Too many login attempts; try again in ten minutes",
+                                headers={"Retry-After": "600"})
+        user = db.execute("SELECT id,name,password_hash FROM users WHERE email=? COLLATE NOCASE", (email,)).fetchone()
+        stored_hash = user["password_hash"] if user is not None else _DUMMY_PASSWORD_HASH
+        valid = verify_password(payload.password, stored_hash)
+        if user is None or not valid:
+            db.execute("INSERT INTO login_attempts(account_digest,ip_digest,outcome,created_at) VALUES(?,?,?,?)",
+                       (account_digest, ip_digest, "failed", utc_now()))
+            db.commit()
             raise HTTPException(status_code=401, detail="Email or password is incorrect")
+        db.execute("DELETE FROM login_attempts WHERE account_digest=?", (account_digest,))
         token = _make_session(db, user["id"])
         db.commit()
     response.set_cookie("session", token, httponly=True, samesite="strict",

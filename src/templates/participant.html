@@ -32,14 +32,16 @@
         {% if project %}<span class="status-pill">{{ project.status|capitalize }}</span>{% endif %}
       </div>
       {% if can_edit and team %}
-      <form data-action="project" data-event="{{ event.id }}" data-team="{{ team.id }}" data-project="{{ project.id if project else '' }}">
+      <form id="submission-form" data-action="project" data-event="{{ event.id }}" data-team="{{ team.id }}" data-project="{{ project.id if project else '' }}">
         <label>Project title<input name="title" value="{{ project.title if project else '' }}" required></label>
         <label>Short summary<textarea name="summary" rows="2">{{ project.summary if project else '' }}</textarea></label>
         <label>Full description<textarea name="description" rows="5">{{ project.description if project else '' }}</textarea></label>
         <div class="form-two"><label>Repository URL<input name="repo_url" type="url" value="{{ project.repo_url if project else '' }}" placeholder="https://..."></label><label>Demo URL<input name="demo_url" type="url" value="{{ project.demo_url if project else '' }}" placeholder="https://..."></label></div>
         <label>Track<select name="track_id" required><option value="">Choose a track</option>{% for track in tracks %}<option value="{{ track.id }}" {% if project and project.track_id == track.id %}selected{% endif %}>{{ track.name }}</option>{% endfor %}</select></label>
-        <div class="form-actions"><button class="button button-secondary" type="submit" name="status" value="draft">Save draft</button><button class="button button-primary" type="submit" name="status" value="submitted">{{ 'Save submission' if project and project.status == 'submitted' else 'Submit project' }}</button></div>
+        <div class="submission-readiness" aria-live="polite"><div><strong>Submission check</strong><span data-check-count></span></div><ul><li data-check="title" data-required="true"></li><li data-check="track_id" data-required="true"></li><li data-check="summary"></li><li data-check="description"></li><li data-check="repo_url"></li><li data-check="demo_url"></li></ul><p>Title and track are required. The other details help judges understand your work; this check does not test whether an external link opens.</p></div>
+        <div class="form-actions"><button class="button button-secondary" type="submit" name="status" value="draft">Save draft</button><button class="button button-secondary" type="button" data-preview-submission>Preview judge view</button><button class="button button-primary" type="submit" name="status" value="submitted">{{ 'Save submission' if project and project.status == 'submitted' else 'Submit project' }}</button></div>
       </form>
+      <dialog class="submission-preview"><div class="preview-heading"><div><span>Judge view preview</span><h2 data-preview="title"></h2></div><button type="button" class="text-button" data-close-preview aria-label="Close preview">Close</button></div><span class="track-tag" data-preview="track"></span><p data-preview="summary"></p><p data-preview="description"></p><div class="preview-links"><a data-preview="repo" target="_blank" rel="noopener noreferrer">Repository ↗</a><a data-preview="demo" target="_blank" rel="noopener noreferrer">Demo ↗</a></div><p class="muted">This preview uses the form as it appears now. Save your changes before leaving.</p></dialog>
       {% elif project %}
       <div class="project-readonly">
         <h3>{{ project.title }}</h3>
@@ -53,5 +55,6 @@
       {% else %}<div class="empty-state compact"><h3>Your project starts with a team</h3><p>Create a team, then save your first draft.</p></div>{% endif %}
     </section>
   </div>
+  {% if certificates %}<section class="table-section"><div class="table-heading"><div><h2>Your certificates</h2><p>Download a vector file or share its public verification page.</p></div></div><div class="certificate-list">{% for certificate in certificates %}<a href="/certificates/{{ certificate.id }}"><span class="certificate-list-type">{{ 'Winner' if certificate.kind == 'winner' else 'Participant' }}</span><span><strong>{{ certificate.prize_name if certificate.kind == 'winner' else event.name }}</strong><small>Open verified certificate</small></span><span aria-hidden="true">↗</span></a>{% endfor %}</div></section>{% endif %}
 </main>
 {% endblock %}

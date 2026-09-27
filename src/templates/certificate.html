@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Verified certificate · DOGFOOD{% endblock %}
+{% block content %}
+<main class="wrap certificate-main">
+  <div class="page-heading certificate-heading">
+    <div><p class="section-kicker">Official event record</p><h1>{{ 'Award winner' if certificate.kind == 'winner' else 'Event participant' }}</h1><p>Issued to {{ certificate.recipient_name }} for {{ certificate.event_name }}.</p></div>
+    <span class="certificate-verified">Verified record</span>
+  </div>
+  <div class="certificate-art"><img src="/certificates/{{ certificate.id }}.svg" alt="{{ 'Winner' if certificate.kind == 'winner' else 'Participant' }} certificate for {{ certificate.recipient_name }}"></div>
+  <div class="certificate-actions"><a class="button button-primary" href="/certificates/{{ certificate.id }}.svg" download="{{ certificate.kind }}-{{ certificate.id }}.svg">Download vector certificate</a><button class="button button-secondary" type="button" onclick="window.print()">Print or save PDF</button><a class="text-link" href="/api/certificates/{{ certificate.id }}/verify">View verification data</a></div>
+  <p class="certificate-code">Verification code: <strong>{{ certificate.id }}</strong><br>Issued {{ certificate.issued_at[:16].replace('T', ' ') }} UTC. This page is the public verification record for the certificate.</p>
+</main>
+{% endblock %}
