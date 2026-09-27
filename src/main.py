@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from .auth import require_event_role, require_login
+from .auth import current_principal, require_event_role, require_login
 from .core import csv_safe, require_web_url, router as core_router
 from .judging import router as judging_router
 from .public import router as public_router
@@ -76,13 +76,16 @@ def health():
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
+    principal = current_principal(request)
     with closing(connect()) as db:
         event = db.execute("SELECT * FROM events ORDER BY created_at LIMIT 1").fetchone()
         tracks = db.execute("SELECT * FROM tracks WHERE event_id=? ORDER BY name", (event["id"],)).fetchall()
         count = db.execute("SELECT COUNT(*) FROM projects WHERE event_id=? AND status='submitted'", (event["id"],)).fetchone()[0]
+    closed = _deadline_passed(event["submissions_close"])
     return templates.TemplateResponse(request, "home.html", {
         "event": dict(event), "tracks": [dict(row) for row in tracks], "project_count": count,
-        "closed": _deadline_passed(event["submissions_close"]),
+        "principal": principal, "closed": closed,
+        "phase_index": 4 if event["results_published_at"] else 3 if closed else 2,
     })
 
 

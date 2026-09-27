@@ -51,3 +51,9 @@ UI paths, T3 voting, or the full ranking methodology. The independent suite
 and [JUDGING.md](JUDGING.md) provide additional evidence. A fresh offline
 *build* still requires the platform-specific Python base image in Docker's
 local store; the repository does not include a Docker base-image tarball.
+
+After the landing-page navigation and event-data correction, the local build
+again passed all 14 integration tests and seven official checks. Desktop and
+mobile screenshots were reviewed. A separate fresh-volume event was taken
+through creation, team formation, draft and final submission, judge assignment,
+scoring, and publication to refresh the committed silent demo.

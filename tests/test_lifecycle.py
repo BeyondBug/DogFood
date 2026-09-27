@@ -280,6 +280,13 @@ class LifecycleTests(unittest.TestCase):
         participant = "session=bb_demo_participant_2026_local_only"
         judge_a = "session=bb_demo_judge_a_2026_local_only"
         judge_b = "session=bb_demo_judge_b_2026_local_only"
+        status, landing, _ = call("GET", "/")
+        self.assertEqual(status, 200)
+        self.assertIn('href="/account">Sign in', landing)
+        self.assertIn('href="/projects?event=evt_01', landing)
+        status, landing, _ = call("GET", "/", cookie=participant)
+        self.assertEqual(status, 200)
+        self.assertIn('href="/dashboard">Dashboard', landing)
         status, _, _ = call("POST", "/api/events/evt_01/projects", {"title": "Late"}, participant)
         self.assertEqual(status, 409)
         status, _, _ = call("GET", "/api/judge/scores?judge=jdg_01", cookie=judge_b)
