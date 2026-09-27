@@ -133,9 +133,10 @@ map.
   limits of the single-host SQLite design; this release does not claim a
   multi-instance load balancer.
 - A locally bootstrapped global admin can open `/admin` to inspect event totals,
-  data volume size and free space, and run an on-demand SQLite integrity
-  check. The page also shows the backup command; no scheduled backup is
-  claimed.
+  data volume size and free space, run an on-demand SQLite integrity check,
+  create an online backup, and download recent snapshots. Backup files stay
+  under the local data volume; an operator must copy and protect them. No
+  scheduled backup is claimed.
 
 The active team develops on `Features`, tests integrations on `Develop`, and
 promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -155,6 +156,8 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
   email. There is no outbound email dependency.
 - SQLite with one application worker suits small and medium self-hosted
   events. Multi-host deployment needs a different database and queue design.
+- The administrator backup button creates local snapshots only. It does not
+  schedule backups, move them off-host, or restore them through the browser.
 - Login throttling persists in SQLite: five failed attempts per account or
   twenty per client IP in ten minutes return 429. Account recovery and email
   verification remain operator workflows, not built-in features.

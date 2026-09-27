@@ -643,6 +643,59 @@
         }
       }
     },
+    "/api/admin/backups": {
+      "post": {
+        "summary": "Create Admin Backup",
+        "operationId": "create_admin_backup_api_admin_backups_post",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/backups/{filename}": {
+      "get": {
+        "summary": "Download Admin Backup",
+        "operationId": "download_admin_backup_api_admin_backups__filename__get",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/events/{event_id}": {
       "get": {
         "summary": "Event Page",

@@ -7,13 +7,16 @@ from hashlib import sha256
 from datetime import datetime, timezone
 from pathlib import Path
 import os
+import re
+import secrets
 import shutil
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .auth import current_principal, require_event_role
+from .backup import write_backup
 from .core import time_value
 from .db import connect, database_path
 from .scoring import event_ranking, judging_insight
@@ -23,6 +26,20 @@ from .public import _eligible, _vote_summary, _window_open, ballot as load_ballo
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+BACKUP_NAME = re.compile(r"backup-\d{8}T\d{6}Z-[0-9a-f]{12}\.sqlite3\Z")
+
+
+def _admin_api_principal(request: Request):
+    principal = current_principal(request)
+    if principal is None:
+        raise HTTPException(status_code=401, detail="Sign in required")
+    if not principal.is_admin:
+        raise HTTPException(status_code=403, detail="Administrator access required")
+    return principal
+
+
+def _backup_directory() -> Path:
+    return database_path().parent / "backups"
 
 
 def _event(db, event_id: str):
@@ -111,12 +128,41 @@ def admin_page(request: Request, check: bool = False):
     path = database_path()
     database_bytes = path.stat().st_size if path.exists() else 0
     free_bytes = shutil.disk_usage(path.parent).free
+    backup_directory = _backup_directory()
+    backups = [
+        {"name": item.name, "bytes": item.stat().st_size,
+         "created_at": datetime.fromtimestamp(item.stat().st_mtime, timezone.utc).strftime("%d %b %Y, %H:%M UTC")}
+        for item in sorted(backup_directory.iterdir(), key=lambda entry: entry.name, reverse=True)
+        if item.is_file() and not item.is_symlink() and BACKUP_NAME.fullmatch(item.name)
+    ][:5] if backup_directory.is_dir() else []
     return templates.TemplateResponse(request, "admin.html", {
         "principal": principal, "user_count": users, "events": [dict(row) for row in events],
+        "backups": backups,
         "system": {"database_bytes": database_bytes, "free_bytes": free_bytes,
                    "schema_version": schema_version, "storage_writable": os.access(path.parent, os.W_OK),
                    "integrity": integrity},
     })
+
+
+@router.post("/api/admin/backups", status_code=201)
+def create_admin_backup(request: Request):
+    _admin_api_principal(request)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    filename = f"backup-{stamp}-{secrets.token_hex(6)}.sqlite3"
+    write_backup(_backup_directory() / filename)
+    return {"filename": filename, "download_url": f"/api/admin/backups/{filename}"}
+
+
+@router.get("/api/admin/backups/{filename}")
+def download_admin_backup(filename: str, request: Request):
+    _admin_api_principal(request)
+    if not BACKUP_NAME.fullmatch(filename):
+        raise HTTPException(status_code=404, detail="Backup not found")
+    path = _backup_directory() / filename
+    if not path.is_file() or path.is_symlink():
+        raise HTTPException(status_code=404, detail="Backup not found")
+    return FileResponse(path, media_type="application/octet-stream", filename=filename,
+                        headers={"Cache-Control": "no-store"})
 
 
 @router.get("/events/{event_id}", response_class=HTMLResponse)

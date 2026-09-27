@@ -239,6 +239,9 @@ document.addEventListener('submit', async event => {
         await api('POST', '/api/auth/logout');
         window.location.assign('/');
         return;
+      case 'create-backup':
+        await api('POST', '/api/admin/backups');
+        refresh(); return;
       case 'create-event':
         data.tracks = list(data.tracks);
         data.prizes = list(data.prizes || '');

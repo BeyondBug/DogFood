@@ -84,14 +84,18 @@ the vector certificate or print it as a PDF.
 
 ### Guided event setup
 
-The first event form uses the existing event desk palette and a three-step
-progress rail: identity, schedule, and tracks/prizes. The final state previews
+The first event form uses the existing event desk palette and a four-step
+progress rail: identity, schedule, tracks/prizes, and review. The final state previews
 the entries before the event is created; the organizer desk then shows a
 readiness list for rubric and judges. The rail is a real sequence, so numbered
 steps describe progress rather than decorate the page. Layout stays left
 aligned, with one primary Continue/Create action and a quiet Back action.
 The draft is kept in this browser only until creation, avoiding a half-created
 server event. The design does not imply that a draft has been published.
+Every deeper page also shows a small Back link above its main content. It
+returns through same-origin browser history when available, with a stable
+route fallback for direct links. The link stays visible on mobile without
+competing with the page's primary action.
 
 ## One coherent product, five key surfaces
 

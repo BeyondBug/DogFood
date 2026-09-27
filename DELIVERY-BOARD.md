@@ -20,7 +20,7 @@ can understand the result. Merge to `Develop` for integration; promote to
 | G1 | Sep 27 00:00 | Compose boots; migrations and fixture seed run; seed auth headers are printed; checker has been run once | Done |
 | G2 | Sep 27 12:00 | T1 complete: auth, roles, event config, teams, drafts, deadline, gallery | Done; tests and checker pass |
 | G3 | Sep 28 12:00 | T2 complete: invitations, assignment, rubric, scorecards, permissions, progress, CSV | Done ahead of gate; tests and checker pass |
-| G4 | Sep 29 04:00 | Normalization, audit trail, ranking proof, operator polish | Normalization proof and audit documented; polish in progress |
+| G4 | Sep 29 04:00 | Normalization, audit trail, ranking proof, operator polish | Normalization proof, readable audit, admin health, and backup UI implemented |
 | G5 | Sep 29 12:00 | Final docs, demo recording, fresh-volume and offline checks | Fresh-volume, restart, and network-disabled checks pass; silent five-minute demo committed |
 | Freeze | Sep 29 18:00 | Public repo, acceptance report, honest tier claim, final submission | Public repo, report, and silent demo ready; submission procedure pending organizer instructions |
 
@@ -52,7 +52,7 @@ them a bounded package with an explicit API/schema contract.
 | Threat model and OpenAPI coverage | P1 | Active pair | Final routes | Docs match the shipped behavior; see [SECURITY-PLAN.md](SECURITY-PLAN.md) |
 | Professional event and role UI | P1 | Active pair | T1/T2 paths | Responsive, accessible flows; see [UI-DESIGN.md](UI-DESIGN.md) |
 | T3 voting/comments | P2 | Active pair | Stable T2 | Implemented and integration tested; not claimed because checker has no T3 assertions |
-| Pairwise mode, T4 certificates/webhooks | P3 | Unassigned | Stable T2/T3 | Not implemented or claimed |
+| Pairwise mode and remaining T4 work | P3 | Unassigned | Stable T2/T3 | Certificates implemented; pairwise, webhooks, and signed judge records not implemented or claimed |
 
 ## Integration order
 
