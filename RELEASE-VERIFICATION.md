@@ -57,3 +57,8 @@ again passed all 14 integration tests and seven official checks. Desktop and
 mobile screenshots were reviewed. A separate fresh-volume event was taken
 through creation, team formation, draft and final submission, judge assignment,
 scoring, and publication to refresh the committed silent demo.
+
+The later public event directory and gallery pagination pass the expanded
+15-test suite and the same seven official checks. A separate 49-project test
+event verifies that the gallery exposes the project on page two. Desktop and
+mobile gallery screenshots were reviewed.

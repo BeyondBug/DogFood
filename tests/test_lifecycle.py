@@ -6,6 +6,7 @@ import unittest
 import urllib.error
 import urllib.request
 import uuid
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 
 
@@ -23,12 +24,15 @@ def call(method, path, body=None, cookie=None):
         response = urllib.request.urlopen(request, timeout=10)
     except urllib.error.HTTPError as error:
         response = error
-    content = response.read().decode()
+    with closing(response):
+        status = response.status
+        cookie_header = response.headers.get("Set-Cookie", "")
+        content = response.read().decode()
     try:
         parsed = json.loads(content)
     except json.JSONDecodeError:
         parsed = content
-    return response.status, parsed, response.headers.get("Set-Cookie", "")
+    return status, parsed, cookie_header
 
 
 class LifecycleTests(unittest.TestCase):
@@ -295,6 +299,13 @@ class LifecycleTests(unittest.TestCase):
         status, landing, _ = call("GET", "/", cookie=participant)
         self.assertEqual(status, 200)
         self.assertIn('href="/dashboard">Dashboard', landing)
+        status, gallery, _ = call("GET", "/projects?page=9999")
+        self.assertEqual(status, 200)
+        self.assertIn("Showing 1–41 of 41 projects", gallery)
+        self.assertIn("Glass Signal", gallery)
+        status, filtered, _ = call("GET", "/projects?q=Glass%20Signal")
+        self.assertEqual(status, 200)
+        self.assertIn("Showing 1–1 of 1 project", filtered)
         status, _, _ = call("POST", "/api/events/evt_01/projects", {"title": "Late"}, participant)
         self.assertEqual(status, 409)
         status, _, _ = call("GET", "/api/judge/scores?judge=jdg_01", cookie=judge_b)

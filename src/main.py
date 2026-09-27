@@ -90,7 +90,8 @@ def home(request: Request):
 
 
 @app.get("/projects", response_class=HTMLResponse)
-def gallery(request: Request, q: str = "", track: str = "", event: str = ""):
+def gallery(request: Request, q: str = "", track: str = "", event: str = "", page: int = Query(default=1, ge=1)):
+    query = q.strip()[:120]
     with closing(connect()) as db:
         selected = (db.execute("SELECT * FROM events WHERE id=?", (event,)).fetchone() if event
                     else db.execute("SELECT * FROM events ORDER BY created_at LIMIT 1").fetchone())
@@ -99,28 +100,39 @@ def gallery(request: Request, q: str = "", track: str = "", event: str = ""):
         tracks = db.execute("SELECT id,name FROM tracks WHERE event_id=? ORDER BY name", (selected["id"],)).fetchall()
         where = ["p.event_id=?", "p.status='submitted'"]
         args: list[str] = [selected["id"]]
-        if q.strip():
+        if query:
             where.append("(p.title LIKE ? OR p.summary LIKE ? OR t.name LIKE ?)")
-            pattern = f"%{q.strip()}%"
+            pattern = f"%{query}%"
             args.extend([pattern, pattern, pattern])
         if track:
             where.append("p.track_id=?")
             args.append(track)
+        filtered_total = db.execute(
+            "SELECT COUNT(*) FROM projects p JOIN tracks t ON t.id=p.track_id"
+            " JOIN teams m ON m.id=p.team_id WHERE " + " AND ".join(where),
+            args,
+        ).fetchone()[0]
+        page_size = 48
+        last_page = max(1, (filtered_total + page_size - 1) // page_size)
+        current_page = min(page, last_page)
         projects = db.execute(
             "SELECT p.id,p.title,p.summary,p.repo_url,p.submitted_at,p.duplicate_of,"
             " t.name AS track_name,t.id AS track_id,m.name AS team_name"
             " FROM projects p JOIN tracks t ON t.id=p.track_id"
             " JOIN teams m ON m.id=p.team_id WHERE " + " AND ".join(where)
-            + " ORDER BY p.submitted_at DESC,p.id DESC LIMIT 100",
-            args,
+            + " ORDER BY p.submitted_at DESC,p.id DESC LIMIT ? OFFSET ?",
+            [*args, page_size, (current_page - 1) * page_size],
         ).fetchall()
         total = db.execute(
             "SELECT COUNT(*) FROM projects WHERE event_id=? AND status='submitted'", (selected["id"],)
         ).fetchone()[0]
     return templates.TemplateResponse(request, "gallery.html", {
         "event": dict(selected), "projects": [dict(row) for row in projects],
-        "tracks": [dict(row) for row in tracks], "total": total, "q": q, "track": track,
-        "event_param": event,
+        "tracks": [dict(row) for row in tracks], "total": total, "q": query, "track": track,
+        "event_param": event, "principal": current_principal(request),
+        "filtered_total": filtered_total, "page": current_page, "last_page": last_page,
+        "first_result": (current_page - 1) * page_size + 1 if filtered_total else 0,
+        "last_result": min(current_page * page_size, filtered_total),
     })
 
 
