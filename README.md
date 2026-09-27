@@ -59,8 +59,8 @@ database too.
    submitting; the assignment is removed and the organizer can reassign it.
    Another judge cannot read that scorecard.
 5. The organizer reviews raw and calibrated rankings and publishes results.
-   Public result routes return 404 until that action. Submitted scores lock
-   after publication.
+   Submissions must be closed first. Public result routes return 404 until
+   publication; project edits and submitted scores then lock.
 6. For an event with an active voting window, the organizer chooses invited
    voters or existing participants. Eligible voters receive a stable shuffled
    ballot, cast one vote, and can comment on projects. The organizer sees
@@ -69,7 +69,8 @@ database too.
 The API driving these actions is documented at `/docs`, `/openapi.json`, and
 the committed [OpenAPI specification](openapi.json).
 The server enforces event roles, team membership, assignment ownership, and
-deadlines for direct API requests as well as browser actions.
+deadlines for direct API requests as well as browser actions. Team membership
+freezes at submission close, and published events reject project changes.
 
 ## Tests and acceptance
 

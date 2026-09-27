@@ -132,6 +132,8 @@ def create_project(event_id: str, payload: ProjectInput, request: Request):
         if event is None:
             raise HTTPException(status_code=404, detail="Event not found")
         require_event_role(db, principal, event_id, "participant")
+        if event["results_published_at"]:
+            raise HTTPException(status_code=409, detail="Results are published; projects are locked")
         if _deadline_passed(event["submissions_close"]):
             raise HTTPException(status_code=409, detail="Submissions are closed")
         if event["submissions_open"] and not _deadline_passed(event["submissions_open"]):

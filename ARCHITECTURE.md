@@ -78,11 +78,13 @@ are organizer-only until publication; public vote results then become visible.
   submissions share one project record and can be edited only by team members
   before the deadline.
 - An organizer can edit event dates before publication. The submission close
-  must remain before configured voting opens, and dates lock once a ballot is
-  cast. This prevents a later schedule edit from reopening submissions during
-  a community vote.
+  must remain before configured voting opens and cannot be extended once the
+  window has closed. Dates lock once a ballot is cast. This prevents later
+  schedule edits from reopening submissions or changing the judging roster.
 - A team invite is a hashed, expiring, single-use token. Membership is checked
-  under a write lock, and the service enforces the four-member limit.
+  under a write lock, and the service enforces the four-member limit. Team
+  creation, invite creation, and invite acceptance stop at submission close,
+  keeping judge conflict checks tied to a fixed membership roster.
 - Each scorecard belongs to one assignment and rubric version. A judge cannot
   score another assignment, an unassigned project, or a project with a
   declared conflict. All criteria are required for final submission.
@@ -93,8 +95,9 @@ are organizer-only until publication; public vote results then become visible.
   transaction records the conflict, removes that assignment and any draft,
   and audits the report. The next batch excludes that judge/project pair.
 - Public pages query rankings only after publication. Publishing results
-  requires at least one completed review per nonduplicate project and records
-  an audit entry.
+  requires closed submissions and at least one completed review per
+  nonduplicate project, then records an audit entry. Published events reject
+  later project creation and edits so the public ranking cannot drift.
 - A ballot belongs to exactly one account and event by database constraint.
   Eligible choices exclude the voter's team and flagged duplicates. A secret
   event seed drives stable per-voter HMAC ordering. Attempt logs store a keyed

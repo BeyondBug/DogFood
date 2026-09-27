@@ -114,7 +114,7 @@
       </tr>{% endfor %}</tbody>
     </table></div>
     <div class="publish-row">
-      <span>{{ 'Published ' ~ event.results_published_at if event.results_published_at else 'The public cannot see these results yet.' }}</span>
+      <span>{{ 'Published ' ~ event.results_published_at[:16].replace('T', ' ') ~ ' UTC' if event.results_published_at else 'The public cannot see these results yet.' }}</span>
       {% if not event.results_published_at %}<form data-action="publish" data-event="{{ event.id }}"><button class="button button-primary" type="submit">Publish results</button></form>{% endif %}
     </div>
   </section>
@@ -158,7 +158,7 @@
 
   <section class="table-section">
     <div class="table-heading"><div><h2>Recent activity</h2><p>A readable record of changes to this event.</p></div></div>
-    <div class="audit-list">{% for item in audit %}<div><strong>{{ item.action.replace('_',' ') }}</strong><span>{{ item.entity_type }} {{ item.entity_id }}</span><time>{{ item.created_at[:16] }} UTC</time></div>{% else %}<p>No activity yet.</p>{% endfor %}</div>
+    <div class="audit-list">{% for item in audit %}<div><strong>{{ item.action.replace('_',' ') }}</strong><span>{{ item.entity_type }} {{ item.entity_id }}</span><time>{{ item.created_at[:16].replace('T', ' ') }} UTC</time></div>{% else %}<p>No activity yet.</p>{% endfor %}</div>
   </section>
 </main>
 {% endblock %}

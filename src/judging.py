@@ -331,9 +331,11 @@ def publish_results(event_id: str, request: Request):
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
         require_event_role(db, principal, event_id, "organizer")
-        event = db.execute("SELECT results_published_at FROM events WHERE id=?", (event_id,)).fetchone()
+        event = db.execute("SELECT results_published_at,submissions_close FROM events WHERE id=?", (event_id,)).fetchone()
         if event["results_published_at"]:
             raise HTTPException(status_code=409, detail="Results are already published")
+        if datetime.now(timezone.utc) < time_value(event["submissions_close"]):
+            raise HTTPException(status_code=409, detail="Submissions must close before results are published")
         voting = db.execute("SELECT voting_mode,voting_close FROM events WHERE id=?", (event_id,)).fetchone()
         if voting["voting_mode"] != "disabled" and voting["voting_close"] and time_value(voting["voting_close"]) > datetime.now(timezone.utc):
             raise HTTPException(status_code=409, detail="Voting must close before results are published")

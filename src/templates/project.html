@@ -16,7 +16,7 @@
   {% if project.voting_mode != 'disabled' %}
     <section class="comment-section" id="comments">
       <div class="table-heading"><div><h2>Conversation</h2><p>Comments are open during the community voting window.</p></div></div>
-      {% if comments %}<div class="comment-list">{% for item in comments %}<article class="comment"><div><strong>{{ item.author }}</strong><time>{{ item.created_at[:16] }} UTC</time></div><p>{{ item.body }}</p>{% if is_organizer %}<form data-action="hide-comment" data-comment="{{ item.id }}"><button class="text-button" type="submit">Hide comment</button></form>{% endif %}</article>{% endfor %}</div>{% else %}<p class="muted">No comments yet.</p>{% endif %}
+      {% if comments %}<div class="comment-list">{% for item in comments %}<article class="comment"><div><strong>{{ item.author }}</strong><time>{{ item.created_at[:16].replace('T', ' ') }} UTC</time></div><p>{{ item.body }}</p>{% if is_organizer %}<form data-action="hide-comment" data-comment="{{ item.id }}"><button class="text-button" type="submit">Hide comment</button></form>{% endif %}</article>{% endfor %}</div>{% else %}<p class="muted">No comments yet.</p>{% endif %}
       {% if comments_open and principal %}<form data-action="comment" data-project="{{ project.id }}" class="comment-form"><label>Add a comment<textarea name="body" rows="3" maxlength="2000" required minlength="3" placeholder="Share a constructive question or observation."></textarea></label><button class="button button-primary" type="submit">Post comment</button></form>{% elif comments_open %}<a class="text-link" href="/account?next=/projects/{{ project.id }}">Sign in to comment</a>{% endif %}
     </section>
   {% endif %}

@@ -1,3 +1,57 @@
-{% extends "base.html" %}{% block title %}Your project · {{ event.name }}{% endblock %}
-{% block content %}<main class="wrap workspace-main"><div class="page-heading"><div><p class="section-kicker">Participant workspace · {{ event.name }}</p><h1>Build together.</h1><p>Submissions close {{ event.submissions_close[:16] }} UTC. The server checks the deadline when you save.</p></div><a class="text-link" href="/events/{{ event.id }}">Event page</a></div><div class="workspace-grid"><section class="panel"><h2>Your team</h2>{% if team %}<p class="large-name">{{ team.name }}</p><div class="member-list">{% for member in members %}<div><strong>{{ member.name }}</strong><span>{{ member.role }}</span></div>{% endfor %}</div><form data-action="team-invite" data-team="{{ team.id }}"><button class="button button-secondary" type="submit">Create invite link</button></form><p class="inline-help">Invite links can be used once and expire after three days. Teams can have up to four people.</p>{% else %}<p>Create a team before starting a project.</p><form data-action="create-team" data-event="{{ event.id }}"><label>Team name<input name="name" required minlength="2"></label><button class="button button-secondary" type="submit">Create team</button></form>{% endif %}</section>
-<section class="panel panel-wide"><div class="panel-head"><div><h2>Your project</h2><p>{{ 'Edit your submission' if project else 'Start a private draft' }}</p></div>{% if project %}<span class="status-pill">{{ project.status|capitalize }}</span>{% endif %}</div>{% if team %}<form data-action="project" data-event="{{ event.id }}" data-team="{{ team.id }}" data-project="{{ project.id if project else '' }}"><label>Project title<input name="title" value="{{ project.title if project else '' }}" required></label><label>Short summary<textarea name="summary" rows="2">{{ project.summary if project else '' }}</textarea></label><label>Full description<textarea name="description" rows="5">{{ project.description if project else '' }}</textarea></label><div class="form-two"><label>Repository URL<input name="repo_url" type="url" value="{{ project.repo_url if project else '' }}" placeholder="https://..."></label><label>Demo URL<input name="demo_url" type="url" value="{{ project.demo_url if project else '' }}" placeholder="https://..."></label></div><label>Track<select name="track_id" required><option value="">Choose a track</option>{% for track in tracks %}<option value="{{ track.id }}" {% if project and project.track_id == track.id %}selected{% endif %}>{{ track.name }}</option>{% endfor %}</select></label><div class="form-actions"><button class="button button-secondary" type="submit" name="status" value="draft">Save draft</button><button class="button button-primary" type="submit" name="status" value="submitted">{{ 'Save submission' if project and project.status == 'submitted' else 'Submit project' }}</button></div></form>{% else %}<div class="empty-state compact"><h3>Your project starts with a team</h3><p>Create a team, then save your first draft.</p></div>{% endif %}</section></div></main>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Your project · {{ event.name }}{% endblock %}
+{% block content %}
+<main class="wrap workspace-main">
+  <div class="page-heading">
+    <div>
+      <p class="section-kicker">Participant workspace · {{ event.name }}</p>
+      <h1>Build together.</h1>
+      <p>Submissions close {{ event.submissions_close[:16].replace('T', ' ') }} UTC. {% if closed %}The deadline has passed; this workspace is read-only.{% elif not_open %}Team formation is open; project submissions open later.{% else %}The server checks the deadline when you save.{% endif %}</p>
+    </div>
+    <a class="text-link" href="/events/{{ event.id }}">Event page</a>
+  </div>
+  <div class="workspace-grid">
+    <section class="panel">
+      <h2>Your team</h2>
+      {% if team %}
+      <p class="large-name">{{ team.name }}</p>
+      <div class="member-list">{% for member in members %}<div><strong>{{ member.name }}</strong><span>{{ member.role }}</span></div>{% endfor %}</div>
+      {% if team_editable %}
+      <form data-action="team-invite" data-team="{{ team.id }}"><button class="button button-secondary" type="submit">Create invite link</button></form>
+      <p class="inline-help">Invite links can be used once and expire after three days. Teams can have up to four people.</p>
+      {% else %}<p class="inline-help">Team membership is locked after submissions close.</p>{% endif %}
+      {% elif team_editable %}
+      <p>Create a team before starting a project.</p>
+      <form data-action="create-team" data-event="{{ event.id }}"><label>Team name<input name="name" required minlength="2"></label><button class="button button-secondary" type="submit">Create team</button></form>
+      {% else %}<p class="muted">You did not join a team before submissions closed.</p>{% endif %}
+    </section>
+
+    <section class="panel panel-wide">
+      <div class="panel-head">
+        <div><h2>Your project</h2><p>{{ 'Edit your submission' if can_edit and project else 'Start a private draft' if can_edit else 'Final submission state' }}</p></div>
+        {% if project %}<span class="status-pill">{{ project.status|capitalize }}</span>{% endif %}
+      </div>
+      {% if can_edit and team %}
+      <form data-action="project" data-event="{{ event.id }}" data-team="{{ team.id }}" data-project="{{ project.id if project else '' }}">
+        <label>Project title<input name="title" value="{{ project.title if project else '' }}" required></label>
+        <label>Short summary<textarea name="summary" rows="2">{{ project.summary if project else '' }}</textarea></label>
+        <label>Full description<textarea name="description" rows="5">{{ project.description if project else '' }}</textarea></label>
+        <div class="form-two"><label>Repository URL<input name="repo_url" type="url" value="{{ project.repo_url if project else '' }}" placeholder="https://..."></label><label>Demo URL<input name="demo_url" type="url" value="{{ project.demo_url if project else '' }}" placeholder="https://..."></label></div>
+        <label>Track<select name="track_id" required><option value="">Choose a track</option>{% for track in tracks %}<option value="{{ track.id }}" {% if project and project.track_id == track.id %}selected{% endif %}>{{ track.name }}</option>{% endfor %}</select></label>
+        <div class="form-actions"><button class="button button-secondary" type="submit" name="status" value="draft">Save draft</button><button class="button button-primary" type="submit" name="status" value="submitted">{{ 'Save submission' if project and project.status == 'submitted' else 'Submit project' }}</button></div>
+      </form>
+      {% elif project %}
+      <div class="project-readonly">
+        <h3>{{ project.title }}</h3>
+        <p>{{ project.summary }}</p>
+        {% if project.description %}<p>{{ project.description }}</p>{% endif %}
+        <p class="muted">{% for track in tracks if track.id == project.track_id %}{{ track.name }}{% endfor %} · {{ 'Submitted' if project.status == 'submitted' else 'Draft only — never submitted' }}</p>
+        {% if project.status == 'submitted' %}<a class="text-link" href="/projects/{{ project.id }}">View public project</a>{% endif %}
+      </div>
+      {% elif not_open %}<div class="empty-state compact"><h3>Submissions are not open yet</h3><p>You can form your team now. Return when the submission window opens.</p></div>
+      {% elif closed %}<div class="empty-state compact"><h3>No project submitted</h3><p>This event's submission deadline has passed.</p></div>
+      {% else %}<div class="empty-state compact"><h3>Your project starts with a team</h3><p>Create a team, then save your first draft.</p></div>{% endif %}
+    </section>
+  </div>
+</main>
+{% endblock %}

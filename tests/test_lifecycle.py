@@ -32,6 +32,56 @@ def call(method, path, body=None, cookie=None):
 
 
 class LifecycleTests(unittest.TestCase):
+    def test_team_membership_and_workspace_lock_at_submission_close(self):
+        suffix = uuid.uuid4().hex[:10]
+        status, _, captain_cookie = call("POST", "/api/auth/register", {
+            "name": "Deadline captain", "email": f"deadline-captain-{suffix}@example.org",
+            "password": "A-long-local-test-password!",
+        })
+        self.assertEqual(status, 201)
+        captain_cookie = captain_cookie.split(";", 1)[0]
+        status, event, _ = call("POST", "/api/events", {
+            "name": f"Deadline teams {suffix}",
+            "submissions_close": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(),
+            "tracks": ["Software"],
+        }, captain_cookie)
+        self.assertEqual(status, 201, event)
+        event_id = event["id"]
+        status, _, _ = call("POST", f"/api/events/{event_id}/registration", {}, captain_cookie)
+        self.assertEqual(status, 201)
+        status, team, _ = call("POST", f"/api/events/{event_id}/teams", {"name": "Deadline team"}, captain_cookie)
+        self.assertEqual(status, 201)
+        status, invite, _ = call("POST", f"/api/teams/{team['id']}/invites", {}, captain_cookie)
+        self.assertEqual(status, 201)
+        token = invite["invite_url"].split("/")[-1]
+        status, _, newcomer_cookie = call("POST", "/api/auth/register", {
+            "name": "Late teammate", "email": f"deadline-newcomer-{suffix}@example.org",
+            "password": "A-long-local-test-password!",
+        })
+        self.assertEqual(status, 201)
+        newcomer_cookie = newcomer_cookie.split(";", 1)[0]
+        status, _, _ = call("PATCH", f"/api/events/{event_id}", {
+            "submissions_close": (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(),
+        }, captain_cookie)
+        self.assertEqual(status, 200)
+        status, _, _ = call("PATCH", f"/api/events/{event_id}", {
+            "submissions_close": (datetime.now(timezone.utc) + timedelta(days=3)).isoformat(),
+        }, captain_cookie)
+        self.assertEqual(status, 409)
+        status, _, _ = call("POST", f"/api/team-invites/{token}/join", {}, newcomer_cookie)
+        self.assertEqual(status, 409)
+        status, _, _ = call("POST", f"/api/teams/{team['id']}/invites", {}, captain_cookie)
+        self.assertEqual(status, 409)
+        status, _, _ = call("POST", f"/api/events/{event_id}/registration", {}, newcomer_cookie)
+        self.assertEqual(status, 201)
+        status, _, _ = call("POST", f"/api/events/{event_id}/teams", {"name": "Late team"}, newcomer_cookie)
+        self.assertEqual(status, 409)
+        status, workspace, _ = call("GET", f"/workspace/{event_id}", cookie=captain_cookie)
+        self.assertEqual(status, 200)
+        self.assertIn("read-only", workspace)
+        self.assertNotIn('data-action="project"', workspace)
+        self.assertNotIn("Create invite link", workspace)
+
     def test_team_invite_is_single_use_and_team_stops_at_four(self):
         suffix = uuid.uuid4().hex[:10]
         status, _, captain_cookie = call("POST", "/api/auth/register", {
@@ -145,6 +195,12 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(status, 403)
         status, _, _ = call("GET", f"/api/events/{event_id}/rankings", cookie=judge_cookie)
         self.assertEqual(status, 403)
+        status, _, _ = call("POST", f"/api/events/{event_id}/results/publish", {}, organizer_cookie)
+        self.assertEqual(status, 409)
+        status, _, _ = call("PATCH", f"/api/events/{event_id}", {
+            "submissions_close": (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(),
+        }, organizer_cookie)
+        self.assertEqual(status, 200)
         status, published, _ = call("POST", f"/api/events/{event_id}/results/publish", {}, organizer_cookie)
         self.assertEqual(status, 200, published)
         status, results, _ = call("GET", f"/api/events/{event_id}/results")
@@ -152,6 +208,15 @@ class LifecycleTests(unittest.TestCase):
         status, _, _ = call("PUT", f"/api/judge/assignments/{assignment_id}/scorecard", {
             "criteria": {"quality": 1, "impact": 1}, "status": "submitted",
         }, judge_cookie)
+        self.assertEqual(status, 409)
+        status, _, _ = call("PUT", f"/api/projects/{project['id']}", {
+            "title": "Changed after results", "track_id": track_id, "status": "submitted",
+        }, organizer_cookie)
+        self.assertEqual(status, 409)
+        status, _, _ = call("POST", f"/api/events/{event_id}/projects", {
+            "team_id": team["id"], "track_id": track_id,
+            "title": "Late arrival after publication", "status": "submitted",
+        }, organizer_cookie)
         self.assertEqual(status, 409)
         status, _, _ = call("PUT", f"/api/events/{event_id}/judges/{accepted['judge_id']}/conflicts/{project['id']}", {
             "reason": "Found a conflict after submitting",

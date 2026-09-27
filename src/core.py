@@ -253,6 +253,10 @@ def update_event(event_id: str, payload: EventPatch, request: Request):
         if (merged["voting_mode"] != "disabled" and merged["voting_open"]
                 and time_value(merged["submissions_close"]) >= time_value(merged["voting_open"])):
             raise HTTPException(status_code=422, detail="Submissions must close before voting opens")
+        if ("submissions_close" in updates
+                and time_value(event["submissions_close"]) <= datetime.now(timezone.utc)
+                and time_value(updates["submissions_close"]) > time_value(event["submissions_close"])):
+            raise HTTPException(status_code=409, detail="A closed submission window cannot be extended")
         for opening, closing_name in (("registration_open", "registration_close"),
                                       ("submissions_open", "submissions_close"),
                                       ("judging_open", "judging_close")):
@@ -299,6 +303,8 @@ def create_team(event_id: str, payload: TeamCreate, request: Request):
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
         require_event_role(db, principal, event_id, "participant")
+        event = db.execute("SELECT submissions_close FROM events WHERE id=?", (event_id,)).fetchone()
+        require_before(event["submissions_close"], "Team formation is closed")
         existing = db.execute("SELECT 1 FROM team_members m JOIN teams t ON t.id=m.team_id WHERE t.event_id=? AND m.user_id=?", (event_id, principal.user_id)).fetchone()
         if existing:
             raise HTTPException(status_code=409, detail="You already belong to a team in this event")
@@ -328,9 +334,10 @@ def create_invite(team_id: str, request: Request):
     principal = require_login(request)
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
-        team = db.execute("SELECT event_id FROM teams WHERE id=?", (team_id,)).fetchone()
+        team = db.execute("SELECT t.event_id,e.submissions_close FROM teams t JOIN events e ON e.id=t.event_id WHERE t.id=?", (team_id,)).fetchone()
         if team is None:
             raise HTTPException(status_code=404, detail="Team not found")
+        require_before(team["submissions_close"], "Team formation is closed")
         member = db.execute("SELECT role FROM team_members WHERE team_id=? AND user_id=?", (team_id, principal.user_id)).fetchone()
         if member is None or member["role"] != "captain":
             raise HTTPException(status_code=403, detail="Only the team captain can invite members")
@@ -350,9 +357,12 @@ def accept_invite(token: str, request: Request):
     principal = require_login(request)
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
-        invitation = db.execute("SELECT i.*,t.event_id FROM team_invites i JOIN teams t ON t.id=i.team_id WHERE i.token_hash=?", (hashlib.sha256(token.encode()).hexdigest(),)).fetchone()
+        invitation = db.execute("SELECT i.*,t.event_id,e.submissions_close FROM team_invites i"
+                                " JOIN teams t ON t.id=i.team_id JOIN events e ON e.id=t.event_id"
+                                " WHERE i.token_hash=?", (hashlib.sha256(token.encode()).hexdigest(),)).fetchone()
         if invitation is None or invitation["revoked_at"] or invitation["uses"] >= invitation["max_uses"] or time_value(invitation["expires_at"]) <= datetime.now(timezone.utc):
             raise HTTPException(status_code=404, detail="Invite link is invalid or expired")
+        require_before(invitation["submissions_close"], "Team formation is closed")
         existing = db.execute("SELECT 1 FROM team_members m JOIN teams t ON t.id=m.team_id WHERE t.event_id=? AND m.user_id=?", (invitation["event_id"], principal.user_id)).fetchone()
         if existing:
             raise HTTPException(status_code=409, detail="You already belong to a team in this event")
@@ -386,9 +396,11 @@ def update_project(project_id: str, payload: ProjectUpdate, request: Request):
     demo_url = require_web_url(payload.demo_url)
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
-        project = db.execute("SELECT p.*,e.submissions_open,e.submissions_close FROM projects p JOIN events e ON e.id=p.event_id WHERE p.id=?", (project_id,)).fetchone()
+        project = db.execute("SELECT p.*,e.submissions_open,e.submissions_close,e.results_published_at FROM projects p JOIN events e ON e.id=p.event_id WHERE p.id=?", (project_id,)).fetchone()
         if project is None:
             raise HTTPException(status_code=404, detail="Project not found")
+        if project["results_published_at"]:
+            raise HTTPException(status_code=409, detail="Results are published; projects are locked")
         require_before(project["submissions_close"], "Submissions are closed")
         if project["submissions_open"] and datetime.now(timezone.utc) < time_value(project["submissions_open"]):
             raise HTTPException(status_code=409, detail="Submissions are not open yet")

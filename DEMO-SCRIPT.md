@@ -11,7 +11,7 @@ lifecycle. Show real actions and responses from this build.
 | 0:00–0:30 | Run `docker compose up`; open `/` and `/projects` | One command, 41 seeded project records, no hosted login |
 | 0:30–1:10 | Sign in as demo organizer, create a new event with one track and a prize | Event setup uses real dates, tracks, prizes; new event appears in dashboard |
 | 1:10–2:00 | In participant profile, sign in as `priya1@example.org`, join the new event, create a team, create an invite link, save a draft, then submit | Team formation, draft/edit, submission state |
-| 2:00–2:45 | Organizer configures weights and creates a judge invite for `tomas.varga@example.org`; judge accepts it in their profile | Local invitation and role activation |
+| 2:00–2:45 | Organizer closes submissions from Event details, configures weights and creates a judge invite for `tomas.varga@example.org`; judge accepts it in their profile | Server-controlled phase change, local invitation and role activation |
 | 2:45–3:35 | Organizer sets the judge's track and runs batch assignment; judge opens queue and submits a scorecard | Track-aware assignment, weighted review, progress |
 | 3:35–4:05 | Direct HTTP request as Judge B to Judge A's score URL returns 403; participant request also returns 403 | Backend isolation, not a hidden button |
 | 4:05–4:35 | Organizer previews the new event's result and publishes; open the public results page | Results hidden until deliberate publication |

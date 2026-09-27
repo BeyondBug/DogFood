@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .auth import current_principal, require_event_role
+from .core import time_value
 from .db import connect
 from .scoring import event_ranking
 from .public import _eligible, _vote_summary, _window_open, ballot as load_ballot
@@ -137,10 +138,15 @@ def participant_workspace(event_id: str, request: Request):
         members = db.execute("SELECT u.name,m.role FROM team_members m JOIN users u ON u.id=m.user_id WHERE m.team_id=? ORDER BY m.joined_at",
                              (team["id"],)).fetchall() if team else []
         project = db.execute("SELECT * FROM projects WHERE team_id=? ORDER BY updated_at DESC LIMIT 1", (team["id"],)).fetchone() if team else None
+    now = datetime.now(timezone.utc)
+    closed = bool(event["results_published_at"] or now >= time_value(event["submissions_close"]))
+    not_open = bool(event["submissions_open"] and now < time_value(event["submissions_open"]))
     return templates.TemplateResponse(request, "participant.html", {
         "principal": principal, "event": dict(event), "tracks": [dict(row) for row in tracks],
         "team": dict(team) if team else None, "members": [dict(row) for row in members],
-        "project": dict(project) if project else None,
+        "project": dict(project) if project else None, "can_edit": not closed and not not_open,
+        "team_editable": not closed,
+        "closed": closed, "not_open": not_open,
     })
 
 
