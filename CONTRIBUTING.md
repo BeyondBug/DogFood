@@ -25,14 +25,13 @@ Before the official kickoff, only planning and documentation may be added.
 Feature code begins 2026-09-26 18:00 UTC and freezes 2026-09-29 18:00 UTC,
 per the organizer's September 26 postponement.
 
-## Kickoff branch setup
+## Current branches
 
-The local repository has `main` as its initial branch. Because the team asked
-to wait before committing, the planning documents are currently uncommitted.
-After kickoff, commit the reviewed documents on `main`, create `Develop` from
-that commit, then create and switch to `Features` from `Develop`. All feature
-code begins there. Do not create a separate implementation history before the
-official start.
+The public `BeyondBug/DogFood` repository has `main`, `Develop`, and
+`Features`. The first project-code commit was made after the revised kickoff.
+`main` and `Develop` contain only promoted, tested commits. Work resumes from
+`Features`; contributors should coordinate before adding changes because this
+branch is shared.
 
 For each completed part, merge `Features` into `Develop`, run its integration
 checks there, then merge `Develop` into `main` if the checks pass. Keep a

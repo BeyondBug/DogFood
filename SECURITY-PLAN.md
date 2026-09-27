@@ -1,8 +1,8 @@
 # Security and abuse plan — pre-kickoff draft
 
-This is a threat analysis for design work. It does not claim that a mitigation
-has been implemented. The release threat model should mark each control as
-tested, partial, or absent and name residual risk honestly.
+This historical design draft does not claim that a mitigation has been
+implemented. See [THREAT-MODEL.md](THREAT-MODEL.md) for the shipped controls,
+tests, and remaining risks.
 
 ## Assets and trust boundaries
 
@@ -36,4 +36,3 @@ the event, organizer of a different event, and admin. Pay special attention to
 GET endpoints: hiding a button does not protect JSON or CSV. Keep private
 scores and results out of public HTML, API responses, error messages, and
 embedded widgets until publication.
-
