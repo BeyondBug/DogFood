@@ -62,3 +62,7 @@ The later public event directory and gallery pagination pass the expanded
 15-test suite and the same seven official checks. A separate 49-project test
 event verifies that the gallery exposes the project on page two. Desktop and
 mobile gallery screenshots were reviewed.
+
+The committed `openapi.json` was regenerated after those routes changed. A
+test now compares the artifact with FastAPI's current schema so future route
+changes cannot leave the published API description stale.
