@@ -85,6 +85,9 @@ are organizer-only until publication; public vote results then become visible.
 - Batch assignment considers accepted judges with matching tracks and excludes
   team members and declared conflicts. It reports uncovered projects instead
   of silently assigning ineligible judges.
+- A judge can report a conflict on their own unsubmitted assignment. The
+  transaction records the conflict, removes that assignment and any draft,
+  and audits the report. The next batch excludes that judge/project pair.
 - Public pages query rankings only after publication. Publishing results
   requires at least one completed review per nonduplicate project and records
   an audit entry.

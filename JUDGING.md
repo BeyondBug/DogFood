@@ -126,6 +126,11 @@ until publication, which locks score editing. When community voting is
 configured, publication also waits until its window closes. CSV exports require organizer
 access and escape spreadsheet formulas in text fields.
 
+Judges can recuse themselves before submitting by reporting a conflict from
+their queue. The server verifies ownership, removes the assignment and any
+draft scorecard, records the reason, and excludes the pair from later batches.
+The organizer sees the resulting shortage and audit entry.
+
 An additive model only corrects a consistent leniency or strictness effect.
 It cannot fix collusion, a poor rubric, biased assignment, unequal project
 mix, or a disconnected judging pool. Low review counts leave uncertainty

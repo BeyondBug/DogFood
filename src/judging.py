@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from .auth import require_event_role, require_login
+from .auth import has_event_role, require_event_role, require_login
 from .core import audit, csv_safe, identifier, time_value
 from .db import connect, utc_now
 from .scoring import event_ranking
@@ -155,12 +155,16 @@ def declare_conflict(event_id: str, judge_id: str, project_id: str, payload: Con
     principal = require_login(request)
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
-        require_event_role(db, principal, event_id, "organizer")
-        pair = db.execute("SELECT 1 FROM judge_profiles j JOIN projects p ON p.event_id=j.event_id WHERE j.id=? AND p.id=? AND j.event_id=?", (judge_id, project_id, event_id)).fetchone()
+        pair = db.execute("SELECT j.user_id FROM judge_profiles j JOIN projects p ON p.event_id=j.event_id WHERE j.id=? AND p.id=? AND j.event_id=?", (judge_id, project_id, event_id)).fetchone()
         if pair is None:
             raise HTTPException(status_code=404, detail="Judge or project not found")
+        organizer = has_event_role(db, principal, event_id, "organizer")
+        if not organizer and pair["user_id"] != principal.user_id:
+            raise HTTPException(status_code=403, detail="Only the assigned judge or organizer can report this conflict")
         assignment = db.execute("SELECT a.id,s.status FROM judge_assignments a LEFT JOIN scorecards s ON s.assignment_id=a.id"
                                 " WHERE a.judge_id=? AND a.project_id=?", (judge_id, project_id)).fetchone()
+        if not organizer and assignment is None:
+            raise HTTPException(status_code=403, detail="Judges can report conflicts only on their assignments")
         if assignment and assignment["status"] == "submitted":
             raise HTTPException(status_code=409, detail="A submitted review must be resolved before declaring a conflict")
         if assignment:
@@ -168,7 +172,7 @@ def declare_conflict(event_id: str, judge_id: str, project_id: str, payload: Con
         db.execute("INSERT OR REPLACE INTO judge_conflicts(judge_id,project_id,reason,created_at) VALUES(?,?,?,?)",
                    (judge_id, project_id, payload.reason, utc_now()))
         audit(db, event_id, principal.user_id, "judge.conflict_declared", "project", project_id,
-              {"judge_id": judge_id, "revoked_assignment": bool(assignment)})
+              {"judge_id": judge_id, "revoked_assignment": bool(assignment), "reported_by": "organizer" if organizer else "judge"})
         db.commit()
     return {"judge_id": judge_id, "project_id": project_id}
 

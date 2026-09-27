@@ -172,7 +172,7 @@ def judge_workspace(event_id: str, request: Request):
             items.append(item)
     return templates.TemplateResponse(request, "judge.html", {
         "principal": principal, "event": dict(event), "rubric": dict(rubric) if rubric else None,
-        "criteria": [dict(row) for row in criteria], "assignments": items,
+        "criteria": [dict(row) for row in criteria], "assignments": items, "judge_id": judge["id"],
         "submitted_count": sum(item["status"] == "submitted" for item in items),
     })
 

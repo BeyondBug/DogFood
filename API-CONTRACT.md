@@ -12,7 +12,7 @@ official acceptance routes are declared in `.dogfood.toml`.
 | Teams | `POST /api/events/{id}/teams`, `/api/teams/{id}/invites`, `/api/team-invites/{token}/join`; `GET /api/events/{id}/my-team` | Participant/member/captain checks |
 | Projects | `POST /api/events/{id}/projects`, `PUT /api/projects/{id}` | Team member and submission window |
 | Judge invitation | `POST /api/events/{id}/judges/invites`, `/api/judge-invites/{token}/accept`; `PUT /api/events/{id}/judges/{id}/tracks` | Organizer, then named judge |
-| Rubric and assignment | `GET/PUT /api/events/{id}/rubric`; `POST /api/events/{id}/assignments/batch`; `PUT /api/events/{id}/judges/{id}/conflicts/{project}` | Public rubric read; organizer writes |
+| Rubric and assignment | `GET/PUT /api/events/{id}/rubric`; `POST /api/events/{id}/assignments/batch`; `PUT /api/events/{id}/judges/{id}/conflicts/{project}` | Public rubric read; organizer setup; judge can report only their own assigned conflict |
 | Judge work | `GET /api/judge/assignments?event_id={id}`, `/api/judge/scores`; `PUT /api/judge/assignments/{id}/scorecard` | Own assignment and scorecards only |
 | Organizer review | `GET /api/events/{id}/progress`, `/rankings`, `/audit`; `POST /api/events/{id}/results/publish` | Event organizer |
 | Results | `GET /api/events/{id}/results`, `/results/{id}` | Public only after publication |

@@ -65,6 +65,10 @@ form .button{align-self:flex-start}
 .review-context p{color:var(--muted);margin:0 0 12px}
 .review-context>a{font-size:.9rem;color:var(--blue);font-weight:700;margin-bottom:28px}
 .review-context .status-pill{margin-top:auto}
+.conflict-disclosure{width:100%;margin-top:20px}
+.conflict-disclosure p{font-size:.86rem;line-height:1.45;margin:12px 0;color:var(--muted)}
+.conflict-disclosure form{display:flex;flex-direction:column;gap:12px}
+.conflict-disclosure form .button{align-self:flex-start}
 .score-form{display:flex;flex-direction:column;gap:18px}
 .criterion-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .criterion-grid label{background:#f4f7f5;padding:11px}

@@ -54,7 +54,9 @@ database too.
 3. In the organizer desk, set rubric weights, create judge invites, choose
    their tracks, and batch assign projects. The desk shows missing coverage.
 4. As an invited judge, open the judge desk, score only assigned projects,
-   and submit a review. Another judge cannot read that scorecard.
+   and submit a review. A judge can report a conflict from their queue before
+   submitting; the assignment is removed and the organizer can reassign it.
+   Another judge cannot read that scorecard.
 5. The organizer reviews raw and calibrated rankings and publishes results.
    Public result routes return 404 until that action. Submitted scores lock
    after publication.

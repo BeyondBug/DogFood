@@ -125,6 +125,10 @@ document.addEventListener('submit', async event => {
         });
         refresh(); return;
       }
+      case 'judge-conflict':
+        if (!window.confirm('Report this conflict and remove your assignment?')) return;
+        await api('PUT', `/api/events/${form.dataset.event}/judges/${form.dataset.judge}/conflicts/${form.dataset.project}`, data);
+        refresh(); return;
       case 'publish':
         await api('POST', `/api/events/${form.dataset.event}/results/publish`, {});
         refresh(); return;
