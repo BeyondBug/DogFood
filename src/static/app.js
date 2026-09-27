@@ -72,6 +72,12 @@ document.addEventListener('submit', async event => {
         result = await api('POST', '/api/events', data);
         window.location.assign(`/organizer/${result.id}`);
         return;
+      case 'event-settings':
+        for (const name of ['registration_open', 'registration_close', 'submissions_open', 'submissions_close', 'judging_open', 'judging_close']) {
+          data[name] = data[name] ? `${data[name]}:00Z` : null;
+        }
+        await api('PATCH', `/api/events/${form.dataset.event}`, data);
+        refresh(); return;
       case 'join-event':
         await api('POST', `/api/events/${form.dataset.event}/registration`, {});
         window.location.assign(`/workspace/${form.dataset.event}`);

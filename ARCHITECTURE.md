@@ -77,6 +77,10 @@ are organizer-only until publication; public vote results then become visible.
   transaction. The fixture event is deliberately closed. Drafts and
   submissions share one project record and can be edited only by team members
   before the deadline.
+- An organizer can edit event dates before publication. The submission close
+  must remain before configured voting opens, and dates lock once a ballot is
+  cast. This prevents a later schedule edit from reopening submissions during
+  a community vote.
 - A team invite is a hashed, expiring, single-use token. Membership is checked
   under a write lock, and the service enforces the four-member limit.
 - Each scorecard belongs to one assignment and rubric version. A judge cannot

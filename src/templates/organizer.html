@@ -18,6 +18,26 @@
     <div><strong>{{ ranking.overlap_components|length }}</strong><span>Overlap groups</span></div>
   </div>
 
+  {% if not event.results_published_at %}
+  <details class="event-settings">
+    <summary><strong>Event details</strong><span>Submissions close {{ event.submissions_close[:16].replace('T', ' ') }} UTC</span></summary>
+    <form data-action="event-settings" data-event="{{ event.id }}">
+      <label>Event name<input name="name" value="{{ event.name }}" minlength="3" required></label>
+      <label>Description<textarea name="description" rows="3">{{ event.description }}</textarea></label>
+      <div class="form-two">
+        <label>Registration opens, UTC<input type="datetime-local" name="registration_open" value="{{ event.registration_open[:16] if event.registration_open else '' }}"></label>
+        <label>Registration closes, UTC<input type="datetime-local" name="registration_close" value="{{ event.registration_close[:16] if event.registration_close else '' }}"></label>
+        <label>Submissions open, UTC<input type="datetime-local" name="submissions_open" value="{{ event.submissions_open[:16] if event.submissions_open else '' }}"></label>
+        <label>Submissions close, UTC<input type="datetime-local" name="submissions_close" value="{{ event.submissions_close[:16] }}" required></label>
+        <label>Judging opens, UTC<input type="datetime-local" name="judging_open" value="{{ event.judging_open[:16] if event.judging_open else '' }}"></label>
+        <label>Judging closes, UTC<input type="datetime-local" name="judging_close" value="{{ event.judging_close[:16] if event.judging_close else '' }}"></label>
+      </div>
+      <p class="muted">Dates use UTC. Once votes are cast, the schedule is locked.</p>
+      <button class="button button-secondary" type="submit">Save event details</button>
+    </form>
+  </details>
+  {% endif %}
+
   <div class="organizer-grid">
     <section class="panel">
       <h2>Judges</h2>

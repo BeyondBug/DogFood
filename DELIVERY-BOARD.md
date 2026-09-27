@@ -1,9 +1,9 @@
-# BeyondBug delivery board — planning only
+# BeyondBug delivery board
 
-No implementation work starts before 2026-09-26 18:00 UTC / 23:30 IST. This
-board converts the [official challenge](https://dogfoodhack.com/) and
-[acceptance contract](https://dogfoodhack.com/spec/) into work packages. It is
-not evidence that any feature exists.
+Coding began after the revised 2026-09-26 18:00 UTC kickoff. This board tracks
+the [challenge](https://dogfoodhack.com/) and the published checker alongside
+the implementation. [README.md](README.md), tests, and the committed
+[acceptance report](acceptance-report.txt) are the release evidence.
 
 ## Shared definition of done
 
@@ -14,15 +14,15 @@ can understand the result. Merge to `Develop` for integration; promote to
 
 ## Time gates (UTC; add 5h 30m for IST)
 
-| Gate | Deadline | Deliverable | Stop condition |
+| Gate | Deadline | Deliverable | Current state |
 | --- | --- | --- | --- |
-| G0 | Sep 26 18:00 | Recheck spec, checker, and Discord; first code commit may begin | No code before this time |
-| G1 | Sep 27 00:00 | Compose boots; migrations and fixture seed run; seed auth headers are printed; checker has been run once | Fix startup and checker wiring before adding breadth |
-| G2 | Sep 27 12:00 | T1 complete: auth, roles, event config, teams, drafts, deadline, gallery | All T1 probes and direct workflow tests pass |
-| G3 | Sep 28 12:00 | T2 complete: invitations, assignment, rubric, scorecards, permissions, progress, CSV | All T2 probes and isolation tests pass |
-| G4 | Sep 29 04:00 | Normalization, audit trail, ranking proof, operator polish | Raw/adjusted result can be explained |
-| G5 | Sep 29 12:00 | Final docs, demo recording, fresh-volume and offline checks | No unresolved release-blocking defect |
-| Freeze | Sep 29 18:00 | Public repo, acceptance report, honest tier claim, final submission | No code after freeze |
+| G0 | Sep 26 18:00 | Recheck spec, checker, and Discord; first code commit may begin | Done; code started after kickoff |
+| G1 | Sep 27 00:00 | Compose boots; migrations and fixture seed run; seed auth headers are printed; checker has been run once | Done |
+| G2 | Sep 27 12:00 | T1 complete: auth, roles, event config, teams, drafts, deadline, gallery | Done; tests and checker pass |
+| G3 | Sep 28 12:00 | T2 complete: invitations, assignment, rubric, scorecards, permissions, progress, CSV | Done ahead of gate; tests and checker pass |
+| G4 | Sep 29 04:00 | Normalization, audit trail, ranking proof, operator polish | Normalization proof and audit documented; polish in progress |
+| G5 | Sep 29 12:00 | Final docs, demo recording, fresh-volume and offline checks | Fresh-volume/offline checks done; video and release review pending |
+| Freeze | Sep 29 18:00 | Public repo, acceptance report, honest tier claim, final submission | Public remote, video, submission pending |
 
 Dates are gates, not an invitation to leave tests until the end. The release
 buffer begins at G5, six hours before freeze.
@@ -51,8 +51,8 @@ them a bounded package with an explicit API/schema contract.
 | Audit trail | P1 | Active pair | Service actions | Organizer sees who changed assignment/score/publication |
 | Threat model and OpenAPI coverage | P1 | Active pair | Final routes | Docs match the shipped behavior; see [SECURITY-PLAN.md](SECURITY-PLAN.md) |
 | Professional event and role UI | P1 | Active pair | T1/T2 paths | Responsive, accessible flows; see [UI-DESIGN.md](UI-DESIGN.md) |
-| T3 voting/comments | P2 | Unassigned | Stable T2 | Only if complete enough to defend and test |
-| Pairwise mode, T4 certificates/webhooks | P3 | Unassigned | Stable T2/T3 | No tier claim for partial implementation |
+| T3 voting/comments | P2 | Active pair | Stable T2 | Implemented and integration tested; not claimed because checker has no T3 assertions |
+| Pairwise mode, T4 certificates/webhooks | P3 | Unassigned | Stable T2/T3 | Not implemented or claimed |
 
 ## Integration order
 

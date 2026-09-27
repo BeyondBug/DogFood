@@ -80,6 +80,11 @@ form .button{align-self:flex-start}
 .metric-strip span{font-size:.83rem;color:var(--muted);margin-top:6px}
 .organizer-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
 .organizer-grid .panel{min-height:100%}
+.event-settings{border:1px solid var(--rule);background:white;padding:0 24px;margin:0 0 20px}
+.event-settings summary{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:17px 0;color:var(--ink)}
+.event-settings summary span{font-size:.85rem;font-weight:400;color:var(--muted)}
+.event-settings form{display:flex;flex-direction:column;gap:17px;padding:8px 0 24px;max-width:850px}
+.event-settings form .button{align-self:flex-start}
 .judge-list{max-height:470px;overflow:auto;border-bottom:1px solid var(--rule)}
 .judge-entry{padding:0}
 .judge-entry summary{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:13px 2px;color:var(--ink);list-style:none}
@@ -177,3 +182,4 @@ td a{font-weight:700;color:var(--blue)}
 @media(max-width:1050px){.account-layout{grid-template-columns:1fr;gap:35px}.account-intro{padding-top:0}.account-rule{margin-top:28px}.workspace-grid{grid-template-columns:280px 1fr}.criterion-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:780px){.dashboard-grid,.workspace-grid,.organizer-grid,.detail-body,.ballot-choices{grid-template-columns:1fr}.review-item{grid-template-columns:1fr;gap:25px}.metric-strip{grid-template-columns:repeat(2,1fr)}.metric-strip>div:nth-child(2){border-right:0}.metric-strip>div:nth-child(-n+2){border-bottom:1px solid var(--rule)}.prize-list{grid-template-columns:repeat(2,1fr)}.audit-list>div{grid-template-columns:1fr 1fr}.audit-list time{grid-column:1/-1}}
 @media(max-width:620px){.workspace-main{padding-block:50px 80px}.page-heading{align-items:start;flex-direction:column}.page-heading h1,.account-intro h1{font-size:3.5rem}.auth-panels,.form-two,.criterion-grid,.prize-list{grid-template-columns:1fr}.account-layout{padding-block:56px 80px}.panel{padding:22px}.rubric-bar,.table-heading,.publish-row,.callout{align-items:flex-start;flex-direction:column}.review-item{padding:20px}.review-context h2{font-size:1.6rem}.metric-strip strong{font-size:2.2rem}.result-list>a{grid-template-columns:42px 1fr;gap:12px}.result-score{grid-column:2;font-size:1.25rem}.detail-heading{padding-top:54px}.detail-heading h1{font-size:3.5rem}.detail-meta{flex-direction:column;gap:5px}.invite-main .panel{padding:28px}}
+@media(max-width:620px){.event-settings summary{align-items:flex-start;flex-direction:column;gap:3px}}

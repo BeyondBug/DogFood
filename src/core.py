@@ -245,7 +245,14 @@ def update_event(event_id: str, payload: EventPatch, request: Request):
         require_event_role(db, principal, event_id, "organizer")
         if event["results_published_at"]:
             raise HTTPException(status_code=409, detail="Published events are locked")
+        if date_fields & updates.keys() and db.execute(
+            "SELECT 1 FROM ballots WHERE event_id=? LIMIT 1", (event_id,)
+        ).fetchone():
+            raise HTTPException(status_code=409, detail="Event dates cannot change after voting begins")
         merged = dict(event) | updates
+        if (merged["voting_mode"] != "disabled" and merged["voting_open"]
+                and time_value(merged["submissions_close"]) >= time_value(merged["voting_open"])):
+            raise HTTPException(status_code=422, detail="Submissions must close before voting opens")
         for opening, closing_name in (("registration_open", "registration_close"),
                                       ("submissions_open", "submissions_close"),
                                       ("judging_open", "judging_close")):

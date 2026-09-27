@@ -48,7 +48,8 @@ database too.
 ## Walk through one event
 
 1. Sign in as the organizer, open `/dashboard`, and create an event with a
-   future submission deadline, tracks, and optional prizes.
+   future submission deadline, tracks, and optional prizes. The organizer desk
+   has an Event details panel for later schedule and description edits.
 2. Sign in as a participant, open the new event page, join, create a team,
    and copy a single-use invite link. Save a project draft, then submit it.
 3. In the organizer desk, set rubric weights, create judge invites, choose

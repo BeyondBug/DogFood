@@ -128,6 +128,13 @@ class VotingTests(unittest.TestCase):
         status, public_event, _ = call("GET", f"/api/events/{event_id}")
         self.assertEqual(status, 200)
         self.assertNotIn("ballot_seed", public_event["event"])
+        status, organizer_page, _ = call("GET", f"/organizer/{event_id}", cookie=organizer)
+        self.assertEqual(status, 200)
+        self.assertIn("Save event details", organizer_page)
+        status, _, _ = call("PATCH", f"/api/events/{event_id}", {
+            "submissions_close": (now + timedelta(minutes=1)).isoformat(),
+        }, organizer)
+        self.assertEqual(status, 422)
 
         voter_email, voter = account("Invited voter", "vvoter")
         status, invite, _ = call("POST", f"/api/events/{event_id}/voter-invites", {
@@ -149,6 +156,10 @@ class VotingTests(unittest.TestCase):
         self.assertEqual(status, 200, page)
         status, vote, _ = call("POST", f"/api/events/{event_id}/votes", {"project_id": first_project}, voter)
         self.assertEqual(status, 201, vote)
+        status, _, _ = call("PATCH", f"/api/events/{event_id}", {
+            "submissions_close": (now - timedelta(minutes=4)).isoformat(),
+        }, organizer)
+        self.assertEqual(status, 409)
         status, _, _ = call("POST", f"/api/events/{event_id}/votes", {"project_id": second_project}, voter)
         self.assertEqual(status, 409)
         status, _, _ = call("GET", f"/api/events/{event_id}/votes/results")
