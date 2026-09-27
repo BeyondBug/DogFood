@@ -6,6 +6,12 @@ assignment, weighted scoring, normalized rankings, community voting, comments,
 and result publication.
 The portal runs on one laptop with FastAPI, SQLite, and locally bundled assets.
 
+Watch the [five-minute silent lifecycle demo](media/beyondbug-demo-silent.mp4),
+captured from a running local event. Its captions show event creation, team
+formation, draft and final submission, judge assignment and scoring, and
+result publication. [DEMO-SCRIPT.md](DEMO-SCRIPT.md) lists the live actions for
+a narrated recording.
+
 ## Run it
 
 ```sh

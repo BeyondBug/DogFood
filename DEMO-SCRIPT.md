@@ -25,5 +25,7 @@ review is sufficient for the one-project demo; the default batch target is
 three, so set the UI's “Reviews per project” field to 1. This does not affect
 the fixture proof.
 
-The required video is a separate submission artifact. This file is a guide,
-not a claim that a video has been recorded.
+A five-minute silent, captioned walkthrough is committed at
+`media/beyondbug-demo-silent.mp4`. It uses real portal screens from a local
+event. This file is the action guide for a live narrated recording if the team
+chooses to submit one.

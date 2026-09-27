@@ -21,8 +21,8 @@ can understand the result. Merge to `Develop` for integration; promote to
 | G2 | Sep 27 12:00 | T1 complete: auth, roles, event config, teams, drafts, deadline, gallery | Done; tests and checker pass |
 | G3 | Sep 28 12:00 | T2 complete: invitations, assignment, rubric, scorecards, permissions, progress, CSV | Done ahead of gate; tests and checker pass |
 | G4 | Sep 29 04:00 | Normalization, audit trail, ranking proof, operator polish | Normalization proof and audit documented; polish in progress |
-| G5 | Sep 29 12:00 | Final docs, demo recording, fresh-volume and offline checks | Fresh-volume, restart, and network-disabled checks pass; final video and submission instructions pending |
-| Freeze | Sep 29 18:00 | Public repo, acceptance report, honest tier claim, final submission | Public repo and report done; video and submission pending |
+| G5 | Sep 29 12:00 | Final docs, demo recording, fresh-volume and offline checks | Fresh-volume, restart, and network-disabled checks pass; silent five-minute demo committed |
+| Freeze | Sep 29 18:00 | Public repo, acceptance report, honest tier claim, final submission | Public repo, report, and silent demo ready; submission procedure pending organizer instructions |
 
 Dates are gates, not an invitation to leave tests until the end. The release
 buffer begins at G5, six hours before freeze.
