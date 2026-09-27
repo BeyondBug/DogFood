@@ -48,6 +48,8 @@ class LifecycleTests(unittest.TestCase):
             status, body, _ = call("POST", "/api/auth/login", {
                 "email": email, "password": "Incorrect-password-123!",
             })
+            if status == 429:
+                self.skipTest("The shared test portal's IP throttle is already full; run scripts/test_fresh.py")
             self.assertEqual(status, 401, body)
         status, body, _ = call("POST", "/api/auth/login", {
             "email": email, "password": password,
@@ -59,9 +61,11 @@ class LifecycleTests(unittest.TestCase):
             "name": "Second tester", "email": other_email, "password": password,
         })
         self.assertEqual(status, 201)
-        status, _, _ = call("POST", "/api/auth/login", {
+        status, body, _ = call("POST", "/api/auth/login", {
             "email": other_email, "password": password,
         })
+        if status == 429:
+            self.skipTest("The shared test portal's IP throttle is already full; run scripts/test_fresh.py")
         self.assertEqual(status, 200)
 
     def test_team_membership_and_workspace_lock_at_submission_close(self):

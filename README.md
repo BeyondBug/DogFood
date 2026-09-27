@@ -106,6 +106,12 @@ python3 -m unittest discover -s tests -v
 python3 run.py .dogfood.toml > acceptance-report.txt
 ```
 
+For a repeatable full test run, `python3 scripts/test_fresh.py` starts a
+separate temporary Compose project and removes only that project's volume
+after the tests. Login throttling persists by design, so repeated test runs
+against the same portal can fill its client-IP bucket; the fresh runner avoids
+that shared state.
+
 `run.py` is the organizer's standard-library checker. The committed
 `acceptance-report.txt` is its unedited output. Our tier claim is **T1 and
 T2**. The checker verifies seven HTTP behaviors; the additional tests cover

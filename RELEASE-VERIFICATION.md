@@ -6,6 +6,7 @@
 | --- | --- |
 | Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
 | Independent unit and HTTP integration suite | **19/19 PASS** |
+| Disposable fresh-volume test runner | **19/19 PASS:** new Compose project and volume; removed after run |
 | Fresh Compose volume on port 18080 | **PASS:** schema 5, 1 fixture event, 41 projects, 30 judges |
 | Fresh portal checked by official `run.py` | **7/7 PASS** |
 | Restart persistence | **PASS:** same event, project, judge, and local secret counts |
