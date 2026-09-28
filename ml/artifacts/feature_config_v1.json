@@ -1,0 +1,22 @@
+{
+  "model_version": "judge-anomaly-iforest-v1",
+  "features": [
+    "overall_score",
+    "judge_mean_before",
+    "judge_std_before",
+    "project_peer_median",
+    "project_peer_std",
+    "peer_delta",
+    "peer_abs_delta",
+    "project_z_score",
+    "category_spread",
+    "rubric_completion_ratio",
+    "review_duration_sec",
+    "comment_word_count",
+    "edit_count"
+  ],
+  "risk_thresholds": {
+    "high": -0.005577528439528973,
+    "medium": 0.03792317901212033
+  }
+}
