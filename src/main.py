@@ -17,7 +17,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from .auth import current_principal, require_event_role, require_login
-from .core import csv_safe, require_web_url, router as core_router
+from .core import csv_safe, reconcile_submitted_duplicates, require_web_url, router as core_router
 from .judging import router as judging_router
 from .public import router as public_router
 from .certificates import router as certificate_router
@@ -173,15 +173,14 @@ def create_project(event_id: str, payload: ProjectInput, request: Request):
             raise HTTPException(status_code=409, detail="This team already has a project")
         project_id = "prj_" + uuid.uuid4().hex[:16]
         now = utc_now()
-        duplicate = db.execute("SELECT id FROM projects WHERE event_id=? AND repo_url=? AND repo_url<>'' AND duplicate_of IS NULL ORDER BY submitted_at,id LIMIT 1",
-                               (event_id, repo_url)).fetchone() if repo_url else None
         db.execute(
             "INSERT INTO projects(id,event_id,team_id,track_id,title,summary,description,repo_url,demo_url,status,submitted_at,updated_at,duplicate_of)"
             " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (project_id, event_id, payload.team_id, payload.track_id, payload.title, payload.summary,
              payload.description, repo_url, demo_url, payload.status,
-             now if payload.status == "submitted" else None, now, duplicate["id"] if duplicate else None),
+             now if payload.status == "submitted" else None, now, None),
         )
+        reconcile_submitted_duplicates(db, event_id)
         db.execute(
             "INSERT INTO audit_entries(event_id,actor_user_id,action,entity_type,entity_id,created_at)"
             " VALUES(?,?,?,?,?,?)",

@@ -1,4 +1,4 @@
-"""Run against `docker compose up`: python3 -m unittest discover -s tests."""
+"""HTTP integration tests run only against scripts/test_fresh.py's disposable portal."""
 
 import json
 import os
@@ -8,12 +8,18 @@ import urllib.request
 import uuid
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 
-BASE = os.getenv("DOGFOOD_TEST_URL", "http://localhost:8080")
+BASE = os.getenv("DOGFOOD_TEST_URL", "").rstrip("/")
 
 
 def call(method, path, body=None, cookie=None):
+    if not BASE or BASE.rstrip("/").lower() in {"http://localhost:8080", "http://127.0.0.1:8080"}:
+        raise RuntimeError(
+            "HTTP integration tests require a disposable portal. "
+            "Run python3 scripts/test_fresh.py instead of testing localhost:8080."
+        )
     data = json.dumps(body).encode() if body is not None else None
     request = urllib.request.Request(BASE + path, data=data, method=method)
     if data is not None:
@@ -36,6 +42,12 @@ def call(method, path, body=None, cookie=None):
 
 
 class LifecycleTests(unittest.TestCase):
+    def test_http_helper_refuses_the_default_portal(self):
+        for address in ("", "http://localhost:8080", "http://127.0.0.1:8080/"):
+            with self.subTest(address=address), patch(__name__ + ".BASE", address):
+                with self.assertRaisesRegex(RuntimeError, "disposable portal"):
+                    call("GET", "/health")
+
     def test_login_throttle_uses_account_and_preserves_other_logins(self):
         suffix = uuid.uuid4().hex[:10]
         email = f"login-{suffix}@example.org"
@@ -411,6 +423,71 @@ class LifecycleTests(unittest.TestCase):
         status, team_view, _ = call("GET", f"/api/events/{event_id}/my-team", cookie=cookie2)
         self.assertEqual(status, 200)
         self.assertEqual(len(team_view["members"]), 2)
+
+    def test_duplicate_flag_ignores_drafts_and_follows_current_repo(self):
+        suffix = uuid.uuid4().hex[:10]
+
+        def account(label):
+            status, body, cookie = call("POST", "/api/auth/register", {
+                "name": label, "email": f"duplicate-{label.lower()}-{suffix}@example.org",
+                "password": "A-long-local-test-password!",
+            })
+            self.assertEqual(status, 201, body)
+            return cookie.split(";", 1)[0]
+
+        first = account("First")
+        second = account("Second")
+        status, event, _ = call("POST", "/api/events", {
+            "name": f"Duplicate review {suffix}",
+            "submissions_close": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(),
+            "tracks": ["Software"],
+        }, first)
+        self.assertEqual(status, 201, event)
+        event_id = event["id"]
+        track_id = call("GET", f"/api/events/{event_id}")[1]["tracks"][0]["id"]
+
+        def team(cookie, name):
+            self.assertEqual(call("POST", f"/api/events/{event_id}/registration", {}, cookie)[0], 201)
+            status, result, _ = call("POST", f"/api/events/{event_id}/teams", {"name": name}, cookie)
+            self.assertEqual(status, 201, result)
+            return result["id"]
+
+        first_team = team(first, "First team")
+        second_team = team(second, "Second team")
+        shared_repo = "https://example.org/shared-repository"
+        status, draft, _ = call("POST", f"/api/events/{event_id}/projects", {
+            "team_id": first_team, "track_id": track_id, "title": "Draft candidate",
+            "repo_url": shared_repo, "status": "draft",
+        }, first)
+        self.assertEqual(status, 201, draft)
+        status, submitted, _ = call("POST", f"/api/events/{event_id}/projects", {
+            "team_id": second_team, "track_id": track_id, "title": "Submitted candidate",
+            "repo_url": shared_repo, "status": "submitted",
+        }, second)
+        self.assertEqual(status, 201, submitted)
+
+        def ranked_projects():
+            status, result, _ = call("GET", f"/api/events/{event_id}/rankings", cookie=first)
+            self.assertEqual(status, 200, result)
+            return {row["id"]: row for row in result["projects"]}
+
+        self.assertIsNone(ranked_projects()[submitted["id"]]["duplicate_of"])
+        status, _, _ = call("PUT", f"/api/projects/{draft['id']}", {
+            "title": "Draft candidate", "track_id": track_id,
+            "repo_url": shared_repo, "status": "submitted",
+        }, first)
+        self.assertEqual(status, 200)
+        rows = ranked_projects()
+        self.assertEqual(rows[draft["id"]]["duplicate_of"], submitted["id"])
+        self.assertIsNone(rows[submitted["id"]]["duplicate_of"])
+        status, _, _ = call("PUT", f"/api/projects/{submitted['id']}", {
+            "title": "Submitted candidate", "track_id": track_id,
+            "repo_url": "https://example.org/independent-repository", "status": "submitted",
+        }, second)
+        self.assertEqual(status, 200)
+        rows = ranked_projects()
+        self.assertIsNone(rows[draft["id"]]["duplicate_of"])
+        self.assertIsNone(rows[submitted["id"]]["duplicate_of"])
 
     def test_fixture_deadline_and_roles(self):
         participant = "session=bb_demo_participant_2026_local_only"

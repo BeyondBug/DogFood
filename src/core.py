@@ -36,6 +36,30 @@ def require_web_url(value: str) -> str:
     return value
 
 
+def reconcile_submitted_duplicates(db, event_id: str) -> None:
+    """Flag matching submitted repositories against the earliest live submission.
+
+    Drafts cannot make another team ineligible, and editing a URL before the
+    deadline releases any now-stale duplicate reference. Call inside the
+    transaction that creates or edits a project.
+    """
+    submitted = db.execute(
+        "SELECT id,repo_url FROM projects WHERE event_id=? AND status='submitted'"
+        " AND repo_url<>'' ORDER BY submitted_at,id", (event_id,),
+    ).fetchall()
+    first_by_repo: dict[str, str] = {}
+    duplicate_by_id: dict[str, str] = {}
+    for row in submitted:
+        first = first_by_repo.setdefault(row["repo_url"], row["id"])
+        if first != row["id"]:
+            duplicate_by_id[row["id"]] = first
+    current = db.execute("SELECT id,duplicate_of FROM projects WHERE event_id=?", (event_id,)).fetchall()
+    for row in current:
+        desired = duplicate_by_id.get(row["id"])
+        if row["duplicate_of"] != desired:
+            db.execute("UPDATE projects SET duplicate_of=? WHERE id=?", (desired, row["id"]))
+
+
 def csv_safe(value):
     """Prevent spreadsheet formula execution when organizers open an export."""
     if isinstance(value, str) and value.lstrip().startswith(("=", "+", "-", "@")):
@@ -451,15 +475,14 @@ def update_project(project_id: str, payload: ProjectUpdate, request: Request):
         if track is None:
             raise HTTPException(status_code=422, detail="Track does not belong to this event")
         now = utc_now()
-        duplicate = db.execute("SELECT id FROM projects WHERE event_id=? AND repo_url=? AND repo_url<>'' AND id<>? AND duplicate_of IS NULL ORDER BY submitted_at,id LIMIT 1",
-                               (project["event_id"], repo_url, project_id)).fetchone() if repo_url else None
         db.execute(
             "UPDATE projects SET title=?,summary=?,description=?,repo_url=?,demo_url=?,track_id=?,status=?,submitted_at=?,updated_at=?,duplicate_of=? WHERE id=?",
             (payload.title.strip(), payload.summary.strip(), payload.description.strip(), repo_url,
              demo_url, payload.track_id, payload.status,
              project["submitted_at"] or now if payload.status == "submitted" else None, now,
-             duplicate["id"] if duplicate else None, project_id),
+             None, project_id),
         )
+        reconcile_submitted_duplicates(db, project["event_id"])
         audit(db, project["event_id"], principal.user_id, "project.updated", "project", project_id, {"status": payload.status})
         db.commit()
     return {"id": project_id, "status": payload.status}

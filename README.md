@@ -102,18 +102,18 @@ requests to validate repository or demo links.
 
 ## Tests and acceptance
 
-With the portal running:
+Run HTTP tests against a disposable portal. With the regular portal running,
+run the official checker separately:
 
 ```sh
-python3 -m unittest discover -s tests -v
+python3 scripts/test_fresh.py
 python3 run.py .dogfood.toml > acceptance-report.txt
 ```
 
-For a repeatable full test run, `python3 scripts/test_fresh.py` starts a
-separate temporary Compose project and removes only that project's volume
-after the tests. Login throttling persists by design, so repeated test runs
-against the same portal can fill its client-IP bucket; the fresh runner avoids
-that shared state.
+`scripts/test_fresh.py` starts a separate temporary Compose project and removes
+only that project's volume after the tests. Direct HTTP test runs without
+`DOGFOOD_TEST_URL` fail before making a request, so they cannot fill the public
+directory with test events. Login throttling also remains isolated.
 
 `run.py` is the organizer's standard-library checker. The committed
 `acceptance-report.txt` is its unedited output. Our tier claim is **T1 and
