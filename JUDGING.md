@@ -21,11 +21,18 @@ judges showed more false alarms. The fixture produced 15 advisory signals,
 which require a human to inspect the original scorecard and context. This
 model does not alter scores, rankings, assignments, eligibility, or awards.
 The deterministic review-attention rule remains visible alongside it.
+Model signals and peer comparisons are organizer-only in both the UI and API.
+Judges see their own assignments, rubric, and review progress; showing peer
+patterns while they score could bias independent reviews.
 
 ## Assignment strategy
 
-An organizer invites judges with a single-use email-bound link, selects their
-eligible tracks, and runs batch assignment with a configurable target (default
+An organizer invites existing accounts with a single-use email-bound link. A
+site administrator can also create a new judge account directly, selecting
+tracks and receiving a randomly generated temporary password shown once. The
+judge signs in with that password and can change it; the change revokes all
+existing sessions. Both paths create an accepted judge profile before batch
+assignment. An organizer selects eligible tracks and runs batch assignment with a configurable target (default
 three reviews per project). Assignment and scoring open only after the
 submission deadline. This freezes both project content and team membership
 before conflict checks and reviews begin. Published results lock further

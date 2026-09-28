@@ -51,6 +51,83 @@ def creator_cookie():
 
 
 class LifecycleTests(unittest.TestCase):
+    def test_participant_dashboard_tracks_event_team_and_submission(self):
+        suffix = uuid.uuid4().hex[:10]
+        status, event, _ = call("POST", "/api/events", {
+            "name": f"Progress {suffix}", "submissions_close":
+            (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(), "tracks": ["Software"],
+        }, creator_cookie())
+        self.assertEqual(status, 201, event)
+        event_id = event["id"]
+        track_id = call("GET", f"/api/events/{event_id}")[1]["tracks"][0]["id"]
+        status, _, cookie = call("POST", "/api/auth/register", {
+            "name": "Progress participant", "email": f"progress-{suffix}@example.org",
+            "password": "A-long-local-test-password!",
+        })
+        self.assertEqual(status, 201)
+        cookie = cookie.split(";", 1)[0]
+        self.assertEqual(call("POST", f"/api/events/{event_id}/registration", {}, cookie)[0], 201)
+        dashboard = call("GET", "/dashboard", cookie=cookie)[1]
+        self.assertIn("Team: not formed", dashboard)
+        self.assertIn("Submissions open", dashboard)
+        self.assertIn("Create team", dashboard)
+        status, team, _ = call("POST", f"/api/events/{event_id}/teams", {"name": "Progress team"}, cookie)
+        self.assertEqual(status, 201)
+        dashboard = call("GET", "/dashboard", cookie=cookie)[1]
+        self.assertIn("Team: Progress team", dashboard)
+        self.assertIn("Team members: 1", dashboard)
+        self.assertIn("Start submission", dashboard)
+        status, project, _ = call("POST", f"/api/events/{event_id}/projects", {
+            "team_id": team["id"], "track_id": track_id, "title": "Progress project", "status": "draft",
+        }, cookie)
+        self.assertEqual(status, 201, project)
+        dashboard = call("GET", "/dashboard", cookie=cookie)[1]
+        self.assertIn("Project: Progress project (draft, Software)", dashboard)
+        self.assertIn("Continue draft", dashboard)
+
+    def test_admin_provisions_judge_and_judge_changes_password(self):
+        suffix = uuid.uuid4().hex[:10]
+        track_id = call("GET", "/api/events/evt_01")[1]["tracks"][0]["id"]
+        status, _, participant = call("POST", "/api/auth/register", {
+            "name": "Cannot provision", "email": f"nonadmin-{suffix}@example.org",
+            "password": "A-long-local-test-password!",
+        })
+        self.assertEqual(status, 201)
+        participant = participant.split(";", 1)[0]
+        payload = {"name": "Provisioned judge", "email": f"judge-{suffix}@example.org", "tracks": [track_id]}
+        self.assertEqual(call("POST", "/api/admin/events/evt_01/judges", payload, participant)[0], 403)
+        self.assertEqual(call("POST", "/api/admin/events/evt_01/judges", {
+            **payload, "tracks": ["trk_wrong_event"],
+        }, creator_cookie())[0], 422)
+        status, created, _ = call("POST", "/api/admin/events/evt_01/judges", payload, creator_cookie())
+        self.assertEqual(status, 201, created)
+        self.assertGreaterEqual(len(created["temporary_password"]), 20)
+        self.assertEqual(call("POST", "/api/admin/events/evt_01/judges", payload, creator_cookie())[0], 409)
+        status, _, judge = call("POST", "/api/auth/login", {
+            "email": payload["email"], "password": created["temporary_password"],
+        })
+        self.assertEqual(status, 200)
+        judge = judge.split(";", 1)[0]
+        dashboard = call("GET", "/dashboard", cookie=judge)[1]
+        self.assertIn("Reviews: 0 of 0 submitted", dashboard)
+        self.assertIn(f'href="/judge/evt_01"', dashboard)
+        self.assertEqual(call("GET", "/judge/evt_01", cookie=judge)[0], 200)
+        self.assertEqual(call("GET", "/api/events/evt_01/ml-review-signals", cookie=judge)[0], 403)
+        self.assertEqual(call("GET", "/api/judge/assignments?event_id=evt_01", cookie=judge)[0], 200)
+        self.assertEqual(call("POST", "/api/auth/password", {
+            "current_password": "wrong-password", "new_password": "ChangedJudgePassword2026!",
+        }, judge)[0], 403)
+        self.assertEqual(call("POST", "/api/auth/password", {
+            "current_password": created["temporary_password"], "new_password": "ChangedJudgePassword2026!",
+        }, judge)[0], 204)
+        self.assertEqual(call("GET", "/api/auth/me", cookie=judge)[0], 401)
+        self.assertEqual(call("POST", "/api/auth/login", {
+            "email": payload["email"], "password": created["temporary_password"],
+        })[0], 401)
+        self.assertEqual(call("POST", "/api/auth/login", {
+            "email": payload["email"], "password": "ChangedJudgePassword2026!",
+        })[0], 200)
+
     def test_header_sign_out_revokes_session(self):
         suffix = uuid.uuid4().hex[:10]
         status, _, cookie = call("POST", "/api/auth/register", {

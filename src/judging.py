@@ -7,6 +7,7 @@ import hashlib
 import io
 import math
 import secrets
+import sqlite3
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 
@@ -14,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from .auth import has_event_role, require_event_role, require_login
+from .auth import hash_password, has_event_role, require_event_role, require_login
 from .core import audit, csv_safe, identifier, time_value
 from .db import connect, utc_now
 from .scoring import event_ranking, judging_insight, scorecard_detail
@@ -33,6 +34,58 @@ def _judge_profile(db, user_id: str, event_id: str):
 
 class JudgeInvite(BaseModel):
     email: str = Field(min_length=3, max_length=254)
+
+
+class AdminJudgeAccount(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    email: str = Field(min_length=3, max_length=254)
+    tracks: list[str] = Field(min_length=1)
+
+
+@router.post("/admin/events/{event_id}/judges", status_code=201)
+def create_judge_account(event_id: str, payload: AdminJudgeAccount, request: Request, response: Response):
+    """Provision a judge locally; return a one-time temporary password."""
+    principal = require_login(request)
+    if not principal.is_admin:
+        raise HTTPException(status_code=403, detail="Administrator access required")
+    email = payload.email.strip().casefold()
+    if "@" not in email or email.startswith("@") or email.endswith("@"):
+        raise HTTPException(status_code=422, detail="Enter a valid email address")
+    name = payload.name.strip()
+    if len(name) < 2:
+        raise HTTPException(status_code=422, detail="Enter a judge name")
+    selected = set(payload.tracks)
+    if len(selected) != len(payload.tracks):
+        raise HTTPException(status_code=422, detail="Choose each track once")
+    password = secrets.token_urlsafe(18)
+    with closing(connect()) as db:
+        try:
+            db.execute("BEGIN IMMEDIATE")
+            if db.execute("SELECT 1 FROM events WHERE id=?", (event_id,)).fetchone() is None:
+                raise HTTPException(status_code=404, detail="Event not found")
+            valid = {row["id"] for row in db.execute("SELECT id FROM tracks WHERE event_id=?", (event_id,))}
+            if not selected.issubset(valid):
+                raise HTTPException(status_code=422, detail="A track does not belong to this event")
+            if db.execute("SELECT 1 FROM users WHERE email=? COLLATE NOCASE", (email,)).fetchone():
+                raise HTTPException(status_code=409, detail="This email has an account; use a judge invitation")
+            user_id = identifier("usr")
+            judge_id = identifier("jdg")
+            db.execute("INSERT INTO users(id,email,name,password_hash,created_at) VALUES(?,?,?,?,?)",
+                       (user_id, email, name, hash_password(password), utc_now()))
+            db.execute("INSERT INTO judge_profiles(id,event_id,user_id,status) VALUES(?,?,?,'accepted')",
+                       (judge_id, event_id, user_id))
+            db.execute("INSERT INTO event_roles(event_id,user_id,role) VALUES(?,?,'judge')",
+                       (event_id, user_id))
+            db.executemany("INSERT INTO judge_tracks(judge_id,track_id) VALUES(?,?)",
+                           [(judge_id, track_id) for track_id in selected])
+            audit(db, event_id, principal.user_id, "judge.account_created", "judge", judge_id,
+                  {"email": email, "tracks": sorted(selected)})
+            db.commit()
+        except sqlite3.IntegrityError as error:
+            raise HTTPException(status_code=409, detail="Judge account could not be created") from error
+    response.headers["Cache-Control"] = "no-store"
+    return {"judge_id": judge_id, "email": email, "temporary_password": password,
+            "login_url": "/account", "tracks": sorted(selected)}
 
 
 @router.post("/events/{event_id}/judges/invites", status_code=201)

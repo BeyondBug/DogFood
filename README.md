@@ -72,16 +72,27 @@ database too.
    new participant accounts cannot create events through the UI or API.
 2. Sign in as a participant, open the new event page, join, create a team,
    and copy a single-use invite link. Save a project draft, then submit it.
+   `/dashboard` lists each event where the account has a role, including team,
+   project state, deadline, review progress, and the next action. Account
+   details and password change are in the same dashboard.
 3. In the organizer desk, set rubric weights, create judge invites, choose
    their tracks, and batch assign projects. Invite status shows pending,
    accepted, and expired links. The desk shows setup readiness,
-   its recommended next action, missing coverage, and pending reviews.
-4. As an invited judge, open the judge desk, score only assigned projects,
+   its recommended next action, missing coverage, and pending reviews. A site
+   administrator can instead open an event's organizer desk and create a new
+   judge account directly, choosing review tracks. The generated temporary
+   password is shown once and must be shared privately; existing accounts use
+   the email-bound invitation flow.
+4. A judge signs in at `/account` with the supplied email and temporary
+   password, changes it from Dashboard → Account details, then opens the judge
+   desk from My events. Score only assigned projects,
    and submit a review. Drafts save after a short pause, while final submission
    remains explicit. The queue links directly to the next unfinished review.
    A judge can report a conflict from their queue before
    submitting; the assignment is removed and the organizer can reassign it.
    Another judge cannot read that scorecard.
+   Model-assisted review signals remain organizer-only: they compare review
+   patterns with peers and could bias a judge if shown during scoring.
 5. The organizer reviews raw and calibrated rankings and publishes results.
    Judging insight highlights reviews that differ from an agreeing peer group;
    opening a signal shows the original scorecard. This is advisory and cannot

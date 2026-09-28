@@ -79,6 +79,8 @@ environment variables.
 | `python -m src.backup DESTINATION` | Consistent SQLite database copy | Local operator |
 | `/api/events/{id}/certificates` | Issued certificate metadata | Organizer |
 | `/api/admin/events/{id}/certificate-designs/{kind}` | Participant or winner design settings | Site administrator |
+| `/api/admin/events/{id}/judges` | Create a local judge account, accepted profile, and review tracks; returns a temporary password once | Site administrator |
+| `/api/auth/password` | Change password and revoke all existing sessions | Signed-in account |
 | `/events/{id}/certificates/preview/{kind}.svg` | Watermarked, non-verifiable SVG sample | Site administrator |
 | `/api/certificates/{id}/verify` | Public database-backed verification JSON | Public |
 | `/certificates/{id}.svg` | Vector certificate for print or download | Public |

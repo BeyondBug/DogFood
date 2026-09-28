@@ -262,6 +262,10 @@ document.addEventListener('submit', async event => {
         await api('POST', '/api/auth/logout');
         window.location.assign('/');
         return;
+      case 'change-password':
+        await api('POST', '/api/auth/password', data);
+        window.location.assign('/account');
+        return;
       case 'certificate-design':
         await api('PUT', `/api/admin/events/${form.dataset.event}/certificate-designs/${form.dataset.kind}`, data);
         notice(`${form.dataset.kind === 'winner' ? 'Winner' : 'Participation'} design saved. Future certificates will use it.`);
@@ -310,6 +314,17 @@ document.addEventListener('submit', async event => {
         result = await api('POST', `/api/events/${form.dataset.event}/judges/invites`, data);
         notice('Share this judge invite with the named email address:', false, window.location.origin + result.invite_url);
         return;
+      case 'admin-judge-account': {
+        data.tracks = [...form.querySelector('[name=tracks]').selectedOptions].map(option => option.value);
+        result = await api('POST', `/api/admin/events/${form.dataset.event}/judges`, data);
+        const credentials = form.parentElement.querySelector('[data-judge-account-result]');
+        credentials.querySelector('[data-judge-email]').textContent = result.email;
+        credentials.querySelector('[data-judge-password]').textContent = result.temporary_password;
+        credentials.hidden = false;
+        form.reset();
+        credentials.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
       case 'judge-tracks':
         await api('PUT', `/api/events/${form.dataset.event}/judges/${form.dataset.judge}/tracks`, {
           tracks: [...form.querySelector('[name=tracks]').selectedOptions].map(option => option.value),

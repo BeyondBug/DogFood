@@ -5,8 +5,8 @@
 | Check | Result |
 | --- | --- |
 | Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
-| Independent unit and HTTP integration suite | **25/25 PASS** |
-| Disposable fresh-volume test runner | **25/25 PASS:** new Compose project and volume; removed after run |
+| Independent unit and HTTP integration suite | **27/27 PASS** |
+| Disposable fresh-volume test runner | **27/27 PASS:** new Compose project and volume; removed after run |
 | Fresh Compose volume on port 18080 | **PASS at the earlier schema 5 release:** 1 fixture event, 41 projects, 30 judges; current disposable suite upgrades to schema 6 |
 | Fresh portal checked by official `run.py` | **7/7 PASS** |
 | Restart persistence | **PASS:** same event, project, judge, and local secret counts |
@@ -20,6 +20,7 @@
 | Five-minute lifecycle recording | **PASS:** fresh seeded portal, live browser actions through publication, direct peer-score HTTP 403, CSV download; 300-second H.264 file in `media/` |
 | Certificate design studio | **PASS:** admin-only participant and winner previews/settings, separate layouts and accents, no issued rows from preview, design snapshots remain unchanged after later edits |
 | Event creation authorization | **PASS:** new participant account sees no creation form and receives HTTP 403 from the API; administrators and existing organizers may create events |
+| Participant and judge onboarding | **PASS:** per-event team and draft progress, review count, admin-only judge provisioning, judge sign-in, password change, and organizer-only ML signals |
 
 The canonical [acceptance-report.txt](acceptance-report.txt) is the unedited
 checker output against localhost:8080. `.dogfood.toml` claims only T1/T2.
