@@ -12,9 +12,9 @@ _config = None
 def _load():
     global _model, _scaler, _config
     if _model is None:
-        _model  = joblib.load(BASE / "judge_anomaly_iforest_v1.joblib")
-        _scaler = joblib.load(BASE / "robust_scaler_v1.joblib")
-        with open(BASE / "feature_config_v1.json") as f:
+        _model  = joblib.load(BASE / "judge_anomaly_iforest_v2.joblib")
+        _scaler = joblib.load(BASE / "robust_scaler_v2.joblib")
+        with open(BASE / "feature_config_v2.json") as f:
             _config = json.load(f)
 
 def predict(feature_dict: dict) -> dict:
@@ -33,18 +33,22 @@ def predict(feature_dict: dict) -> dict:
         risk = "low"
 
     reasons = []
-    if abs(feature_dict.get("peer_abs_delta", 0)) >= 2.5:
+    if abs(feature_dict.get("peer_abs_delta", 0)) >= 1.5:
         reasons.append("large_peer_score_deviation")
     if abs(feature_dict.get("judge_z_score", 0)) >= 2.0:
         reasons.append("unusual_for_this_judge")
-    if feature_dict.get("category_spread", 0) >= 4.0:
+    if feature_dict.get("category_spread", 0) >= 2.0:
         reasons.append("high_rubric_variance")
     if feature_dict.get("rubric_completion_ratio", 1.0) < 1.0:
         reasons.append("incomplete_rubric")
+    if feature_dict.get("peer_x_judge", 0) >= 2.0:
+        reasons.append("unusual_vs_peers_and_own_history")
 
     return {
         "model_version": _config["model_version"],
-        "anomaly_score": round(1.0 - (score + 0.15) / 0.30, 3),
+        "anomaly_score": round(
+            max(0.0, min(1.0, 1.0 - (score + 0.15) / 0.30)), 3
+        ),
         "risk": risk,
         "reasons": reasons,
         "action": "organizer_review_recommended" if risk != "low" else "none"

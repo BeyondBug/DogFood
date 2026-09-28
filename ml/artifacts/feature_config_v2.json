@@ -1,0 +1,44 @@
+{
+  "model_version": "judge-anomaly-iforest-v2",
+  "score_scale": "0-5",
+  "features": [
+    "overall_score",
+    "peer_delta",
+    "peer_abs_delta",
+    "peer_abs_delta",
+    "project_z_score",
+    "project_z_score",
+    "judge_z_score",
+    "judge_z_score",
+    "peer_x_judge",
+    "peer_x_judge",
+    "unexplained_peer_delta",
+    "has_judge_history",
+    "judge_mean_before",
+    "judge_std_before",
+    "project_peer_std",
+    "project_peer_mean",
+    "category_spread",
+    "rubric_completion_ratio"
+  ],
+  "features_removed_pending_instrumentation": [
+    "review_duration_sec",
+    "edit_count"
+  ],
+  "risk_thresholds": {
+    "high": 0.03217859487712762,
+    "medium": 0.07878562894290711
+  },
+  "evaluation": {
+    "anomaly_f1": 0.54,
+    "anomaly_recall": 0.56,
+    "anomaly_precision": 0.52,
+    "accuracy": 0.95,
+    "false_alarm_normal": 0.008,
+    "false_alarm_strict": 0.052,
+    "false_alarm_generous": 0.075,
+    "false_alarm_inconsistent": 0.029,
+    "decision_score_gap": 0.137,
+    "known_limitation": "Generous and strict judges show elevated false alarm rates vs normal judges. This is documented and under investigation for v3."
+  }
+}
