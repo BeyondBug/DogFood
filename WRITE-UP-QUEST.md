@@ -1,154 +1,505 @@
 # BeyondBug: the score that moved, the boundary that held
 
-Three days is enough time to build a convincing interface. It is much less
-time than it sounds like when the interface must also enforce deadlines,
-separate five roles, survive direct HTTP requests, calibrate judges, preserve
-an audit trail, and start offline from one command.
+> We built a self-hosted hackathon platform in 72 hours. The interface was the
+> visible part. The real work was making deadlines, roles, judging, calibration,
+> abuse controls, audit history, and offline operation agree with each other.
 
-BeyondBug is our answer to DOGFOOD 2026: a self-hosted hackathon platform that
-takes an event from registration through published results. This is the story
-of the decisions that mattered, the model we refused to trust blindly, and the
-features we deliberately left out.
+Three days is enough time to build a convincing interface. It is much less
+time than it sounds like when the interface must also enforce its own rules
+against direct HTTP requests, separate five roles, calibrate judges without
+hiding the original scores, and boot on an offline laptop from one command.
+
+BeyondBug is our answer to DOGFOOD 2026: an MIT-licensed submission and judging
+platform that takes an event from setup through registration, teams,
+submissions, judging, community voting, publication, feedback, awards, and
+certificates. This is a technical account of the decisions behind it, including
+the model we rejected, the model we eventually integrated, the authorization
+bug we found late, and the features we deliberately cut.
+
+Repository: https://github.com/BeyondBug/DogFood
+
+## What shipped
+
+The product has five distinct actors:
+
+| Actor | What the running backend permits |
+| --- | --- |
+| Visitor | Browse events, search and filter submitted projects, read published results and visible comments |
+| Participant | Register, form or join a team, save and preview a project, submit before the deadline, vote when eligible, and read their published feedback |
+| Judge | Open only assigned projects, autosave a scorecard, submit a review, report a conflict, and read only their own scores |
+| Organizer | Configure an event, rubric, judge pool and assignments; inspect progress, audit history, calibration and voting; publish results and export data |
+| Administrator | Create events, provision organizers and judges, inspect system health and backups, and configure certificate designs |
+
+The browser experience includes role-specific dashboards, a four-step event
+setup flow, deadline and lifecycle indicators, submission readiness checks,
+judge autosave, next-project navigation, a readable audit log, light and dark
+modes, three visual themes, and responsive views. Those screens are backed by
+the same API used by the acceptance checker; none of the important boundaries
+depend on a hidden button.
+
+Projects support a repository, interactive demo, live URL, hosted video,
+thumbnail, gallery images and technology tags. Organizers can export projects,
+participants, teams, judges, assignments, criterion-level scores, raw and
+adjusted rankings, audit history, votes, and certificates as CSV. Text fields
+are escaped against spreadsheet-formula injection.
+
+After publication, a participant sees anonymized criterion scores and written
+comments for their own team's project. Reviewer identities stay private. An
+organizer can assign configured prizes and issue separate participation and
+winner certificates. Each issued certificate stores a snapshot of its design,
+has a public database-backed verification page, and remains visually stable if
+an administrator later changes the template.
 
 ## We designed the denial paths first
 
-The most dangerous authorization bug was also the easiest one to imagine: a
-judge changing a query parameter to request somebody else's scorecard. We
-treated the browser as untrusted and put event role and ownership checks in
-the API transaction. Judge B requesting Judge A's scores receives HTTP 403.
-A participant receives the same denial. Organizer exports live behind a
-different event-scoped role check.
-
-That decision shaped the rest of the schema. A user is global; participant,
-judge, and organizer roles belong to an event. Judge assignments point to a
-judge profile and project. Scorecards point to assignments. The server can
-therefore answer “does this session own this scorecard?” without trusting an
-ID supplied by the page.
-
-Our role model still changed late. A participant briefly saw event-creation
-controls because the dashboard treated every authenticated account too
-similarly. We fixed the UI and the API together: event creation became
-administrator-only, organizer tools stayed event-scoped, judge tools stayed
-assignment-scoped, and regression tests checked both missing controls and
-403 responses. Hiding a button was never accepted as the fix.
-
-## Normalization changed the winner
-
-An ordinary average assumes every judge uses the five-point scale in the same
-way. Real panels contain strict and generous reviewers. BeyondBug fits the
-additive model
-
-```text
-raw(judge, project) = project quality + judge severity + error
-```
-
-and regularizes judge severity toward zero. Sparse judges therefore receive
-smaller corrections than well-connected judges. Adjusted project scores are
-computed from the original rubric scores with the estimated judge offset
-removed and values kept inside the original 0–5 range.
-
-On the published fixture, the calculation changes the leading order: Iron
-Switch moves from raw rank 2 to adjusted rank 1, while Salt Ledger moves from
-raw rank 1 to adjusted rank 2. The point is not that calibration discovers an
-objective winner. The point is that the transformation is explicit,
-reproducible, and inspectable. The organizer sees raw score, adjusted score,
-rank movement, judge offsets, review coverage, and disconnected overlap
-groups before publishing anything.
-
-The awkward fixture cases mattered. A judge who gives every project the same
-score cannot cause division by zero because the estimator does not standardize
-by that judge's variance. Missing reviews remain missing instead of becoming
-zeroes. Projects with two reviews and projects with five reviews both remain
-valid, while the coverage dashboard makes that imbalance visible.
-
-## The ML model became a queue, not a verdict
-
-A teammate contributed an Isolation Forest for unusual judge reviews. The
-first artifact used a 1–10 scale, depended on fields the portal did not record,
-and included the candidate review in peer statistics. We kept it out of the
-running product and wrote down why.
-
-The retrained v2 artifact uses the portal's 0–5 scores, excludes the candidate
-from peer statistics, splits evaluation by complete events, and removes the
-unavailable duration and edit-count features. We export its 300 trees to
-compressed JSON and reproduce the scikit-learn decision function with the
-Python standard library. The offline image loads no pickle and needs no ML
-runtime dependency.
-
-Its held-out synthetic precision is 0.52 and recall is 0.56. Strict and
-generous simulated judges produce more false alarms. Those numbers stopped us
-from calling it fraud detection. It appears only as an organizer inspection
-queue, requires at least two peer reviews, links back to the untouched
-scorecard, and cannot alter assignments, scores, rankings, certificates, or
-eligibility. A deterministic peer-median rule remains beside it so the human
-can compare two very different kinds of signal.
-
-## Offline changed ordinary product decisions
-
-There is no hosted database, authentication provider, email service, CDN, or
-external API. FastAPI, SQLite, fonts, model export, fixtures, and Python wheels
-ship in the repository. `docker compose up` initializes migrations, imports
-the official fixture once, and prints the four acceptance headers.
-
-Avoiding email forced honest invitation UX: the platform creates expiring,
-single-use links and tells the organizer to share them privately. Avoiding a
-hosted queue kept the deployment to one worker and made SQLite's transaction
-boundaries important. We use WAL, foreign keys, a busy timeout, and immediate
-write transactions for team limits, deadlines, ballots, and assignments.
-
-The limitation is explicit. This architecture suits a laptop and small or
-medium events. Multi-host deployment needs a different database and a shared
-rate-limit and job layer. We measured the current design instead of drawing a
-load balancer in the architecture diagram and calling it scalable.
-
-## What we cut
-
-We did not build pairwise Bradley–Terry judging. It would have been an
-interesting bonus and a dangerous late addition to the most sensitive part of
-the product. We also left webhooks, a gallery widget, cryptographically signed
-judge records, account recovery, and a browser restore workflow out of the
-release.
-
-Community voting is deliberately modest. Ballots are stable-shuffled per
-voter, totals stay private until publication, self-votes and duplicate ballots
-are rejected, attempts are rate-limited, and organizers can inspect an audit
-trail. Email matching does not prove inbox ownership and one account does not
-prove one human. Curated invitations remain the recommended mode for a
-high-stakes community prize.
-
-## The evidence we would want as adopters
-
-The official checker passes seven of seven requests and verifies T1 and T2.
-Our disposable Compose suite creates a fresh project and volume, exercises the
-full lifecycle and security boundaries, and removes its data afterward. The
-repository includes the unedited acceptance report, threat model, schema and
-migration notes, normalization proof, OpenAPI document, capacity measurements,
-and a five-minute lifecycle recording.
-
-The most important artifact is still a failed request:
+The most important request in BeyondBug returns no data:
 
 ```text
 Judge B → GET Judge A scores → 403 Forbidden
 ```
 
-That line is less visually impressive than a dashboard. It is also the reason
-an organizer can trust the dashboard.
+The obvious implementation would filter scorecards in the page template. That
+would still let a judge change a query parameter or call the endpoint with
+`curl`. We instead made the server establish identity from the session and
+check the requested judge ID against that identity. Participant requests to
+the same route receive 403. Rankings and exports use a separate organizer
+check.
+
+That choice shaped the schema. A user is global, while participant, judge and
+organizer roles belong to an event. A judge assignment links one accepted
+judge profile to one submitted project. A scorecard belongs to that assignment
+and preserves the rubric version. The write route can answer “does this
+session own this assignment?” without trusting a user ID supplied by the
+browser.
+
+Sessions use random opaque tokens; SQLite stores only SHA-256 digests.
+Passwords use salted PBKDF2-HMAC-SHA256 with 260,000 rounds. Cookies are
+HttpOnly and SameSite=Strict, can be marked Secure behind HTTPS, expire, and
+are revoked on logout or password change. A write carrying a foreign `Origin`
+is rejected. Persistent login throttling blocks after five failed attempts for
+an account or twenty for a keyed client-IP digest in ten minutes. Unknown
+accounts still perform a dummy password check.
+
+We still found a role-model bug late in the build. A normal participant saw an
+event-creation form because the dashboard treated every authenticated account
+too similarly. Fixing the template alone would have repeated the original
+mistake. We made event creation administrator-only in both the UI and API, then
+added regression checks that participant, judge and organizer accounts see no
+creation form and receive HTTP 403 from the endpoint. Administrators can
+provision separate organizer accounts instead of sharing global authority.
+
+## Deadlines are database decisions
+
+The server uses UTC and checks a submission deadline inside the same
+`BEGIN IMMEDIATE` transaction that changes the project or team. A stale page,
+modified browser clock or replayed request cannot reopen the event. The
+official fixture remains closed because its own `submissions_close` timestamp
+is imported unchanged.
+
+Team creation, invitations and membership changes also stop at submission
+close. This matters to judging: a team roster used for conflict checks cannot
+change after assignments begin. Team invitation tokens are hashed, expire,
+work once, and preserve the four-person limit under a write lock.
+
+Publication is another state boundary. It requires closed submissions and a
+completed review for every ranked project. If community voting is configured,
+publication also waits for that window to close. Once results are public,
+projects, assignments and scorecards lock so the visible result cannot drift.
+
+## Assignment before arithmetic
+
+Normalization cannot repair a bad assignment graph. BeyondBug first assigns
+each submitted, nonduplicate project only to accepted judges who:
+
+- selected the project's track;
+- are not members of its team;
+- have no declared conflict with the project; and
+- are not already assigned to it.
+
+The allocator chooses the eligible judge with the lowest current load and
+uses stable judge ID as its tie-break. The target review count is configurable
+and defaults to three. If it cannot cover a project, it returns a visible
+shortage instead of silently assigning an ineligible judge. Each generated
+assignment and batch operation enters the audit trail.
+
+A judge can report a conflict only for their own unsubmitted assignment. The
+transaction records the conflict, removes the assignment and any draft
+scorecard, and prevents the same pair from being selected by a later batch.
+The organizer sees the new coverage gap. A conflict after final submission is
+not quietly rewritten; it returns 409 and requires human resolution.
+
+This is a deterministic load-balancing heuristic, not an optimal matching
+solver. It does not explicitly maximize overlap. The judging dashboard reports
+connected components in the judge/project graph because disconnected review
+pools cannot be calibrated against one another reliably.
+
+## Weighted scoring stays inspectable
+
+An organizer defines positive criterion weights before assignments exist.
+Judges score each criterion from 0 to 5. Draft scorecards may be partial;
+submission requires every criterion and rejects NaN, infinity and out-of-range
+values.
+
+For judge `j`, project `p` and criterion `c`, the raw review score is:
+
+```text
+raw(j,p) = Σ_c [weight(c) × 5 × score(j,p,c) / max_score(c)]
+           --------------------------------------------------
+                            Σ_c weight(c)
+```
+
+The shipped rubric uses `max_score(c)=5`, so the result is a weighted average
+on the familiar five-point scale. Missing reviews remain missing rather than
+becoming zeroes. Review count is displayed beside every result, and projects
+without completed reviews remain unranked.
+
+## Normalization changed the winner
+
+An ordinary average assumes every judge uses the scale in the same way. Real
+panels contain strict and generous reviewers. BeyondBug fits a regularized
+two-way additive model over completed reviews of nonduplicate projects:
+
+```text
+raw(j,p) = quality(p) + severity(j) + error(j,p)
+
+minimize:
+    Σ_(j,p) [raw(j,p) - quality(p) - severity(j)]²
+    + 3 × Σ_j severity(j)²
+```
+
+The penalty of 3 shrinks judges with little evidence toward zero. Starting
+from each project's raw mean, the implementation alternates:
+
+```text
+severity(j) = Σ_p [raw(j,p) - quality(p)] / (review_count(j) + 3)
+quality(p)  = mean_j [raw(j,p) - severity(j)]
+```
+
+Iteration stops when the maximum quality change is below `1e-10`, or after
+500 iterations. Every review is adjusted with
+`clamp(raw - severity, 0, 5)`, so calibration never leaves the rubric scale.
+The stored scorecard is never overwritten.
+
+The official fixture gives this method a useful stress test:
+
+- 41 project records from 40 teams;
+- one deliberate duplicate, `prj_41`, with four historical reviews;
+- 126 historical scorecards in total;
+- 122 completed reviews over 40 ranked projects after excluding that duplicate;
+- 30 judges in one connected overlap component; and
+- a constant-scoring judge whose score variance is zero.
+
+Because the estimator does not divide by a judge's standard deviation, the
+constant scorer stays finite. Missing batches also remain valid.
+
+The running calculation produces:
+
+| Project | Raw rank | Adjusted rank | Adjusted score |
+| --- | ---: | ---: | ---: |
+| Iron Switch | 2 | **1** | 4.316 |
+| Salt Ledger | **1** | 2 | 4.295 |
+| Dry Relay | 4 | 3 | 4.176 |
+| Salt Loom | 5 | 4 | 4.069 |
+| Salt Kiln | 6 | 5 | 4.043 |
+
+Thirty-three of the 40 ranked projects move. Open Beacon rises from 26 to 19;
+Paper Anchor falls from 21 to 28. The rank reversal is the reason this proof
+is interesting, but it is not proof that the adjusted order is objectively
+correct. It demonstrates that judge severity can affect an ordinary average
+and that our correction is reproducible.
+
+Regularization matters most when evidence is sparse. Judges `jdg_01` and
+`jdg_23` have one review each. With the shipped penalty their offsets are
+about `-0.340` and `-0.118`; with a near-zero penalty of `0.01`, they would
+be roughly `-1.804` and `-0.992`. The constant scorer `jdg_07` receives a
+finite offset near `+0.209`.
+
+The organizer does not have to infer any of this from a CSV. The Judging
+Insight screen shows raw and adjusted score, rank movement, review coverage,
+overlap groups, judge offsets and the individual reviews behind a moved
+project. A positive displayed adjustment means the model identified a
+comparatively strict judge.
+
+## A deterministic attention signal comes first
+
+Before adding machine learning, we built a rule an organizer could audit. For
+each submitted review, BeyondBug compares its calibrated score with the median
+of the *other* calibrated reviews on that project. It creates an attention
+item only when:
+
+- at least two peer reviews exist;
+- the absolute gap is at least 1.5 points; and
+- peer median absolute deviation is at most 0.5 points.
+
+Projects with fewer than three reviews cannot trigger the signal. The detail
+page shows the original score, peer median, peer count, criterion values and
+written comment. Only organizers can open it. The rule never changes a score,
+assignment or award.
+
+That baseline gave us something crucial for the later ML integration: a clear
+fallback and a way to ask whether a model added useful prioritization rather
+than merely adding complexity.
+
+## We rejected the first ML model
+
+A teammate contributed an Isolation Forest for unusual reviews. Integrating a
+model quickly would have looked innovative, but its v1 contract did not match
+the product:
+
+| Problem | v1 artifact | Running portal |
+| --- | --- | --- |
+| Score scale | Synthetic 1–10 scores | Weighted 0–5 rubric scores |
+| Inputs | Included duration and edit count | Neither field was recorded |
+| Peer statistics | Included the review being evaluated | Must exclude the candidate |
+| Judge history | Could include later reviews | Live inference only knows earlier reviews |
+| Evaluation split | Leaked reusable judge aggregates | Needed complete event separation |
+| Runtime | NumPy, joblib and scikit-learn pickle | Offline image intentionally omitted them |
+
+So v1 stayed in the repository as research history and did not enter the
+product. The integration review became a deployment gate: retrain on the right
+scale, remove leakage, report behavior by judge type, use only recorded fields,
+package inference offline, keep it organizer-only, and never let it make a
+scoring decision.
+
+## ML v2: a queue, never a verdict
+
+The retrained model uses a synthetic simulation designed around BeyondBug's
+actual contract:
+
+| Training fact | Value |
+| --- | ---: |
+| Simulated events | 120 |
+| Projects per event | 30 |
+| Reviews per project | 4 |
+| Total reviews | 14,400 |
+| Injected anomalies | about 4.6% |
+| Judge mix | 60% normal, 15% strict, 15% generous, 10% inconsistent |
+| Isolation Forest | 300 trees, contamination 0.05 |
+
+Judge bias is stable within an event and judge IDs are unique across events.
+Peer features exclude the candidate review. Judge-history features use only
+earlier reviews. Train, validation and test data split by complete event; the
+reported test covers events 108–119. Duration and edit count were removed
+because the portal still does not measure them.
+
+The v2 model card reports these held-out synthetic results:
+
+| Metric | Result |
+| --- | ---: |
+| Precision | 0.52 |
+| Recall | 0.56 |
+| F1 | 0.54 |
+| Overall accuracy | 0.95 |
+| Decision-score gap | 0.137 |
+
+Accuracy is not the headline: anomalies are rare, so accuracy can look strong
+while the difficult class remains uncertain. Precision of 0.52 means many
+flags still need human judgment. The judge-type breakdown is more revealing:
+
+| Simulated judge type | False-alarm rate |
+| --- | ---: |
+| Normal | 0.8% |
+| Inconsistent | 2.9% |
+| Strict | 5.2% |
+| Generous | 7.5% |
+
+Consistently strict and generous judges are more likely to look unusual. We
+document that weakness instead of converting “unusual” into “dishonest.” The
+organizer sees High and Medium risk bands, the evidence count, and a link to
+the untouched scorecard. The official fixture yields 15 advisory signals; it
+has no anomaly labels, so that count is not reported as accuracy.
+
+The model is absent from every decision path. It cannot write a score, change
+normalization, assign a judge, disqualify anyone, select a winner, issue a
+certificate, or expose peer scores to judges. Judges and participants receive
+HTTP 403 from its endpoint.
+
+## Shipping ML without shipping an ML runtime
+
+The one-command offline rule made model packaging as important as training.
+Loading the joblib file would require a compatible pickle environment plus
+NumPy and scikit-learn. Instead, we exported all 300 trees to compressed JSON
+and implemented the Isolation Forest decision function with the Python
+standard library.
+
+The runtime reads the ordered feature list exactly, including intentionally
+repeated names used as feature weighting. A regression test compares the
+portable decision score with the original scikit-learn artifact on a reference
+vector. The Docker image loads no pickle and installs no ML library. On the
+fixture, the organizer-only model panel rendered in about 0.13 seconds during
+release verification.
+
+This was the ML lesson of the build: integration quality includes the feature
+contract, leakage boundary, evaluation split, runtime format, authorization,
+UI wording and effect on downstream decisions. A model file alone is not a
+feature.
+
+## Community voting assumes attackers exist
+
+BeyondBug supports disabled voting, curated email-bound invitations, or
+authenticated event participants. Ballot projects are ordered by an HMAC of a
+secret event seed, voter ID and project ID. The order is stable when one voter
+refreshes but differs between voters, avoiding both insertion-order bias and a
+frustrating reshuffle on every page load.
+
+The database permits one final ballot per account and event. The API rejects
+self-votes, duplicate projects and flagged duplicate submissions. Voting
+eligibility and time windows are checked again inside the transaction. Vote
+attempts are limited by account and keyed IP digest; comments require login,
+reject exact repeats and are limited to five per account per hour. Organizers
+can hide comments without erasing the moderation record.
+
+Totals remain private through the voting window. Public result routes return
+404 until publication; the organizer can see interim signals without leaking
+them to voters. Voting configuration locks after the first ballot so an
+organizer cannot silently change eligibility midstream.
+
+This does not solve Sybil identity. Email matching does not prove inbox
+ownership, an account does not prove one human, and shared networks complicate
+IP limits. We recommend curated invitations for high-stakes community prizes
+and say so in the threat model.
+
+## Audit history has to be readable
+
+Writing rows called `project.updated` and `scorecard.submitted` satisfies a
+database requirement but does not help an operator during an event. The
+organizer view resolves actors and targets, presents plain-language actions,
+groups activity into event, team, submission, judging, voting, security and
+publication categories, and supports filtering.
+
+Consequential writes include the actor, entity, action, UTC timestamp and JSON
+details. The log covers event changes, invitations, team membership, project
+submission, assignment batches, conflicts, scorecards, voting configuration,
+ballots, comments, moderation, publication, prizes and certificate issuance.
+It is useful for diagnosis, but we do not call it tamper-proof: a malicious
+host operator who controls SQLite can change the log. Signed external
+transparency records remain future work.
+
+## Offline operation changed normal product decisions
+
+There is no hosted database, authentication service, email provider, CDN,
+analytics endpoint or external API. FastAPI, SQLite, fonts, templates, scripts,
+the model export, fixture data and pinned Python wheels live in the repository.
+The image supports x86-64 and ARM64 wheels and installs them with `--no-index`.
+
+```sh
+docker compose up
+```
+
+On first boot, migrations run through schema version 7, the official fixture
+is imported once, and demo authorization headers are printed. Restarts preserve
+changes. Demo mode can be disabled for a real deployment, with the global
+administrator bootstrapped from local environment variables.
+
+SQLite runs with WAL, foreign keys and a ten-second busy timeout. Immediate
+write transactions protect team limits, deadlines, assignments and ballots.
+The online backup command creates a consistent snapshot while the portal is
+running. An administrator can also run an integrity check and download local
+snapshots from the system page.
+
+We did not add a decorative load balancer. One Uvicorn worker and one SQLite
+database form the supported deployment. On a development laptop, a warm local
+read probe against the 41-project gallery measured:
+
+| Requests | Workers | Success | Throughput | p50 | p95 | Maximum |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 500 | 20 | 500/500 | 359.5 req/s | 55.1 ms | 63.4 ms | 70.5 ms |
+| 1,000 | 50 | 1,000/1,000 | 336.6 req/s | 145.5 ms | 176.2 ms | 221.9 ms |
+
+These are short read tests, not a production service-level objective and not
+a simultaneous-user rating. They do not measure write contention. If measured
+event traffic exceeds this design, the next architecture needs a shared
+database, shared rate limiting and background jobs before multiple application
+instances and a reverse proxy become meaningful.
+
+## Evidence over claims
+
+The required checker makes seven HTTP requests. The committed, unedited report
+passes all seven and verifies T1 and T2:
+
+```text
+T1  gallery is public ................. PASS
+T1  project from fixtures shown ....... PASS
+T1  closed event refuses submissions .. PASS
+T2  judge sees own scores ............. PASS
+T2  judge cannot see peer scores ...... PASS
+T2  participant blocked ............... PASS
+T2  csv export works .................. PASS
+```
+
+Our separate test runner starts a disposable Compose project on a random port,
+creates a fresh named volume, runs 27 unit and HTTP integration tests, and
+removes only that test environment. It covers deadlines, role denials, team
+limits, conflicts, publication locks, normalization edge cases, stable ballot
+randomization, rate limits, duplicate handling, certificate behavior, backups,
+OpenAPI synchronization and portable ML inference. The release result is
+27/27.
+
+We also tested the current schema-7 image with its Docker network disconnected;
+its local health endpoint returned HTTP 200. The five-minute lifecycle video
+shows real browser actions from event creation to publication, including the
+direct peer-score 403 and a CSV export.
+
+Our `.dogfood.toml` still claims only T1 and T2 because those are the tiers the
+provided checker can verify. T3 voting and comments have their own requirement-
+to-test evidence document, but we do not label them checker-certified. Honest
+scope is more valuable than a larger label.
+
+## What we cut
+
+We did not implement Bradley–Terry pairwise judging. Adding a second ranking
+system late would have increased risk in the most sensitive part of the
+product. We also left webhooks, an embeddable gallery widget,
+cryptographically signed judge participation records, bulk CSV import, account
+recovery and browser-based restore out of this release.
+
+Certificates are publicly verifiable against the local database, but they are
+not cryptographically signed. Backups are local snapshots, not scheduled
+off-host disaster recovery. Duplicate submissions are detected by identical
+nonempty repository URLs; legitimate forks can be flagged and copied work at a
+different URL can be missed. Published score correction needs a future
+versioned republication workflow.
+
+Those limits appear in the README, architecture, data model and threat model.
+The objective was software another organizer could evaluate, operate and
+extend, not a checklist with hidden gaps.
 
 ## What we would redo
 
-We would introduce explicit result snapshots earlier. BeyondBug locks scores
-after publication, which is safe, but a production system eventually needs a
-correction and republication workflow with a visible version history. We would
-also model richer submission media and organizer-defined questions before the
-first migration rather than adding them after the core project record had
-settled.
+We would model immutable result snapshots from the start. The current lock
+prevents rankings from drifting, but production events eventually need a
+correction, explanation and republication history. We would also include rich
+submission media and organizer-defined questions in the first schema instead
+of adding project media during migration 7.
 
-The lasting lesson was that fairness features need an explanation surface.
-Normalization hidden in a backend function is difficult to defend. Anomaly
-signals without evidence counts look accusatory. An audit table without names
-and actions is technically present and operationally useless. The final
-product became stronger whenever we made the system show its reasoning and
-its limits.
+For judging, we would optimize assignment overlap explicitly rather than only
+balancing count among eligible judges. The current component warning makes
+disconnected pools visible, but prevention is stronger than diagnosis.
 
-BeyondBug is available at https://github.com/BeyondBug/DogFood under the MIT
-license. Built by team BeyondBug for #DogfoodHackathon.
+For the ML work, the next useful step is evaluation on carefully adjudicated
+real-event data, with calibration by review count and judge type. Until such
+data exists, the model should remain an inspection queue with prominent limits.
+Adding duration or edit behavior would require privacy review and reliable
+instrumentation before retraining.
+
+The largest lesson was that fairness features need explanation surfaces.
+Normalization hidden in a backend function is hard to defend. A model badge
+without its evidence count looks accusatory. An audit table without human names
+and actions is operationally useless. BeyondBug became stronger whenever the
+system showed its reasoning, its raw inputs and its limits.
+
+## Reproduce it
+
+```sh
+git clone https://github.com/BeyondBug/DogFood.git
+cd DogFood
+docker compose up
+```
+
+Then open `http://localhost:8080`. The repository includes the fixture,
+acceptance checker, unedited acceptance report, OpenAPI document, architecture,
+data model, judging proof, threat model, ML model card, integration review,
+capacity probe, test runner and five-minute demo.
+
+BeyondBug is available under the MIT license. Built by team BeyondBug for
+#DogfoodHackathon.

@@ -8,7 +8,7 @@ The image installs pinned wheels from `vendor/wheels` with `--no-index` and
 serves Jinja templates, JavaScript, CSS, and IBM Plex Sans from its own
 filesystem. There are no outbound runtime calls or hosted services.
 
-Startup applies SQLite schema migrations (`PRAGMA user_version` 1 through 5),
+Startup applies SQLite schema migrations (`PRAGMA user_version` 1 through 7),
 loads `fixtures.json` if its event is absent, and prints the demo auth headers
 when demo mode is enabled. A restart leaves user changes intact. The health
 route checks database access. A one-worker process keeps SQLite write
