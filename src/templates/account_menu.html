@@ -1,0 +1,1 @@
+{% if principal %}<a href="/dashboard">Dashboard</a><details class="account-menu"><summary>Account</summary><div class="account-menu-panel"><span>Signed in as <strong>{{ principal.name }}</strong></span><form data-action="logout"><button type="submit">Sign out</button></form></div></details>{% else %}<a href="/account">Sign in</a>{% endif %}

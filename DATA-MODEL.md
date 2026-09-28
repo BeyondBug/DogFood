@@ -1,7 +1,7 @@
 # Data model
 
 SQLite is the source of truth. `src/db.py` contains the exact versioned SQL
-schema; `PRAGMA user_version` advances from 0 through 5 at startup. Every
+schema; `PRAGMA user_version` advances from 0 through 6 at startup. Every
 connection enables foreign keys and a busy timeout. Event-scoped APIs check
 the event ID as well as the acting user's role.
 
@@ -29,7 +29,8 @@ the event ID as well as the acting user's role.
 | `vote_attempts` | Event, voter account, keyed IP digest, outcome, time | Countable signals for throttling and organizer review |
 | `comments` | Event, project, author, body, creation and moderation fields | Hidden comments stay in the database for audit |
 | `event_awards` | Configured prize, event, submitted winning project, assigning organizer and time | One selected project per prize; selection locks after winner certificates issue |
-| `certificates` | Opaque ID, event, recipient, project, participant/winner kind, optional prize, issuance time | Unique participant record per event/recipient and unique winner record per event/recipient/prize |
+| `certificate_designs` | Event and participant/winner kind, layout, palette, issuer line, updater and time | Only a site administrator may change a design; one setting per event and kind |
+| `certificates` | Opaque ID, event, recipient, project, participant/winner kind, optional prize, issuance time, design JSON snapshot | Unique participant record per event/recipient and unique winner record per event/recipient/prize; later design edits do not change issued artwork |
 | `app_keys`, `login_attempts` | Local HMAC secret; account and IP digests, outcome, timestamp | Failed logins and lockouts persist across process restarts without storing raw IPs |
 
 Generated IDs are opaque strings with prefixes such as `evt_`, `tm_`, and
@@ -77,6 +78,8 @@ environment variables.
 | `/api/events/{id}/exports/rankings.csv` | Raw and adjusted scores, coverage, duplicates | Organizer |
 | `python -m src.backup DESTINATION` | Consistent SQLite database copy | Local operator |
 | `/api/events/{id}/certificates` | Issued certificate metadata | Organizer |
+| `/api/admin/events/{id}/certificate-designs/{kind}` | Participant or winner design settings | Site administrator |
+| `/events/{id}/certificates/preview/{kind}.svg` | Watermarked, non-verifiable SVG sample | Site administrator |
 | `/api/certificates/{id}/verify` | Public database-backed verification JSON | Public |
 | `/certificates/{id}.svg` | Vector certificate for print or download | Public |
 
@@ -90,7 +93,8 @@ reconcile duplicates before modifying live events.
 Version 1 created the core tables. Version 2 added judge invitations and
 conflicts. Version 3 added voting windows, invite eligibility, ballots,
 attempt signals, and comments. Version 4 added prize assignments and
-certificates. Version 5 added persistent login throttling. Migrations run
+certificates. Version 5 added persistent login throttling. Version 6 added
+per-event certificate designs and issuance-time design snapshots. Migrations run
 before fixture seeding.
 `rubrics.version` and each
 scorecard's `rubric_id` preserve scoring context, but changing a rubric is

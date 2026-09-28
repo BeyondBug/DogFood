@@ -8,7 +8,7 @@
       <h1>Find your event.</h1>
       <p>Explore current and past hackathons, then open an event to see its tracks, projects, and results.</p>
     </div>
-    {% if principal %}<a class="button button-secondary" href="/dashboard">Create an event</a>{% else %}<a class="button button-secondary" href="/account">Sign in to create an event</a>{% endif %}
+    {% if can_create_event %}<a class="button button-secondary" href="/dashboard#create-event">Create an event</a>{% endif %}
   </div>
 
   <form class="event-directory-search" method="get" action="/events" role="search">

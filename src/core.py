@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
-from .auth import hash_password, require_event_role, require_login, verify_password
+from .auth import can_create_event, hash_password, require_event_role, require_login, verify_password
 from .db import connect, utc_now
 
 
@@ -240,6 +240,9 @@ def list_events():
 @router.post("/events", status_code=201)
 def create_event(payload: EventCreate, request: Request):
     principal = require_login(request)
+    with closing(connect()) as db:
+        if not can_create_event(db, principal):
+            raise HTTPException(status_code=403, detail="Only administrators and event organizers can create events")
     date_fields = ["registration_open", "registration_close", "submissions_open", "submissions_close", "judging_open", "judging_close"]
     dates = {key: time_value(getattr(payload, key)) for key in date_fields}
     for opening, closing_name in (("registration_open", "registration_close"), ("submissions_open", "submissions_close"), ("judging_open", "judging_close")):

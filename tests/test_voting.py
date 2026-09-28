@@ -5,7 +5,7 @@ import unittest
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from test_lifecycle import call
+from test_lifecycle import creator_cookie, call
 from src.public import order_ballot
 
 
@@ -30,7 +30,7 @@ class VotingTests(unittest.TestCase):
             self.assertEqual(status, 201, body)
             return cookie.split(";", 1)[0]
 
-        organizer = account("porg")
+        organizer = creator_cookie()
         status, event, _ = call("POST", "/api/events", {
             "name": f"Participant ballot {suffix}",
             "submissions_close": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(),
@@ -99,7 +99,8 @@ class VotingTests(unittest.TestCase):
             self.assertEqual(status, 201, body)
             return email, cookie.split(";", 1)[0]
 
-        organizer_email, organizer = account("Voting organizer", "vorg")
+        organizer_email, _ = account("Voting organizer", "vorg")
+        organizer = creator_cookie()
         status, event, _ = call("POST", "/api/events", {
             "name": f"Voting {suffix}",
             "submissions_close": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(),

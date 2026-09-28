@@ -2627,6 +2627,102 @@
         }
       }
     },
+    "/admin/certificates": {
+      "get": {
+        "summary": "Certificate Studio",
+        "operationId": "certificate_studio_admin_certificates_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/events/{event_id}/certificate-designs/{kind}": {
+      "put": {
+        "summary": "Save Certificate Design",
+        "operationId": "save_certificate_design_api_admin_events__event_id__certificate_designs__kind__put",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Kind"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/events/{event_id}/prizes/{prize_id}/winner": {
       "put": {
         "summary": "Select Winner",
@@ -2794,7 +2890,7 @@
     "/events/{event_id}/certificates/preview/{kind}.svg": {
       "get": {
         "summary": "Preview Certificate",
-        "description": "Render a non-verifiable organizer sample without issuing any record.",
+        "description": "Render an admin-only sample without issuing any record.",
         "operationId": "preview_certificate_events__event_id__certificates_preview__kind__svg_get",
         "parameters": [
           {
@@ -2813,6 +2909,68 @@
             "schema": {
               "type": "string",
               "title": "Kind"
+            }
+          },
+          {
+            "name": "layout",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "classic",
+                    "modern",
+                    "bold"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Layout"
+            }
+          },
+          {
+            "name": "palette",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "teal",
+                    "blue",
+                    "coral",
+                    "gold",
+                    "violet"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Palette"
+            }
+          },
+          {
+            "name": "issuer_line",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 48
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issuer Line"
             }
           }
         ],
@@ -3024,6 +3182,43 @@
           "weight"
         ],
         "title": "CriterionInput"
+      },
+      "DesignInput": {
+        "properties": {
+          "layout": {
+            "type": "string",
+            "enum": [
+              "classic",
+              "modern",
+              "bold"
+            ],
+            "title": "Layout"
+          },
+          "palette": {
+            "type": "string",
+            "enum": [
+              "teal",
+              "blue",
+              "coral",
+              "gold",
+              "violet"
+            ],
+            "title": "Palette"
+          },
+          "issuer_line": {
+            "type": "string",
+            "maxLength": 48,
+            "minLength": 2,
+            "title": "Issuer Line"
+          }
+        },
+        "type": "object",
+        "required": [
+          "layout",
+          "palette",
+          "issuer_line"
+        ],
+        "title": "DesignInput"
       },
       "EventCreate": {
         "properties": {

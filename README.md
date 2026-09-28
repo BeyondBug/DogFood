@@ -67,7 +67,9 @@ database too.
 1. Sign in as the organizer, open `/dashboard`, and create an event with a
    guided four-step form for the description, UTC schedule, tracks, and prizes.
    Its unfinished values stay in this browser. The organizer desk
-   has an Event details panel for later schedule and description edits.
+   has an Event details panel for later schedule and description edits. Event
+   creation is available to administrators and existing event organizers;
+   new participant accounts cannot create events through the UI or API.
 2. Sign in as a participant, open the new event page, join, create a team,
    and copy a single-use invite link. Save a project draft, then submit it.
 3. In the organizer desk, set rubric weights, create judge invites, choose
@@ -95,9 +97,14 @@ database too.
    ballot, cast one vote, and can comment on projects. The organizer sees
    attempt signals and moderates comments. Publishing waits until voting closes.
 7. After publication, select winning projects for configured prizes and issue
-   certificates. The organizer desk's **Prizes and certificates** section
-   previews both sample templates before issuance; previews have no valid
-   verification code and create no record. Team members can open
+   certificates. A site administrator opens `/admin/certificates` to select an
+   event and independently change the participation and winner layouts,
+   accents, and issuer text. Only administrators can see the live sample
+   previews; they have no valid verification code and create no record.
+   Issued certificates keep a snapshot of their chosen design. To add a new
+   layout preset, extend the renderer in `src/certificates.py`, then expose
+   its choice in `src/templates/certificate_studio.html` and the API model.
+   Team members can open
    `/my/certificates`, download vector artwork, or print from a public
    verification page after issuance.
 
