@@ -8,3 +8,5 @@ __pycache__/
 .env
 media/*
 !media/beyondbug-demo-silent.mp4
+!ml/artifacts/*.joblib
+!ml/artifacts/*.json
