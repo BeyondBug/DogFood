@@ -102,3 +102,11 @@ html[data-style=studio] .site-footer{border-top:4px solid var(--coral)}
 @media(max-width:620px){.theme-picker summary{min-height:38px;padding:5px 8px;font-size:.75rem}.theme-picker summary::after{margin-left:4px}.theme-menu{right:-46px;width:min(270px,calc(100vw - 25px))}html[data-style=pulse] .event-hero{padding-inline:18px;margin-block:15px 0}html[data-style=pulse] .event-hero::after{font-size:4rem;right:6%}html[data-style=pulse] .phase-section{padding:14px}html[data-style=pulse] .track-grid{gap:10px}html[data-style=studio] .track-grid{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:no-preference){html[data-style=pulse] .phase-current .phase-dot{animation:pulse-phase 2.8s ease-in-out infinite}@keyframes pulse-phase{50%{box-shadow:0 0 0 12px #e9759108}}}
 @media(prefers-reduced-motion:reduce){html[data-style=pulse] .track-item,html[data-style=studio] .track-item{transform:none!important}}
+.certificate-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-bottom:22px}
+.certificate-preview-card{display:flex;flex-direction:column;gap:12px;padding:18px;background:var(--paper);border:1px solid var(--rule)}
+.certificate-preview-card h3{margin:0 0 4px;font-size:1.2rem}
+.certificate-preview-card p{margin:0;color:var(--muted);font-size:.9rem}
+.certificate-preview-art{display:block;background:var(--shade);border:1px solid var(--rule);padding:8px}
+.certificate-preview-card img{display:block;width:100%;height:auto}
+.certificate-preview-card>.text-link{align-self:flex-start;font-size:.9rem}
+@media(max-width:700px){.certificate-preview-grid{grid-template-columns:1fr}}

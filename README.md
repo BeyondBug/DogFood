@@ -95,8 +95,11 @@ database too.
    ballot, cast one vote, and can comment on projects. The organizer sees
    attempt signals and moderates comments. Publishing waits until voting closes.
 7. After publication, select winning projects for configured prizes and issue
-   certificates. Team members can open `/my/certificates`, download vector
-   artwork, or print from a public verification page.
+   certificates. The organizer desk's **Prizes and certificates** section
+   previews both sample templates before issuance; previews have no valid
+   verification code and create no record. Team members can open
+   `/my/certificates`, download vector artwork, or print from a public
+   verification page after issuance.
 
 The API driving these actions is documented at `/docs`, `/openapi.json`, and
 the committed [OpenAPI specification](openapi.json).

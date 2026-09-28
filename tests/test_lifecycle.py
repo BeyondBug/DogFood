@@ -565,6 +565,21 @@ class LifecycleTests(unittest.TestCase):
         self.assertIn("Model-assisted review", organizer_page)
         self.assertIn("trained on synthetic events", organizer_page)
         self.assertEqual(call("GET", "/organizer/evt_01", cookie=judge_a)[0], 403)
+        status, before, _ = call("GET", "/api/events/evt_01/certificates", cookie=organizer)
+        self.assertEqual(status, 200)
+        for kind in ("participant", "winner"):
+            preview_path = f"/events/evt_01/certificates/preview/{kind}.svg"
+            status, art, _ = call("GET", preview_path, cookie=organizer)
+            self.assertEqual(status, 200)
+            self.assertIn("SAMPLE TEMPLATE · NOT A CERTIFICATE", art)
+            self.assertIn("BEYONDBUG / TEMPLATE PREVIEW", art)
+            self.assertIn("Sample Hack 2026", art)
+            self.assertIn("NO VERIFICATION CODE", art)
+            for denied in (judge_a, participant):
+                self.assertEqual(call("GET", preview_path, cookie=denied)[0], 403)
+        status, after, _ = call("GET", "/api/events/evt_01/certificates", cookie=organizer)
+        self.assertEqual(status, 200)
+        self.assertEqual(after, before)
         status, model_signals, _ = call("GET", "/api/events/evt_01/ml-review-signals", cookie=organizer)
         self.assertEqual(status, 200)
         self.assertEqual(model_signals["version"], "judge-anomaly-iforest-v2")

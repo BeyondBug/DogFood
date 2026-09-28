@@ -18,6 +18,7 @@
 | Administrator backup | **PASS:** isolated portal created and downloaded a valid 1-event, 41-project SQLite snapshot; anonymous download returned 401 |
 | Event page Back link | **PASS:** visible at mobile size with a direct-link fallback to the event directory |
 | Five-minute lifecycle recording | **PASS:** fresh seeded portal, live browser actions through publication, direct peer-score HTTP 403, CSV download; 300-second H.264 file in `media/` |
+| Certificate template preview | **PASS:** participant and winner samples rendered at desktop and mobile widths; organizer-only access, no issued rows, no verification code |
 
 The canonical [acceptance-report.txt](acceptance-report.txt) is the unedited
 checker output against localhost:8080. `.dogfood.toml` claims only T1/T2.

@@ -2791,6 +2791,53 @@
         }
       }
     },
+    "/events/{event_id}/certificates/preview/{kind}.svg": {
+      "get": {
+        "summary": "Preview Certificate",
+        "description": "Render a non-verifiable organizer sample without issuing any record.",
+        "operationId": "preview_certificate_events__event_id__certificates_preview__kind__svg_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/certificates/{certificate_id}.svg": {
       "get": {
         "summary": "Download Certificate",

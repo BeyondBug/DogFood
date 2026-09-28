@@ -155,7 +155,7 @@ def own_certificate_page(request: Request):
     })
 
 
-def _certificate_svg(record: dict) -> str:
+def _certificate_svg(record: dict, *, preview: bool = False) -> str:
     winner = record["kind"] == "winner"
     paper, ink, accent, muted = (("#102535", "#f8f7ef", "#e7c77a", "#aec1c8") if winner
                                  else ("#f7faf7", "#102b38", "#167d78", "#547077"))
@@ -169,6 +169,12 @@ def _certificate_svg(record: dict) -> str:
     detail = escape(detail)
     issued = escape(record["issued_at"][:10])
     code = escape(record["id"])
+    record_label = "BEYONDBUG / TEMPLATE PREVIEW" if preview else "BEYONDBUG / OFFICIAL RECORD"
+    issued_line = "SAMPLE · NOT ISSUED" if preview else f"ISSUED {issued} UTC"
+    verify_line = "NO VERIFICATION CODE" if preview else f"VERIFY /certificates/{code}"
+    preview_mark = ('<rect x="325" y="768" width="550" height="34" fill="' + accent +
+                    '"/><text x="600" y="792" fill="' + paper +
+                    '" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="2">SAMPLE TEMPLATE · NOT A CERTIFICATE</text>') if preview else ""
     side = "#183b4c" if winner else "#e3f0ec"
     recipient_size = 65 if len(record["recipient_name"]) < 25 else 48 if len(record["recipient_name"]) < 36 else 36
     project_size = 31 if len(record["project_title"]) < 42 else 24
@@ -177,7 +183,7 @@ def _certificate_svg(record: dict) -> str:
 <rect width="1200" height="850" fill="{paper}"/><rect x="28" y="28" width="1144" height="794" fill="none" stroke="{accent}" stroke-width="2"/>
 <rect x="48" y="48" width="14" height="754" fill="{accent}"/><path d="M 1000 48 L 1152 48 L 1152 200 Z" fill="{side}"/>
 <circle cx="1062" cy="126" r="50" fill="none" stroke="{accent}" stroke-width="2"/><path d="M1042 126h40M1062 106v40" stroke="{accent}" stroke-width="3"/>
-<text x="102" y="112" fill="{accent}" font-family="Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="3">BEYONDBUG / OFFICIAL RECORD</text>
+<text x="102" y="112" fill="{accent}" font-family="Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="3">{record_label}</text>
 <line x1="102" y1="143" x2="930" y2="143" stroke="{accent}" stroke-width="2"/>
 <text x="102" y="225" fill="{muted}" font-family="Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="3">{lead}</text>
 <text x="102" y="288" fill="{ink}" font-family="Arial, sans-serif" font-size="45" font-weight="700">{title}</text>
@@ -188,9 +194,43 @@ def _certificate_svg(record: dict) -> str:
 <text x="102" y="601" fill="{ink}" font-family="Arial, sans-serif" font-size="{project_size}" font-weight="700">{project}</text>
 <text x="102" y="645" fill="{muted}" font-family="Arial, sans-serif" font-size="21">Team {team} · {event_name}</text>
 <line x1="102" y1="701" x2="1096" y2="701" stroke="{accent}" stroke-width="1"/>
-<text x="102" y="745" fill="{muted}" font-family="Arial, sans-serif" font-size="17">ISSUED {issued} UTC</text>
-<text x="1096" y="745" fill="{muted}" text-anchor="end" font-family="Arial, sans-serif" font-size="17">VERIFY /certificates/{code}</text>
+<text x="102" y="745" fill="{muted}" font-family="Arial, sans-serif" font-size="17">{issued_line}</text>
+<text x="1096" y="745" fill="{muted}" text-anchor="end" font-family="Arial, sans-serif" font-size="17">{verify_line}</text>
+{preview_mark}
 </svg>'''
+
+
+@router.get("/events/{event_id}/certificates/preview/{kind}.svg")
+def preview_certificate(event_id: str, kind: str, request: Request):
+    """Render a non-verifiable organizer sample without issuing any record."""
+    principal = require_login(request)
+    if kind not in ("participant", "winner"):
+        raise HTTPException(status_code=404, detail="Certificate template not found")
+    with closing(connect()) as db:
+        require_event_role(db, principal, event_id, "organizer")
+        event = db.execute("SELECT name FROM events WHERE id=?", (event_id,)).fetchone()
+        if event is None:
+            raise HTTPException(status_code=404, detail="Event not found")
+        project = db.execute(
+            "SELECT p.title,t.name AS team_name,u.name AS member_name FROM projects p"
+            " JOIN teams t ON t.id=p.team_id LEFT JOIN team_members m ON m.team_id=t.id"
+            " LEFT JOIN users u ON u.id=m.user_id"
+            " WHERE p.event_id=? AND p.status='submitted' ORDER BY p.id,u.name LIMIT 1",
+            (event_id,),
+        ).fetchone()
+        prize = db.execute("SELECT name FROM prizes WHERE event_id=? ORDER BY id LIMIT 1", (event_id,)).fetchone()
+    sample = {
+        "id": "PREVIEW-NOT-VALID", "kind": kind, "event_name": event["name"],
+        "recipient_name": project["member_name"] if project and project["member_name"] else "Sample Recipient",
+        "project_title": project["title"] if project else "Sample project",
+        "team_name": project["team_name"] if project else "Sample team",
+        "prize_name": prize["name"] if prize else "Award winner",
+        "issued_at": utc_now(),
+    }
+    return Response(_certificate_svg(sample, preview=True), media_type="image/svg+xml", headers={
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+        "Cache-Control": "no-store",
+    })
 
 
 @router.get("/certificates/{certificate_id}.svg")
