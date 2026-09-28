@@ -97,6 +97,19 @@ class LifecycleTests(unittest.TestCase):
         participant = participant.split(";", 1)[0]
         payload = {"name": "Provisioned judge", "email": f"judge-{suffix}@example.org", "tracks": [track_id]}
         self.assertEqual(call("POST", "/api/admin/events/evt_01/judges", payload, participant)[0], 403)
+        organizer_payload = {"name": "Provisioned organizer", "email": f"org-{suffix}@example.org"}
+        self.assertEqual(call("POST", "/api/admin/events/evt_01/organizers", organizer_payload, participant)[0], 403)
+        status, organizer_account, _ = call("POST", "/api/admin/events/evt_01/organizers",
+                                            organizer_payload, creator_cookie())
+        self.assertEqual(status, 201, organizer_account)
+        self.assertTrue(organizer_account["temporary_password"])
+        status, _, organizer_cookie = call("POST", "/api/auth/login", {
+            "email": organizer_payload["email"], "password": organizer_account["temporary_password"],
+        })
+        self.assertEqual(status, 200)
+        organizer_cookie = organizer_cookie.split(";", 1)[0]
+        self.assertEqual(call("GET", "/organizer/evt_01", cookie=organizer_cookie)[0], 200)
+        self.assertEqual(call("GET", "/admin", cookie=organizer_cookie)[0], 403)
         self.assertEqual(call("POST", "/api/admin/events/evt_01/judges", {
             **payload, "tracks": ["trk_wrong_event"],
         }, creator_cookie())[0], 422)
@@ -329,11 +342,36 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(status, 201)
         status, team, _ = call("POST", f"/api/events/{event_id}/teams", {"name": "Review team"}, organizer_cookie)
         self.assertEqual(status, 201)
+        status, _, _ = call("POST", f"/api/events/{event_id}/projects", {
+            "team_id": team["id"], "track_id": track_id, "title": "Unsafe media",
+            "thumbnail_url": "javascript:alert(1)",
+        }, organizer_cookie)
+        self.assertEqual(status, 422)
+        status, _, _ = call("POST", f"/api/events/{event_id}/projects", {
+            "team_id": team["id"], "track_id": track_id, "title": "Too many images",
+            "image_urls": "\n".join(f"https://example.org/{index}.png" for index in range(6)),
+        }, organizer_cookie)
+        self.assertEqual(status, 422)
         status, project, _ = call("POST", f"/api/events/{event_id}/projects", {
             "team_id": team["id"], "track_id": track_id, "title": "Scored project " + suffix,
+            "summary": "A complete rich submission.",
+            "repo_url": "https://example.org/source", "demo_url": "https://example.org/demo",
+            "live_url": "https://example.org/live", "video_url": "https://example.org/video",
+            "thumbnail_url": "https://example.org/thumbnail.png",
+            "image_urls": "https://example.org/one.png\nhttps://example.org/two.png",
+            "tech_tags": "FastAPI, SQLite",
             "status": "submitted",
         }, organizer_cookie)
         self.assertEqual(status, 201, project)
+        status, project_page, _ = call("GET", f"/projects/{project['id']}")
+        self.assertEqual(status, 200)
+        self.assertIn("FastAPI", project_page)
+        self.assertIn("https://example.org/thumbnail.png", project_page)
+        status, projects_csv, _ = call("GET", f"/api/events/{event_id}/exports/projects.csv",
+                                       cookie=organizer_cookie)
+        self.assertEqual(status, 200)
+        self.assertIn("live_url,video_url,thumbnail_url,image_urls,tech_tags", projects_csv)
+        self.assertIn("FastAPI, SQLite", projects_csv)
         status, _, _ = call("PUT", f"/api/events/{event_id}/rubric", {
             "name": "Weighted review", "criteria": [
                 {"slug": "quality", "name": "Quality", "weight": 3},
@@ -401,7 +439,8 @@ class LifecycleTests(unittest.TestCase):
             }, judge_cookie)
             self.assertEqual(status, 422)
         status, scorecard, _ = call("PUT", f"/api/judge/assignments/{assignment_id}/scorecard", {
-            "criteria": {"quality": 5, "impact": 1}, "status": "submitted",
+            "criteria": {"quality": 5, "impact": 1},
+            "comment": "Strong implementation with clear tradeoffs.", "status": "submitted",
         }, judge_cookie)
         self.assertEqual(status, 200, scorecard)
         status, activity_page, _ = call("GET", f"/organizer/{event_id}?activity=Judging", cookie=organizer_cookie)
@@ -417,12 +456,26 @@ class LifecycleTests(unittest.TestCase):
         status, exported, _ = call("GET", f"/api/events/{event_id}/exports/assignments.csv", cookie=organizer_cookie)
         self.assertEqual(status, 200)
         self.assertIn("assignment_id,project_id", exported)
+        for kind, header in (("participants", "user_id,name,email"), ("judges", "judge_id,name,email"),
+                             ("audit", "id,actor_user_id,action"), ("votes", "ballot_id,voter_user_id"),
+                             ("certificates", "certificate_id,user_id")):
+            status, exported, _ = call("GET", f"/api/events/{event_id}/exports/{kind}.csv",
+                                       cookie=organizer_cookie)
+            self.assertEqual(status, 200, kind)
+            self.assertIn(header, exported)
         status, _, _ = call("GET", f"/api/events/{event_id}/exports/assignments.csv", cookie=judge_cookie)
         self.assertEqual(status, 403)
         status, _, _ = call("GET", f"/api/events/{event_id}/rankings", cookie=judge_cookie)
         self.assertEqual(status, 403)
         status, published, _ = call("POST", f"/api/events/{event_id}/results/publish", {}, organizer_cookie)
         self.assertEqual(status, 200, published)
+        status, feedback, _ = call("GET", f"/api/events/{event_id}/my-feedback", cookie=organizer_cookie)
+        self.assertEqual(status, 200, feedback)
+        self.assertEqual(feedback["project"]["id"], project["id"])
+        self.assertEqual(feedback["reviews"][0]["label"], "Review 1")
+        self.assertEqual(feedback["reviews"][0]["comment"], "Strong implementation with clear tradeoffs.")
+        self.assertNotIn("judge", feedback["reviews"][0])
+        self.assertEqual(call("GET", f"/api/events/{event_id}/my-feedback", cookie=judge_cookie)[0], 403)
         status, _, _ = call("POST", f"/api/events/{event_id}/assignments/batch", {
             "reviews_per_project": 1,
         }, organizer_cookie)

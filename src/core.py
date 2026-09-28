@@ -470,6 +470,11 @@ class ProjectUpdate(BaseModel):
     description: str = Field(default="", max_length=5000)
     repo_url: str = Field(default="", max_length=1000)
     demo_url: str = Field(default="", max_length=1000)
+    thumbnail_url: str = Field(default="", max_length=1000)
+    image_urls: str = Field(default="", max_length=5000)
+    video_url: str = Field(default="", max_length=1000)
+    live_url: str = Field(default="", max_length=1000)
+    tech_tags: str = Field(default="", max_length=500)
     track_id: str
     status: str = "draft"
 
@@ -481,6 +486,12 @@ def update_project(project_id: str, payload: ProjectUpdate, request: Request):
         raise HTTPException(status_code=422, detail="Status must be draft or submitted")
     repo_url = require_web_url(payload.repo_url)
     demo_url = require_web_url(payload.demo_url)
+    thumbnail_url = require_web_url(payload.thumbnail_url)
+    video_url = require_web_url(payload.video_url)
+    live_url = require_web_url(payload.live_url)
+    image_urls = [require_web_url(value.strip()) for value in payload.image_urls.splitlines() if value.strip()]
+    if len(image_urls) > 5:
+        raise HTTPException(status_code=422, detail="Add at most five gallery images")
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
         project = db.execute("SELECT p.*,e.submissions_open,e.submissions_close,e.results_published_at FROM projects p JOIN events e ON e.id=p.event_id WHERE p.id=?", (project_id,)).fetchone()
@@ -499,9 +510,10 @@ def update_project(project_id: str, payload: ProjectUpdate, request: Request):
             raise HTTPException(status_code=422, detail="Track does not belong to this event")
         now = utc_now()
         db.execute(
-            "UPDATE projects SET title=?,summary=?,description=?,repo_url=?,demo_url=?,track_id=?,status=?,submitted_at=?,updated_at=?,duplicate_of=? WHERE id=?",
+            "UPDATE projects SET title=?,summary=?,description=?,repo_url=?,demo_url=?,thumbnail_url=?,image_urls=?,video_url=?,live_url=?,tech_tags=?,track_id=?,status=?,submitted_at=?,updated_at=?,duplicate_of=? WHERE id=?",
             (payload.title.strip(), payload.summary.strip(), payload.description.strip(), repo_url,
-             demo_url, payload.track_id, payload.status,
+             demo_url, thumbnail_url, "\n".join(image_urls), video_url, live_url, payload.tech_tags.strip(),
+             payload.track_id, payload.status,
              project["submitted_at"] or now if payload.status == "submitted" else None, now,
              None, project_id),
         )

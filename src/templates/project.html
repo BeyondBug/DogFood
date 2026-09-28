@@ -10,8 +10,8 @@
     <div class="detail-meta"><span>By <strong>{{ project.team }}</strong></span><span>{{ project.event_name }}</span></div>
   </div>
   <div class="detail-body">
-    <section><h2>About the project</h2><p>{{ project.description or project.summary }}</p></section>
-    <aside><h2>Project links</h2>{% if project.repo_url %}<a class="button button-primary" href="{{ project.repo_url }}" target="_blank" rel="noopener noreferrer">Open repository ↗</a>{% endif %}{% if project.demo_url %}<a class="button button-secondary" href="{{ project.demo_url }}" target="_blank" rel="noopener noreferrer">Open demo ↗</a>{% endif %}</aside>
+    <section>{% if project.thumbnail_url %}<img class="project-hero-image" src="{{ project.thumbnail_url }}" alt="Thumbnail for {{ project.title }}" loading="lazy">{% endif %}<h2>About the project</h2><p>{{ project.description or project.summary }}</p>{% if project.tech_tags %}<div class="technology-tags" aria-label="Technologies">{% for tag in project.tech_tags.split(',') if tag.strip() %}<span>{{ tag.strip() }}</span>{% endfor %}</div>{% endif %}{% if project.image_urls %}<div class="project-gallery">{% for image in project.image_urls.splitlines() if image %}<img src="{{ image }}" alt="{{ project.title }} project image {{ loop.index }}" loading="lazy">{% endfor %}</div>{% endif %}</section>
+    <aside><h2>Project links</h2>{% if project.repo_url %}<a class="button button-primary" href="{{ project.repo_url }}" target="_blank" rel="noopener noreferrer">Open repository ↗</a>{% endif %}{% if project.live_url %}<a class="button button-secondary" href="{{ project.live_url }}" target="_blank" rel="noopener noreferrer">Open live project ↗</a>{% endif %}{% if project.demo_url %}<a class="button button-secondary" href="{{ project.demo_url }}" target="_blank" rel="noopener noreferrer">Open demo ↗</a>{% endif %}{% if project.video_url %}<a class="button button-secondary" href="{{ project.video_url }}" target="_blank" rel="noopener noreferrer">Watch video ↗</a>{% endif %}</aside>
   </div>
   {% if project.voting_mode != 'disabled' %}
     <section class="comment-section" id="comments">

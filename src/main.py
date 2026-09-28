@@ -61,6 +61,11 @@ class ProjectInput(BaseModel):
     description: str = Field(default="", max_length=5000)
     repo_url: str = Field(default="", max_length=1000)
     demo_url: str = Field(default="", max_length=1000)
+    thumbnail_url: str = Field(default="", max_length=1000)
+    image_urls: str = Field(default="", max_length=5000)
+    video_url: str = Field(default="", max_length=1000)
+    live_url: str = Field(default="", max_length=1000)
+    tech_tags: str = Field(default="", max_length=500)
     status: str = "draft"
 
 
@@ -142,6 +147,12 @@ def create_project(event_id: str, payload: ProjectInput, request: Request):
     principal = require_login(request)
     repo_url = require_web_url(payload.repo_url)
     demo_url = require_web_url(payload.demo_url)
+    thumbnail_url = require_web_url(payload.thumbnail_url)
+    video_url = require_web_url(payload.video_url)
+    live_url = require_web_url(payload.live_url)
+    image_urls = [require_web_url(value.strip()) for value in payload.image_urls.splitlines() if value.strip()]
+    if len(image_urls) > 5:
+        raise HTTPException(status_code=422, detail="Add at most five gallery images")
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
         event = db.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
@@ -174,10 +185,11 @@ def create_project(event_id: str, payload: ProjectInput, request: Request):
         project_id = "prj_" + uuid.uuid4().hex[:16]
         now = utc_now()
         db.execute(
-            "INSERT INTO projects(id,event_id,team_id,track_id,title,summary,description,repo_url,demo_url,status,submitted_at,updated_at,duplicate_of)"
-            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO projects(id,event_id,team_id,track_id,title,summary,description,repo_url,demo_url,thumbnail_url,image_urls,video_url,live_url,tech_tags,status,submitted_at,updated_at,duplicate_of)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (project_id, event_id, payload.team_id, payload.track_id, payload.title, payload.summary,
-             payload.description, repo_url, demo_url, payload.status,
+             payload.description, repo_url, demo_url, thumbnail_url, "\n".join(image_urls), video_url,
+             live_url, payload.tech_tags.strip(), payload.status,
              now if payload.status == "submitted" else None, now, None),
         )
         reconcile_submitted_duplicates(db, event_id)
@@ -232,7 +244,8 @@ def export_projects(event_id: str, request: Request):
     with closing(connect()) as db:
         require_event_role(db, principal, event_id, "organizer")
         rows = db.execute(
-            "SELECT p.id,p.title,p.status,p.summary,p.repo_url,p.submitted_at,"
+            "SELECT p.id,p.title,p.status,p.summary,p.repo_url,p.demo_url,p.live_url,p.video_url,"
+            " p.thumbnail_url,p.image_urls,p.tech_tags,p.submitted_at,"
             " t.name AS team,tr.name AS track FROM projects p"
             " JOIN teams t ON t.id=p.team_id JOIN tracks tr ON tr.id=p.track_id"
             " WHERE p.event_id=? ORDER BY p.id",
@@ -240,7 +253,8 @@ def export_projects(event_id: str, request: Request):
         ).fetchall()
     output = io.StringIO()
     writer = csv.writer(output)
-    columns = ("id", "title", "status", "summary", "repo_url", "submitted_at", "team", "track")
+    columns = ("id", "title", "status", "summary", "repo_url", "demo_url", "live_url", "video_url",
+               "thumbnail_url", "image_urls", "tech_tags", "submitted_at", "team", "track")
     writer.writerow(columns)
     writer.writerows(tuple(csv_safe(row[column]) for column in columns) for row in rows)
     return Response(output.getvalue(), media_type="text/csv; charset=utf-8", headers={
