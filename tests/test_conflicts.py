@@ -4,7 +4,7 @@ import unittest
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from test_lifecycle import call
+from test_lifecycle import creator_cookie, call
 
 
 class ConflictTests(unittest.TestCase):
@@ -19,7 +19,7 @@ class ConflictTests(unittest.TestCase):
             self.assertEqual(status, 201)
             return cookie.split(";", 1)[0]
 
-        organizer = account("organizer")
+        organizer = creator_cookie()
         status, event, _ = call("POST", "/api/events", {
             "name": f"Conflict event {suffix}",
             "submissions_close": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),

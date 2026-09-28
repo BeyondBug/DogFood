@@ -41,7 +41,48 @@ def call(method, path, body=None, cookie=None):
     return status, parsed, cookie_header
 
 
+def creator_cookie():
+    status, _, cookie = call("POST", "/api/auth/login", {
+        "email": "integration-admin@beyondbug.local", "password": "DisposableTestAdmin2026!",
+    })
+    if status != 200:
+        raise AssertionError(f"Disposable admin login failed: {status}")
+    return cookie.split(";", 1)[0]
+
+
 class LifecycleTests(unittest.TestCase):
+    def test_header_sign_out_revokes_session(self):
+        suffix = uuid.uuid4().hex[:10]
+        status, _, cookie = call("POST", "/api/auth/register", {
+            "name": "Menu tester", "email": f"menu-{suffix}@example.org",
+            "password": "A-long-local-test-password!",
+        })
+        self.assertEqual(status, 201)
+        cookie = cookie.split(";", 1)[0]
+        status, gallery, _ = call("GET", "/projects", cookie=cookie)
+        self.assertEqual(status, 200)
+        self.assertIn('class="account-menu"', gallery)
+        self.assertIn('href="/dashboard">Dashboard', gallery)
+        self.assertIn('data-action="logout"', gallery)
+        status, dashboard, _ = call("GET", "/dashboard", cookie=cookie)
+        self.assertEqual(status, 200)
+        self.assertNotIn('data-action="create-event"', dashboard)
+        self.assertEqual(call("POST", "/api/events", {
+            "name": "Forbidden event", "submissions_close": "2026-12-31T18:00:00Z",
+            "tracks": ["Software"],
+        }, cookie)[0], 403)
+        status, _, organizer_session = call("POST", "/api/auth/login", {
+            "email": "organizer@beyondbug.local", "password": "BeyondBugDemo2026!",
+        })
+        self.assertEqual(status, 200)
+        organizer_session = organizer_session.split(";", 1)[0]
+        status, organizer_dashboard, _ = call("GET", "/dashboard", cookie=organizer_session)
+        self.assertEqual(status, 200)
+        self.assertIn('data-action="create-event"', organizer_dashboard)
+        status, _, _ = call("POST", "/api/auth/logout", cookie=cookie)
+        self.assertEqual(status, 204)
+        self.assertEqual(call("GET", "/api/auth/me", cookie=cookie)[0], 401)
+
     def test_http_helper_refuses_the_default_portal(self):
         for address in ("", "http://localhost:8080", "http://127.0.0.1:8080/"):
             with self.subTest(address=address), patch(__name__ + ".BASE", address):
@@ -92,7 +133,7 @@ class LifecycleTests(unittest.TestCase):
             "name": f"Deadline teams {suffix}",
             "submissions_close": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(),
             "tracks": ["Software"],
-        }, captain_cookie)
+        }, creator_cookie())
         self.assertEqual(status, 201, event)
         event_id = event["id"]
         status, _, _ = call("POST", f"/api/events/{event_id}/registration", {}, captain_cookie)
@@ -110,11 +151,11 @@ class LifecycleTests(unittest.TestCase):
         newcomer_cookie = newcomer_cookie.split(";", 1)[0]
         status, _, _ = call("PATCH", f"/api/events/{event_id}", {
             "submissions_close": (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(),
-        }, captain_cookie)
+        }, creator_cookie())
         self.assertEqual(status, 200)
         status, _, _ = call("PATCH", f"/api/events/{event_id}", {
             "submissions_close": (datetime.now(timezone.utc) + timedelta(days=3)).isoformat(),
-        }, captain_cookie)
+        }, creator_cookie())
         self.assertEqual(status, 409)
         status, _, _ = call("POST", f"/api/team-invites/{token}/join", {}, newcomer_cookie)
         self.assertEqual(status, 409)
@@ -145,7 +186,7 @@ class LifecycleTests(unittest.TestCase):
         status, event, _ = call("POST", "/api/events", {
             "name": f"Teams {suffix}", "submissions_close":
             (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(), "tracks": ["Software"],
-        }, captain_cookie)
+        }, creator_cookie())
         self.assertEqual(status, 201, event)
         event_id = event["id"]
         status, _, _ = call("POST", f"/api/events/{event_id}/registration", {}, captain_cookie)
@@ -181,7 +222,7 @@ class LifecycleTests(unittest.TestCase):
             "password": "A-long-local-test-password!",
         })
         self.assertEqual(status, 201)
-        organizer_cookie = organizer_cookie.split(";", 1)[0]
+        organizer_cookie = creator_cookie()
         future = (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()
         status, event, _ = call("POST", "/api/events", {
             "name": f"Review {suffix}", "submissions_close": future, "tracks": ["Software"],
@@ -308,6 +349,26 @@ class LifecycleTests(unittest.TestCase):
             "project_id": project["id"],
         }, organizer_cookie)
         self.assertEqual(status, 200)
+        status, _, admin_cookie = call("POST", "/api/auth/login", {
+            "email": "integration-admin@beyondbug.local", "password": "DisposableTestAdmin2026!",
+        })
+        self.assertEqual(status, 200)
+        admin_cookie = admin_cookie.split(";", 1)[0]
+        for kind, design in (
+            ("participant", {"layout": "modern", "palette": "coral", "issuer_line": "BeyondBug Test"}),
+            ("winner", {"layout": "bold", "palette": "violet", "issuer_line": "BeyondBug Awards"}),
+        ):
+            status, saved, _ = call("PUT", f"/api/admin/events/{event_id}/certificate-designs/{kind}",
+                                    design, admin_cookie)
+            self.assertEqual(status, 200, saved)
+            self.assertEqual(saved["design"], design)
+            preview_path = f"/events/{event_id}/certificates/preview/{kind}.svg"
+            status, preview, _ = call("GET", preview_path, cookie=admin_cookie)
+            self.assertEqual(status, 200)
+            self.assertIn(design["issuer_line"] + " / TEMPLATE PREVIEW", preview)
+        self.assertEqual(call("PUT", f"/api/admin/events/{event_id}/certificate-designs/winner", {
+            "layout": "classic", "palette": "gold", "issuer_line": "No access",
+        }, judge_cookie)[0], 403)
         status, issued, _ = call("POST", f"/api/events/{event_id}/certificates/issue", {}, organizer_cookie)
         self.assertEqual(status, 200, issued)
         self.assertEqual(issued["created"], {"participant": 1, "winner": 1})
@@ -327,7 +388,7 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(participant_record["project"], "Scored project " + suffix)
         self.assertEqual(participant_record["event"], f"Review {suffix}")
         self.assertIsNone(participant_record["prize"])
-        self.assertEqual(participant_record["recipient"], "Review organizer")
+        self.assertEqual(participant_record["recipient"], "Local administrator")
         status, verified, _ = call("GET", f"/api/certificates/{winner_id}/verify")
         self.assertEqual(status, 200)
         self.assertTrue(verified["verified"])
@@ -341,6 +402,16 @@ class LifecycleTests(unittest.TestCase):
         status, art, _ = call("GET", f"/certificates/{winner_id}.svg")
         self.assertEqual(status, 200)
         self.assertIn("Certificate of distinction", art)
+        self.assertIn("BeyondBug Awards / OFFICIAL RECORD", art)
+        self.assertIn('stroke-width="7"', art)
+        status, participant_art, _ = call("GET", f"/certificates/{participant_id}.svg")
+        self.assertEqual(status, 200)
+        self.assertIn("BeyondBug Test / OFFICIAL RECORD", participant_art)
+        status, _, _ = call("PUT", f"/api/admin/events/{event_id}/certificate-designs/winner", {
+            "layout": "classic", "palette": "gold", "issuer_line": "Changed later",
+        }, admin_cookie)
+        self.assertEqual(status, 200)
+        self.assertEqual(call("GET", f"/certificates/{winner_id}.svg")[1], art)
         status, page, _ = call("GET", f"/certificates/{winner_id}")
         self.assertEqual(status, 200)
         self.assertIn("Verified record", page)
@@ -371,7 +442,7 @@ class LifecycleTests(unittest.TestCase):
             "password": "A-long-local-test-password!",
         })
         self.assertEqual(status, 201, account)
-        cookie = cookie.split(";", 1)[0]
+        cookie = creator_cookie()
         now = datetime.now(timezone.utc)
         future = (now + timedelta(days=2)).isoformat()
         status, event, _ = call("POST", "/api/events", {
@@ -441,7 +512,7 @@ class LifecycleTests(unittest.TestCase):
             "name": f"Duplicate review {suffix}",
             "submissions_close": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(),
             "tracks": ["Software"],
-        }, first)
+        }, creator_cookie())
         self.assertEqual(status, 201, event)
         event_id = event["id"]
         track_id = call("GET", f"/api/events/{event_id}")[1]["tracks"][0]["id"]
@@ -467,7 +538,7 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(status, 201, submitted)
 
         def ranked_projects():
-            status, result, _ = call("GET", f"/api/events/{event_id}/rankings", cookie=first)
+            status, result, _ = call("GET", f"/api/events/{event_id}/rankings", cookie=creator_cookie())
             self.assertEqual(status, 200, result)
             return {row["id"]: row for row in result["projects"]}
 
@@ -506,8 +577,8 @@ class LifecycleTests(unittest.TestCase):
         self.assertIn('href="/dashboard">Dashboard', landing)
         status, dashboard, _ = call("GET", "/dashboard", cookie=participant)
         self.assertEqual(status, 200)
-        self.assertIn('data-setup-wizard', dashboard)
-        self.assertIn('Review before creating', dashboard)
+        self.assertNotIn('data-setup-wizard', dashboard)
+        self.assertIn('Browse events', dashboard)
         status, _, _ = call("GET", "/admin?check=1", cookie=participant)
         self.assertEqual(status, 403)
         status, _, _ = call("POST", "/api/admin/backups", cookie=participant)
@@ -565,17 +636,30 @@ class LifecycleTests(unittest.TestCase):
         self.assertIn("Model-assisted review", organizer_page)
         self.assertIn("trained on synthetic events", organizer_page)
         self.assertEqual(call("GET", "/organizer/evt_01", cookie=judge_a)[0], 403)
+        status, _, admin_cookie = call("POST", "/api/auth/login", {
+            "email": "integration-admin@beyondbug.local", "password": "DisposableTestAdmin2026!",
+        })
+        self.assertEqual(status, 200)
+        admin_cookie = admin_cookie.split(";", 1)[0]
+        self.assertEqual(call("GET", "/admin/certificates?event_id=evt_01", cookie=organizer)[0], 403)
+        self.assertEqual(call("PUT", "/api/admin/events/evt_01/certificate-designs/winner", {
+            "layout": "modern", "palette": "gold", "issuer_line": "BeyondBug",
+        }, organizer)[0], 403)
+        status, studio, _ = call("GET", "/admin/certificates?event_id=evt_01", cookie=admin_cookie)
+        self.assertEqual(status, 200)
+        self.assertIn("Participation certificate", studio)
+        self.assertIn("Winner certificate", studio)
         status, before, _ = call("GET", "/api/events/evt_01/certificates", cookie=organizer)
         self.assertEqual(status, 200)
         for kind in ("participant", "winner"):
             preview_path = f"/events/evt_01/certificates/preview/{kind}.svg"
-            status, art, _ = call("GET", preview_path, cookie=organizer)
+            status, art, _ = call("GET", preview_path, cookie=admin_cookie)
             self.assertEqual(status, 200)
             self.assertIn("SAMPLE TEMPLATE · NOT A CERTIFICATE", art)
             self.assertIn("BEYONDBUG / TEMPLATE PREVIEW", art)
             self.assertIn("Sample Hack 2026", art)
             self.assertIn("NO VERIFICATION CODE", art)
-            for denied in (judge_a, participant):
+            for denied in (judge_a, participant, organizer):
                 self.assertEqual(call("GET", preview_path, cookie=denied)[0], 403)
         status, after, _ = call("GET", "/api/events/evt_01/certificates", cookie=organizer)
         self.assertEqual(status, 200)

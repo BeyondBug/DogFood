@@ -288,6 +288,19 @@ CREATE INDEX ix_login_attempts_account_time ON login_attempts(account_digest,cre
 CREATE INDEX ix_login_attempts_ip_time ON login_attempts(ip_digest,created_at);
 """
 
+SCHEMA_V6 = """
+CREATE TABLE IF NOT EXISTS certificate_designs (
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK(kind IN ('participant','winner')),
+    layout TEXT NOT NULL CHECK(layout IN ('classic','modern','bold')),
+    palette TEXT NOT NULL CHECK(palette IN ('teal','blue','coral','gold','violet')),
+    issuer_line TEXT NOT NULL,
+    updated_by TEXT NOT NULL REFERENCES users(id),
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY(event_id,kind)
+);
+"""
+
 
 def initialize() -> None:
     path = database_path()
@@ -295,7 +308,7 @@ def initialize() -> None:
     with closing(connect()) as db:
         db.execute("PRAGMA journal_mode = WAL")
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        if version > 5:
+        if version > 6:
             raise RuntimeError(f"Database schema version {version} is newer than this app")
         if version == 0:
             db.executescript(SCHEMA_V1)
@@ -316,4 +329,11 @@ def initialize() -> None:
         if version == 4:
             db.executescript(SCHEMA_V5)
             db.execute("PRAGMA user_version = 5")
+            version = 5
+        if version == 5:
+            db.executescript(SCHEMA_V6)
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(certificates)")}
+            if "design_json" not in columns:
+                db.execute("ALTER TABLE certificates ADD COLUMN design_json TEXT NOT NULL DEFAULT '{}'")
+            db.execute("PRAGMA user_version = 6")
         db.commit()

@@ -56,6 +56,16 @@ def require_login(request: Request) -> Principal:
     return principal
 
 
+def can_create_event(db: Connection, principal: Principal) -> bool:
+    """Only administrators and existing organizers may start another event."""
+    if principal.is_admin:
+        return True
+    return db.execute(
+        "SELECT 1 FROM event_roles WHERE user_id=? AND role='organizer' LIMIT 1",
+        (principal.user_id,),
+    ).fetchone() is not None
+
+
 def has_event_role(db: Connection, principal: Principal, event_id: str, *roles: str) -> bool:
     if principal.is_admin:
         return True

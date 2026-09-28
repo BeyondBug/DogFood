@@ -39,6 +39,29 @@ function fields(form) { return Object.fromEntries(new FormData(form)); }
 function list(value) { return value.split(',').map(item => item.trim()).filter(Boolean); }
 function refresh() { window.location.reload(); }
 
+function updateCertificatePreview(form) {
+  if (!form || !form.matches('[data-design-preview]')) return;
+  const data = fields(form);
+  if (String(data.issuer_line || '').trim().length < 2) return;
+  const path = `/events/${encodeURIComponent(form.dataset.event)}/certificates/preview/${encodeURIComponent(form.dataset.kind)}.svg`;
+  const query = new URLSearchParams({ layout: data.layout, palette: data.palette, issuer_line: data.issuer_line.trim() });
+  const url = `${path}?${query}`;
+  const card = form.closest('.certificate-design-card');
+  card.querySelectorAll('[data-preview-link]').forEach(link => { link.href = url; });
+  card.querySelector('[data-preview-image]').src = url;
+}
+let certificatePreviewTimer;
+document.addEventListener('input', event => {
+  const form = event.target.closest('form[data-design-preview]');
+  if (!form) return;
+  clearTimeout(certificatePreviewTimer);
+  certificatePreviewTimer = setTimeout(() => updateCertificatePreview(form), 250);
+});
+document.addEventListener('change', event => {
+  const form = event.target.closest('form[data-design-preview]');
+  if (form) updateCertificatePreview(form);
+});
+
 const setupKey = 'beyondbug-event-setup-draft';
 function showSetupStep(form, index) {
   const steps = [...form.querySelectorAll('.setup-step')];
@@ -239,6 +262,10 @@ document.addEventListener('submit', async event => {
         await api('POST', '/api/auth/logout');
         window.location.assign('/');
         return;
+      case 'certificate-design':
+        await api('PUT', `/api/admin/events/${form.dataset.event}/certificate-designs/${form.dataset.kind}`, data);
+        notice(`${form.dataset.kind === 'winner' ? 'Winner' : 'Participation'} design saved. Future certificates will use it.`);
+        setTimeout(refresh, 900); return;
       case 'create-backup':
         await api('POST', '/api/admin/backups');
         refresh(); return;

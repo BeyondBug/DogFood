@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from .auth import current_principal, require_event_role
+from .auth import can_create_event, current_principal, require_event_role
 from .backup import write_backup
 from .core import time_value
 from .db import connect, database_path
@@ -69,6 +69,7 @@ def dashboard(request: Request):
         events = db.execute("SELECT id,name,description,submissions_close FROM events ORDER BY created_at DESC LIMIT 20").fetchall()
     return templates.TemplateResponse(request, "dashboard.html", {
         "principal": principal, "roles": [dict(row) for row in roles], "events": [dict(row) for row in events],
+        "can_create_event": principal.is_admin or any(row["role"] == "organizer" for row in roles),
     })
 
 
@@ -77,6 +78,8 @@ def event_directory(request: Request, q: str = "", page: int = Query(default=1, 
     query = q.strip()[:120]
     search = f"%{query}%"
     with closing(connect()) as db:
+        principal = current_principal(request)
+        allow_event_creation = bool(principal and can_create_event(db, principal))
         total = db.execute(
             "SELECT COUNT(*) FROM events e WHERE e.name LIKE ? OR e.description LIKE ?",
             (search, search),
@@ -103,7 +106,8 @@ def event_directory(request: Request, q: str = "", page: int = Query(default=1, 
                           "Open for submissions")
         events.append(event)
     return templates.TemplateResponse(request, "events.html", {
-        "principal": current_principal(request), "events": events, "query": query,
+        "principal": principal, "can_create_event": allow_event_creation,
+        "events": events, "query": query,
         "total": total, "page": current_page, "last_page": last_page,
         "first_result": (current_page - 1) * page_size + 1 if total else 0,
         "last_result": min(current_page * page_size, total),
