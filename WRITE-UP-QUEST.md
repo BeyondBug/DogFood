@@ -30,6 +30,45 @@ The product has five distinct actors:
 | Organizer | Configure an event, rubric, judge pool and assignments; inspect progress, audit history, calibration and voting; publish results and export data |
 | Administrator | Create events, provision organizers and judges, inspect system health and backups, and configure certificate designs |
 
+```mermaid
+flowchart LR
+    V[Visitor] --> PUB[Public gallery and published results]
+    P[Participant] --> SESSION[Session authentication]
+    J[Judge] --> SESSION
+    O[Organizer] --> SESSION
+    A[Administrator] --> SESSION
+    SESSION --> ROLE{Backend role and ownership checks}
+    ROLE -->|participant and own team| PART[Team, submission, ballot, feedback]
+    ROLE -->|assigned judge only| JUDGE[Own assignments and scorecards]
+    ROLE -->|event organizer| ORG[Rubric, progress, audit, ranking, publication]
+    ROLE -->|global administrator| ADMIN[Events, accounts, health, backups, designs]
+    ROLE -->|scope mismatch| DENY[401 or 403]
+    PUB --> API[FastAPI routes]
+    PART --> API
+    JUDGE --> API
+    ORG --> API
+    ADMIN --> API
+    API --> TX[SQLite transaction]
+    TX --> DATA[(Domain records)]
+    TX --> AUDIT[(Audit entry)]
+
+    classDef actor fill:#dbeafe,stroke:#2563eb,color:#172554,stroke-width:2px;
+    classDef public fill:#ccfbf1,stroke:#0f766e,color:#134e4a,stroke-width:2px;
+    classDef gate fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:3px;
+    classDef permitted fill:#ede9fe,stroke:#7c3aed,color:#2e1065,stroke-width:2px;
+    classDef denied fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:3px;
+    classDef system fill:#e2e8f0,stroke:#475569,color:#0f172a,stroke-width:2px;
+    class V,P,J,O,A actor;
+    class PUB public;
+    class SESSION,ROLE gate;
+    class PART,JUDGE,ORG,ADMIN permitted;
+    class DENY denied;
+    class API,TX,DATA,AUDIT system;
+```
+
+The diagram's red path matters as much as its permitted paths: authorization
+is a backend decision made before protected records are read or changed.
+
 The browser experience includes role-specific dashboards, a four-step event
 setup flow, deadline and lifecycle indicators, submission readiness checks,
 judge autosave, next-project navigation, a readable audit log, light and dark
@@ -180,6 +219,42 @@ Iteration stops when the maximum quality change is below `1e-10`, or after
 `clamp(raw - severity, 0, 5)`, so calibration never leaves the rubric scale.
 The stored scorecard is never overwritten.
 
+```mermaid
+flowchart LR
+    RUBRIC[Weighted rubric] --> CARD[Submitted scorecards]
+    CARD --> RAW[Raw 0-5 review scores]
+    RAW --> GRAPH[Judge-project overlap graph]
+    GRAPH --> CHECK{Connected review pool?}
+    CHECK -->|No| WARN[Show comparison warning]
+    CHECK -->|Yes| FIT[Fit regularized judge severity]
+    FIT --> ADJUST[Clamp adjusted reviews to 0-5]
+    ADJUST --> RANK[Adjusted project ranking]
+    RAW --> PRESERVE[(Original scores preserved)]
+    PRESERVE --> EXPLAIN[Raw vs adjusted explanation]
+    RANK --> EXPLAIN
+    WARN --> REVIEW[Organizer review]
+    EXPLAIN --> REVIEW
+    REVIEW --> PUBLISH{Publish results?}
+    PUBLISH -->|Not ready| PRIVATE[Keep rankings private]
+    PUBLISH -->|Approved after close| PUBLIC[Lock data and publish]
+
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#172554,stroke-width:2px;
+    classDef compute fill:#ede9fe,stroke:#7c3aed,color:#2e1065,stroke-width:2px;
+    classDef evidence fill:#ccfbf1,stroke:#0f766e,color:#134e4a,stroke-width:2px;
+    classDef decision fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:3px;
+    classDef warning fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px;
+    classDef outcome fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:3px;
+    class RUBRIC,CARD,RAW input;
+    class GRAPH,FIT,ADJUST,RANK compute;
+    class PRESERVE,EXPLAIN,REVIEW evidence;
+    class CHECK,PUBLISH decision;
+    class WARN,PRIVATE warning;
+    class PUBLIC outcome;
+```
+
+Normalization is therefore an explanation pipeline, not a destructive rewrite:
+the organizer can always compare the original review with its adjustment.
+
 The official fixture gives this method a useful stress test:
 
 - 41 project records from 40 teams;
@@ -313,6 +388,47 @@ The model is absent from every decision path. It cannot write a score, change
 normalization, assign a judge, disqualify anyone, select a winner, issue a
 certificate, or expose peer scores to judges. Judges and participants receive
 HTTP 403 from its endpoint.
+
+```mermaid
+flowchart LR
+    CONTRIB[Teammate model contribution] --> GATE{Integration gate}
+    GATE --> SCALE[Matches 0-5 scale]
+    GATE --> FEATURES[Uses recorded features]
+    GATE --> LEAK[No target or future leakage]
+    GATE --> SPLIT[Event-level evaluation split]
+    GATE --> OFFLINE[Offline reviewed runtime]
+    GATE --> AUTH[Organizer-only access]
+    SCALE --> PASS{All checks pass?}
+    FEATURES --> PASS
+    LEAK --> PASS
+    SPLIT --> PASS
+    OFFLINE --> PASS
+    AUTH --> PASS
+    PASS -->|v1: no| RESEARCH[Keep as research history]
+    PASS -->|v2: yes| JSON[Export 300 trees to compressed JSON]
+    JSON --> SIGNAL[Advisory review signals]
+    SIGNAL --> HUMAN[Organizer inspects evidence and scorecard]
+    HUMAN --> DECISION[Human decision outside the model]
+    SIGNAL -. never writes .-> PROTECTED[Scores, rankings, assignments, awards]
+
+    classDef source fill:#dbeafe,stroke:#2563eb,color:#172554,stroke-width:2px;
+    classDef gate fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:3px;
+    classDef check fill:#ede9fe,stroke:#7c3aed,color:#2e1065,stroke-width:2px;
+    classDef rejected fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px;
+    classDef accepted fill:#ccfbf1,stroke:#0f766e,color:#134e4a,stroke-width:2px;
+    classDef human fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:3px;
+    classDef protected fill:#f1f5f9,stroke:#475569,color:#0f172a,stroke-width:2px,stroke-dasharray:5 5;
+    class CONTRIB source;
+    class GATE,PASS gate;
+    class SCALE,FEATURES,LEAK,SPLIT,OFFLINE,AUTH check;
+    class RESEARCH rejected;
+    class JSON,SIGNAL accepted;
+    class HUMAN,DECISION human;
+    class PROTECTED protected;
+```
+
+The dashed edge is intentionally a non-effect: the signal can point an
+organizer toward evidence, but it has no write path into judging outcomes.
 
 ## Shipping ML without shipping an ML runtime
 
