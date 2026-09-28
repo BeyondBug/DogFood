@@ -103,6 +103,11 @@ class LoginInput(BaseModel):
     password: str
 
 
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=12, max_length=256)
+
+
 # A non-existent account performs the same expensive password check as a
 # known account. The value is deliberately impossible to match.
 _DUMMY_PASSWORD_HASH = "pbkdf2_sha256$260000$" + "00" * 16 + "$" + "00" * 32
@@ -194,6 +199,21 @@ def logout(request: Request, response: Response):
         with closing(connect()) as db:
             db.execute("DELETE FROM sessions WHERE token_hash=?", (hashlib.sha256(token.encode()).hexdigest(),))
             db.commit()
+    response.delete_cookie("session")
+
+
+@router.post("/auth/password", status_code=204)
+def change_password(payload: PasswordChange, request: Request, response: Response):
+    principal = require_login(request)
+    with closing(connect()) as db:
+        db.execute("BEGIN IMMEDIATE")
+        current = db.execute("SELECT password_hash FROM users WHERE id=?", (principal.user_id,)).fetchone()
+        if current is None or not verify_password(payload.current_password, current["password_hash"]):
+            raise HTTPException(status_code=403, detail="Current password is incorrect")
+        db.execute("UPDATE users SET password_hash=? WHERE id=?",
+                   (hash_password(payload.new_password), principal.user_id))
+        db.execute("DELETE FROM sessions WHERE user_id=?", (principal.user_id,))
+        db.commit()
     response.delete_cookie("session")
 
 

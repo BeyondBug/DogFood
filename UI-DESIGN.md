@@ -156,6 +156,9 @@ is meant to run future events too.
 
 ### Participant workspace
 
+- The dashboard lists registered events with the current team, project state,
+  deadline, and one next action. Account details and password change stay
+  behind a compact disclosure.
 - Team identity and member count, with invite action and the four-member limit.
 - Submission stepper: project details, links/media, track, review and submit.
 - Visible `Draft`, `Submitted`, and `Closed` states; save/submit confirmation.
@@ -164,6 +167,11 @@ is meant to run future events too.
 
 ### Judge console
 
+- An administrator may provision a new judge from the event desk, choose
+  tracks, and share a one-time temporary password privately. The judge signs
+  in through the normal account page; the dashboard shows review progress.
+- Model signals stay on the organizer desk so peer review patterns cannot
+  influence a judge's independent scoring.
 - Queue grouped by `To review`, `Draft`, and `Submitted`; progress fraction.
 - Project context and rubric visible together so judges need fewer clicks.
 - Weighted criteria with score range and help text, comment field, save draft,

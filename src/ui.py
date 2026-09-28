@@ -63,12 +63,63 @@ def dashboard(request: Request):
     if principal is None:
         return RedirectResponse("/account", status_code=303)
     with closing(connect()) as db:
-        roles = db.execute("SELECT r.event_id,r.role,e.name,e.submissions_close FROM event_roles r"
+        roles = db.execute("SELECT r.event_id,r.role,e.name,e.submissions_open,e.submissions_close,e.results_published_at FROM event_roles r"
                            " JOIN events e ON e.id=r.event_id WHERE r.user_id=? ORDER BY e.created_at DESC,r.role",
                            (principal.user_id,)).fetchall()
         events = db.execute("SELECT id,name,description,submissions_close FROM events ORDER BY created_at DESC LIMIT 20").fetchall()
+        my_events = {}
+        for row in roles:
+            event = my_events.setdefault(row["event_id"], {
+                "id": row["event_id"], "name": row["name"], "submissions_close": row["submissions_close"],
+                "submissions_open": row["submissions_open"], "results_published_at": row["results_published_at"],
+                "roles": [], "details": [], "action": "View event", "action_url": f"/events/{row['event_id']}",
+            })
+            event["roles"].append(row["role"])
+        for event in my_events.values():
+            event_id = event["id"]
+            now = datetime.now(timezone.utc)
+            event["stage"] = ("Results published" if event["results_published_at"] else
+                              "Judging" if now >= time_value(event["submissions_close"]) else
+                              "Submissions upcoming" if event["submissions_open"] and now < time_value(event["submissions_open"]) else
+                              "Submissions open")
+            if "participant" in event["roles"]:
+                team = db.execute("SELECT t.id,t.name FROM teams t JOIN team_members m ON m.team_id=t.id"
+                                  " WHERE t.event_id=? AND m.user_id=?", (event_id, principal.user_id)).fetchone()
+                event["details"].append(f"Team: {team['name']}" if team else "Team: not formed")
+                if team:
+                    member_count = db.execute("SELECT COUNT(*) FROM team_members WHERE team_id=?", (team["id"],)).fetchone()[0]
+                    event["details"].append(f"Team members: {member_count}")
+                project = db.execute("SELECT p.id,p.title,p.status,t.name AS track FROM projects p"
+                                     " JOIN tracks t ON t.id=p.track_id WHERE p.team_id=?"
+                                     " ORDER BY p.updated_at DESC LIMIT 1", (team["id"],)).fetchone() if team else None
+                event["details"].append("Project: " + (f"{project['title']} ({project['status']}, {project['track']})" if project else "not started"))
+                if now < time_value(event["submissions_close"]):
+                    event["action"] = ("Edit submission" if project and project["status"] == "submitted" else
+                                       "Continue draft" if project else "Start submission" if team else "Create team")
+                    event["action_url"] = f"/workspace/{event_id}"
+                elif project and project["status"] == "submitted":
+                    event["action"] = "View submitted project"
+                    event["action_url"] = f"/projects/{project['id']}"
+                if event["results_published_at"]:
+                    event["action"] = "View results"
+                    event["action_url"] = f"/results/{event_id}"
+            if "judge" in event["roles"]:
+                progress = db.execute("SELECT COUNT(a.id) AS assigned,"
+                                      " COUNT(CASE WHEN s.status='submitted' THEN 1 END) AS submitted"
+                                      " FROM judge_profiles j LEFT JOIN judge_assignments a ON a.judge_id=j.id"
+                                      " LEFT JOIN scorecards s ON s.assignment_id=a.id"
+                                      " WHERE j.event_id=? AND j.user_id=?", (event_id, principal.user_id)).fetchone()
+                event["details"].append(f"Reviews: {progress['submitted']} of {progress['assigned']} submitted")
+                if "organizer" not in event["roles"]:
+                    event["action"] = "Continue judging" if progress["assigned"] > progress["submitted"] else "Open judge desk"
+                    event["action_url"] = f"/judge/{event_id}"
+            if "organizer" in event["roles"]:
+                event["details"].append("Organizer desk: event setup, judges, and results")
+                event["action"] = "Manage event"
+                event["action_url"] = f"/organizer/{event_id}"
     return templates.TemplateResponse(request, "dashboard.html", {
         "principal": principal, "roles": [dict(row) for row in roles], "events": [dict(row) for row in events],
+        "my_events": list(my_events.values()),
         "can_create_event": principal.is_admin or any(row["role"] == "organizer" for row in roles),
     })
 
