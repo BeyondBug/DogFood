@@ -71,6 +71,7 @@ class LifecycleTests(unittest.TestCase):
         self.assertIn("Team: not formed", dashboard)
         self.assertIn("Submissions open", dashboard)
         self.assertIn("Create team", dashboard)
+        self.assertIn('href="/my/certificates"', dashboard)
         status, team, _ = call("POST", f"/api/events/{event_id}/teams", {"name": "Progress team"}, cookie)
         self.assertEqual(status, 201)
         dashboard = call("GET", "/dashboard", cookie=cookie)[1]
@@ -111,6 +112,9 @@ class LifecycleTests(unittest.TestCase):
         dashboard = call("GET", "/dashboard", cookie=judge)[1]
         self.assertIn("Reviews: 0 of 0 submitted", dashboard)
         self.assertIn(f'href="/judge/evt_01"', dashboard)
+        self.assertNotIn('href="/my/certificates"', dashboard)
+        self.assertNotIn('data-action="create-event"', dashboard)
+        self.assertNotIn('href="/admin"', dashboard)
         self.assertEqual(call("GET", "/judge/evt_01", cookie=judge)[0], 200)
         self.assertEqual(call("GET", "/api/events/evt_01/ml-review-signals", cookie=judge)[0], 403)
         self.assertEqual(call("GET", "/api/judge/assignments?event_id=evt_01", cookie=judge)[0], 200)
@@ -144,6 +148,8 @@ class LifecycleTests(unittest.TestCase):
         status, dashboard, _ = call("GET", "/dashboard", cookie=cookie)
         self.assertEqual(status, 200)
         self.assertNotIn('data-action="create-event"', dashboard)
+        self.assertNotIn('href="/my/certificates"', dashboard)
+        self.assertNotIn('href="/admin"', dashboard)
         self.assertEqual(call("POST", "/api/events", {
             "name": "Forbidden event", "submissions_close": "2026-12-31T18:00:00Z",
             "tracks": ["Software"],
@@ -155,7 +161,16 @@ class LifecycleTests(unittest.TestCase):
         organizer_session = organizer_session.split(";", 1)[0]
         status, organizer_dashboard, _ = call("GET", "/dashboard", cookie=organizer_session)
         self.assertEqual(status, 200)
-        self.assertIn('data-action="create-event"', organizer_dashboard)
+        self.assertNotIn('data-action="create-event"', organizer_dashboard)
+        self.assertNotIn('href="/admin"', organizer_dashboard)
+        self.assertEqual(call("POST", "/api/events", {
+            "name": "Organizer cannot create", "submissions_close": "2026-12-31T18:00:00Z",
+            "tracks": ["Software"],
+        }, organizer_session)[0], 403)
+        admin = creator_cookie()
+        admin_dashboard = call("GET", "/dashboard", cookie=admin)[1]
+        self.assertIn('data-action="create-event"', admin_dashboard)
+        self.assertIn('href="/admin"', admin_dashboard)
         status, _, _ = call("POST", "/api/auth/logout", cookie=cookie)
         self.assertEqual(status, 204)
         self.assertEqual(call("GET", "/api/auth/me", cookie=cookie)[0], 401)

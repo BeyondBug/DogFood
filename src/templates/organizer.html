@@ -99,7 +99,7 @@
           <button class="button button-secondary" type="submit">Save rubric</button>
         </form>
       </details>
-      <form data-action="batch" data-event="{{ event.id }}" class="inline-form">
+      <form data-action="batch" data-event="{{ event.id }}" class="inline-form assignment-form">
         <label>Reviews per project<input type="number" name="reviews_per_project" value="3" min="1" max="10"></label>
         <button class="button button-primary" type="submit" {% if not submissions_closed or event.results_published_at %}disabled{% endif %}>Assign judges</button>
       </form>

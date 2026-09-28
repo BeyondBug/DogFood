@@ -67,6 +67,9 @@ def dashboard(request: Request):
                            " JOIN events e ON e.id=r.event_id WHERE r.user_id=? ORDER BY e.created_at DESC,r.role",
                            (principal.user_id,)).fetchall()
         events = db.execute("SELECT id,name,description,submissions_close FROM events ORDER BY created_at DESC LIMIT 20").fetchall()
+        certificate_count = db.execute(
+            "SELECT COUNT(*) FROM certificates WHERE user_id=?", (principal.user_id,)
+        ).fetchone()[0]
         my_events = {}
         for row in roles:
             event = my_events.setdefault(row["event_id"], {
@@ -120,7 +123,8 @@ def dashboard(request: Request):
     return templates.TemplateResponse(request, "dashboard.html", {
         "principal": principal, "roles": [dict(row) for row in roles], "events": [dict(row) for row in events],
         "my_events": list(my_events.values()),
-        "can_create_event": principal.is_admin or any(row["role"] == "organizer" for row in roles),
+        "can_create_event": principal.is_admin,
+        "show_certificates": certificate_count > 0 or any(row["role"] == "participant" for row in roles),
     })
 
 
