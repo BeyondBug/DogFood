@@ -301,6 +301,14 @@ CREATE TABLE IF NOT EXISTS certificate_designs (
 );
 """
 
+SCHEMA_V7 = """
+ALTER TABLE projects ADD COLUMN thumbnail_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE projects ADD COLUMN image_urls TEXT NOT NULL DEFAULT '';
+ALTER TABLE projects ADD COLUMN video_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE projects ADD COLUMN live_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE projects ADD COLUMN tech_tags TEXT NOT NULL DEFAULT '';
+"""
+
 
 def initialize() -> None:
     path = database_path()
@@ -308,7 +316,7 @@ def initialize() -> None:
     with closing(connect()) as db:
         db.execute("PRAGMA journal_mode = WAL")
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        if version > 6:
+        if version > 7:
             raise RuntimeError(f"Database schema version {version} is newer than this app")
         if version == 0:
             db.executescript(SCHEMA_V1)
@@ -336,4 +344,8 @@ def initialize() -> None:
             if "design_json" not in columns:
                 db.execute("ALTER TABLE certificates ADD COLUMN design_json TEXT NOT NULL DEFAULT '{}'")
             db.execute("PRAGMA user_version = 6")
+            version = 6
+        if version == 6:
+            db.executescript(SCHEMA_V7)
+            db.execute("PRAGMA user_version = 7")
         db.commit()

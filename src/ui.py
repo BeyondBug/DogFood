@@ -20,6 +20,7 @@ from .backup import write_backup
 from .core import time_value
 from .db import connect, database_path
 from .scoring import event_ranking, judging_insight, scorecard_detail
+from .judging import participant_feedback
 from .ml_insight import organizer_ml_insight
 from .audit_view import event_activity
 from .public import _eligible, _vote_summary, _window_open, ballot as load_ballot
@@ -298,6 +299,9 @@ def participant_workspace(event_id: str, request: Request):
             " LEFT JOIN prizes pr ON pr.id=c.prize_id WHERE c.event_id=? AND c.user_id=?"
             " ORDER BY c.kind,c.id", (event_id, principal.user_id),
         ).fetchall()
+    feedback = None
+    if event["results_published_at"] and project and project["status"] == "submitted":
+        feedback = participant_feedback(event_id, request)
     now = datetime.now(timezone.utc)
     closed = bool(event["results_published_at"] or now >= time_value(event["submissions_close"]))
     not_open = bool(event["submissions_open"] and now < time_value(event["submissions_open"]))
@@ -308,6 +312,7 @@ def participant_workspace(event_id: str, request: Request):
         "team_editable": not closed,
         "closed": closed, "not_open": not_open,
         "certificates": [dict(row) for row in certificates],
+        "feedback": feedback,
     })
 
 
@@ -324,7 +329,7 @@ def judge_workspace(event_id: str, request: Request):
             raise HTTPException(status_code=403, detail="Judge profile not found")
         rubric = db.execute("SELECT id,name,version FROM rubrics WHERE event_id=? AND is_active=1", (event_id,)).fetchone()
         criteria = db.execute("SELECT slug,name,weight,max_score FROM rubric_criteria WHERE rubric_id=? ORDER BY sort_order", (rubric["id"],)).fetchall() if rubric else []
-        assignments = db.execute("SELECT a.id,p.id AS project_id,p.title,p.summary,p.description,p.repo_url,p.demo_url,t.name AS track,"
+        assignments = db.execute("SELECT a.id,p.id AS project_id,p.title,p.summary,p.description,p.repo_url,p.demo_url,p.video_url,p.live_url,p.tech_tags,t.name AS track,"
                                  " s.status,s.comment FROM judge_assignments a JOIN projects p ON p.id=a.project_id"
                                  " JOIN tracks t ON t.id=p.track_id LEFT JOIN scorecards s ON s.assignment_id=a.id"
                                  " WHERE a.judge_id=? ORDER BY CASE s.status WHEN 'submitted' THEN 2 WHEN 'draft' THEN 1 ELSE 0 END,p.title",

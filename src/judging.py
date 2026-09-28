@@ -42,6 +42,47 @@ class AdminJudgeAccount(BaseModel):
     tracks: list[str] = Field(min_length=1)
 
 
+class AdminOrganizerAccount(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    email: str = Field(min_length=3, max_length=254)
+
+
+@router.post("/admin/events/{event_id}/organizers", status_code=201)
+def create_organizer_account(event_id: str, payload: AdminOrganizerAccount, request: Request,
+                             response: Response):
+    """Assign an existing account or provision a local organizer account."""
+    principal = require_login(request)
+    if not principal.is_admin:
+        raise HTTPException(status_code=403, detail="Administrator access required")
+    email = payload.email.strip().casefold()
+    name = payload.name.strip()
+    if "@" not in email or email.startswith("@") or email.endswith("@"):
+        raise HTTPException(status_code=422, detail="Enter a valid email address")
+    password = None
+    with closing(connect()) as db:
+        db.execute("BEGIN IMMEDIATE")
+        if db.execute("SELECT 1 FROM events WHERE id=?", (event_id,)).fetchone() is None:
+            raise HTTPException(status_code=404, detail="Event not found")
+        user = db.execute("SELECT id,name FROM users WHERE email=? COLLATE NOCASE", (email,)).fetchone()
+        if user is None:
+            password = secrets.token_urlsafe(18)
+            user_id = identifier("usr")
+            db.execute("INSERT INTO users(id,email,name,password_hash,created_at) VALUES(?,?,?,?,?)",
+                       (user_id, email, name, hash_password(password), utc_now()))
+        else:
+            user_id = user["id"]
+        if db.execute("SELECT 1 FROM event_roles WHERE event_id=? AND user_id=? AND role='organizer'",
+                      (event_id, user_id)).fetchone():
+            raise HTTPException(status_code=409, detail="This account is already an organizer")
+        db.execute("INSERT INTO event_roles(event_id,user_id,role) VALUES(?,?,'organizer')",
+                   (event_id, user_id))
+        audit(db, event_id, principal.user_id, "organizer.assigned", "user", user_id, {"email": email})
+        db.commit()
+    response.headers["Cache-Control"] = "no-store"
+    return {"user_id": user_id, "email": email, "name": name if user is None else user["name"],
+            "temporary_password": password, "login_url": "/account"}
+
+
 @router.post("/admin/events/{event_id}/judges", status_code=201)
 def create_judge_account(event_id: str, payload: AdminJudgeAccount, request: Request, response: Response):
     """Provision a judge locally; return a one-time temporary password."""
@@ -453,6 +494,44 @@ def public_results(event_id: str):
     return {"published_at": event["results_published_at"], "projects": ranking["projects"]}
 
 
+@router.get("/events/{event_id}/my-feedback")
+def participant_feedback(event_id: str, request: Request):
+    """Published, anonymized scorecards for the signed-in participant's team."""
+    principal = require_login(request)
+    with closing(connect()) as db:
+        require_event_role(db, principal, event_id, "participant")
+        event = db.execute("SELECT results_published_at FROM events WHERE id=?", (event_id,)).fetchone()
+        if event is None:
+            raise HTTPException(status_code=404, detail="Event not found")
+        if event["results_published_at"] is None:
+            raise HTTPException(status_code=404, detail="Feedback is available after results are published")
+        project = db.execute(
+            "SELECT p.id,p.title FROM projects p JOIN team_members m ON m.team_id=p.team_id"
+            " WHERE p.event_id=? AND m.user_id=? AND p.status='submitted' ORDER BY p.updated_at DESC LIMIT 1",
+            (event_id, principal.user_id),
+        ).fetchone()
+        if project is None:
+            raise HTTPException(status_code=404, detail="No submitted project for this account")
+        cards = db.execute(
+            "SELECT s.id,s.comment,s.submitted_at FROM scorecards s"
+            " JOIN judge_assignments a ON a.id=s.assignment_id"
+            " WHERE a.project_id=? AND s.status='submitted' ORDER BY s.submitted_at,s.id", (project["id"],)
+        ).fetchall()
+        reviews = []
+        for index, card in enumerate(cards, start=1):
+            scores = db.execute(
+                "SELECT c.name,c.weight,c.max_score,cs.score FROM criterion_scores cs"
+                " JOIN rubric_criteria c ON c.id=cs.criterion_id"
+                " WHERE cs.scorecard_id=? ORDER BY c.sort_order", (card["id"],)
+            ).fetchall()
+            reviews.append({"label": f"Review {index}", "comment": card["comment"],
+                            "submitted_at": card["submitted_at"], "criteria": [dict(row) for row in scores]})
+        ranking = event_ranking(db, event_id)
+        summary = next((row for row in ranking["projects"] if row["id"] == project["id"]), None)
+    return {"project": dict(project), "summary": summary, "reviews": reviews,
+            "published_at": event["results_published_at"]}
+
+
 @router.get("/events/{event_id}/audit")
 def audit_log(event_id: str, request: Request):
     principal = require_login(request)
@@ -509,6 +588,41 @@ def export_workflow(event_id: str, kind: str, request: Request):
             ranking = event_ranking(db, event_id)
             data = [tuple(row.get("id") if column == "project_id" else row.get(column) for column in columns)
                     for row in ranking["projects"]]
+        elif kind == "participants":
+            columns = ("user_id", "name", "email", "team", "team_role")
+            rows = db.execute(
+                "SELECT u.id AS user_id,u.name,u.email,t.name AS team,m.role AS team_role"
+                " FROM event_roles r JOIN users u ON u.id=r.user_id"
+                " LEFT JOIN team_members m ON m.user_id=u.id"
+                " LEFT JOIN teams t ON t.id=m.team_id AND t.event_id=r.event_id"
+                " WHERE r.event_id=? AND r.role='participant' ORDER BY u.email", (event_id,)
+            ).fetchall()
+            data = [tuple(row[column] for column in columns) for row in rows]
+        elif kind == "judges":
+            columns = ("judge_id", "name", "email", "status", "tracks")
+            rows = db.execute(
+                "SELECT j.id AS judge_id,u.name,u.email,j.status,"
+                " COALESCE(group_concat(t.name, '; '),'') AS tracks"
+                " FROM judge_profiles j JOIN users u ON u.id=j.user_id"
+                " LEFT JOIN judge_tracks jt ON jt.judge_id=j.id LEFT JOIN tracks t ON t.id=jt.track_id"
+                " WHERE j.event_id=? GROUP BY j.id ORDER BY u.email", (event_id,)
+            ).fetchall()
+            data = [tuple(row[column] for column in columns) for row in rows]
+        elif kind == "audit":
+            columns = ("id", "actor_user_id", "action", "entity_type", "entity_id", "details_json", "created_at")
+            rows = db.execute("SELECT id,actor_user_id,action,entity_type,entity_id,details_json,created_at"
+                              " FROM audit_entries WHERE event_id=? ORDER BY id", (event_id,)).fetchall()
+            data = [tuple(row[column] for column in columns) for row in rows]
+        elif kind == "votes":
+            columns = ("ballot_id", "voter_user_id", "project_id", "cast_at")
+            rows = db.execute("SELECT id AS ballot_id,voter_user_id,project_id,cast_at"
+                              " FROM ballots WHERE event_id=? ORDER BY cast_at,id", (event_id,)).fetchall()
+            data = [tuple(row[column] for column in columns) for row in rows]
+        elif kind == "certificates":
+            columns = ("certificate_id", "user_id", "project_id", "kind", "prize_id", "issued_at")
+            rows = db.execute("SELECT id AS certificate_id,user_id,project_id,kind,prize_id,issued_at"
+                              " FROM certificates WHERE event_id=? ORDER BY issued_at,id", (event_id,)).fetchall()
+            data = [tuple(row[column] for column in columns) for row in rows]
         else:
             raise HTTPException(status_code=404, detail="Export not found")
     output = io.StringIO()
