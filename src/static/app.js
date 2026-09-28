@@ -309,7 +309,9 @@ document.addEventListener('submit', async event => {
         const status = submitter?.value || 'draft';
         await api('PUT', `/api/judge/assignments/${form.dataset.assignment}/scorecard`, scorecardPayload(form, status));
         try { sessionStorage.setItem('beyondbug-flash', status === 'submitted' ? 'Review submitted. Continue with the next project.' : 'Draft saved.'); } catch {}
-        window.location.assign(`/judge/${form.dataset.event}#next-review`);
+        // A hash-only navigation stays on this document and leaves progress stale.
+        window.location.hash = 'next-review';
+        window.location.reload();
         return;
       }
       case 'judge-conflict':
