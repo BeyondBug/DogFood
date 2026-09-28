@@ -121,6 +121,25 @@ html[data-style=studio] .site-footer{border-top:4px solid var(--coral)}
 .account-menu-panel a,.account-menu-panel button{display:block;width:100%;padding:10px 9px;border:0;background:transparent;color:var(--ink);font:inherit;font-size:.88rem;font-weight:700;text-align:left;text-decoration:none}
 .account-menu-panel a:hover,.account-menu-panel button:hover{background:var(--shade);color:var(--blue)}
 .account-menu-panel form{margin:0}
+.member-event-list{border-top:1px solid var(--rule);margin-top:20px}
+.member-event{padding:20px 0;border-bottom:1px solid var(--rule)}
+.member-event-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.member-event-heading h3{margin:0 0 12px;font-size:1.12rem}
+.member-event-heading h3 a{text-decoration:none;color:var(--ink)}
+.member-event-heading h3 a:hover{color:var(--blue);text-decoration:underline}
+.member-event-heading span{font-size:.75rem;color:var(--teal);font-weight:700;text-align:right}
+.member-event .member-event-stage{display:inline-block;margin:0 0 10px;padding:4px 8px;background:var(--positive-bg);color:var(--positive-ink);font-size:.73rem;font-weight:700}
+.member-event ul{list-style:none;margin:0 0 12px;padding:0;color:var(--ink);font-size:.86rem}
+.member-event li{padding:3px 0}
+.member-event>p{font-size:.77rem;color:var(--muted);margin:0 0 15px}
+.account-details{border-bottom:1px solid var(--rule);padding:20px 0}
+.account-details summary{cursor:pointer;font-weight:700}
+.account-details p{font-size:.85rem;margin:12px 0;color:var(--muted)}
+.account-details form{margin-top:20px}
+.judge-account-result{margin-top:18px;padding:16px;border:1px solid var(--teal);background:var(--shade);overflow-wrap:anywhere}
+.judge-account-result p{margin:6px 0;font-size:.85rem}
+.judge-account-result code{font-size:1rem;font-weight:700;color:var(--ink)}
+.judge-account-result a{color:var(--blue);font-weight:700}
 .gallery-filters .button{align-self:flex-end}
 html[data-style=pulse] .gallery-filters .button-primary{box-shadow:none}
 @media(max-width:760px){.gallery-filters{flex-direction:column;align-items:stretch}.gallery-filters .search-field,.gallery-filters .select-field,.gallery-filters .button{width:100%;align-self:stretch}}
