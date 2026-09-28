@@ -5,14 +5,15 @@
 | Check | Result |
 | --- | --- |
 | Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
-| Independent unit and HTTP integration suite | **23/23 PASS** |
-| Disposable fresh-volume test runner | **23/23 PASS:** new Compose project and volume; removed after run |
+| Independent unit and HTTP integration suite | **24/24 PASS** |
+| Disposable fresh-volume test runner | **24/24 PASS:** new Compose project and volume; removed after run |
 | Fresh Compose volume on port 18080 | **PASS:** schema 5, 1 fixture event, 41 projects, 30 judges |
 | Fresh portal checked by official `run.py` | **7/7 PASS** |
 | Restart persistence | **PASS:** same event, project, judge, and local secret counts |
 | Runtime with container network disabled | **PASS:** local health OK, schema 5, 41 projects |
 | OpenAPI artifact synchronization | **PASS:** test compares committed JSON to FastAPI schema |
-| Desktop and mobile visual review | **PASS:** light/dark certificates, organizer review-attention panel, readiness, and mobile layout |
+| Desktop and mobile visual review | **PASS:** Event Desk, Pulse, and Studio at 1440 px and 390 px; Studio light/dark, no mobile overflow, theme and mode persisted after reload |
+| Portable ML inference | **PASS:** 300-tree JSON export matches trained scikit-learn decision score on a reference vector; organizer-only panel rendered on fixture in 0.13 s |
 | Local gallery read probe | **PASS:** 500/500 at 20 workers and 1,000/1,000 at 50 workers; see [CAPACITY.md](CAPACITY.md) |
 | Administrator backup | **PASS:** isolated portal created and downloaded a valid 1-event, 41-project SQLite snapshot; anonymous download returned 401 |
 | Event page Back link | **PASS:** visible at mobile size with a direct-link fallback to the event directory |

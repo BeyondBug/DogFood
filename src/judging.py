@@ -18,6 +18,7 @@ from .auth import has_event_role, require_event_role, require_login
 from .core import audit, csv_safe, identifier, time_value
 from .db import connect, utc_now
 from .scoring import event_ranking, judging_insight, scorecard_detail
+from .ml_insight import organizer_ml_insight
 
 
 router = APIRouter(prefix="/api")
@@ -339,6 +340,15 @@ def private_judging_insight(event_id: str, request: Request):
     with closing(connect()) as db:
         require_event_role(db, principal, event_id, "organizer")
         return judging_insight(db, event_id)
+
+
+@router.get("/events/{event_id}/ml-review-signals")
+def private_ml_review_signals(event_id: str, request: Request):
+    """Advisory, organizer-only signals; never used to alter ranking."""
+    principal = require_login(request)
+    with closing(connect()) as db:
+        require_event_role(db, principal, event_id, "organizer")
+        return organizer_ml_insight(db, event_id)
 
 
 @router.get("/events/{event_id}/scorecards/{scorecard_id}")

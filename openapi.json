@@ -1906,6 +1906,44 @@
         }
       }
     },
+    "/api/events/{event_id}/ml-review-signals": {
+      "get": {
+        "summary": "Private Ml Review Signals",
+        "description": "Advisory, organizer-only signals; never used to alter ranking.",
+        "operationId": "private_ml_review_signals_api_events__event_id__ml_review_signals_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/events/{event_id}/scorecards/{scorecard_id}": {
       "get": {
         "summary": "Organizer Scorecard",

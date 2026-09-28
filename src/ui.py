@@ -20,6 +20,7 @@ from .backup import write_backup
 from .core import time_value
 from .db import connect, database_path
 from .scoring import event_ranking, judging_insight, scorecard_detail
+from .ml_insight import organizer_ml_insight
 from .audit_view import event_activity
 from .public import _eligible, _vote_summary, _window_open, ballot as load_ballot
 
@@ -323,6 +324,7 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
         criteria = db.execute("SELECT slug,name,weight FROM rubric_criteria WHERE rubric_id=? ORDER BY sort_order", (rubric["id"],)).fetchall() if rubric else []
         ranking = event_ranking(db, event_id)
         insight = judging_insight(db, event_id, ranking)
+        ml_insight = organizer_ml_insight(db, event_id)
         activity_filter = activity if activity in ("All", "Judging", "Voting", "Certificates", "Event and submissions") else "All"
         audit = event_activity(db, event_id, activity_filter)
         vote_summary = _vote_summary(db, event_id)
@@ -379,7 +381,7 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
         "principal": principal, "event": dict(event), "tracks": [dict(row) for row in tracks],
         "judges": judge_items, "coverage": [dict(row) for row in coverage],
         "rubric": dict(rubric) if rubric else None, "criteria": [dict(row) for row in criteria],
-        "ranking": ranking, "insight": insight, "audit": audit,
+        "ranking": ranking, "insight": insight, "ml_insight": ml_insight, "audit": audit,
         "activity_filter": activity_filter, "vote_summary": vote_summary,
         "submissions_closed": submissions_closed,
         "prizes": [dict(row) for row in prizes], "eligible_projects": [dict(row) for row in eligible_projects],

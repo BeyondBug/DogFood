@@ -498,6 +498,8 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn('href="/events">Events', landing)
         self.assertIn('href="/account">Sign in', landing)
+        self.assertIn('data-style-choice="studio"', landing)
+        self.assertIn('data-style-choice="pulse"', landing)
         self.assertIn('href="/projects?event=evt_01', landing)
         status, landing, _ = call("GET", "/", cookie=participant)
         self.assertEqual(status, 200)
@@ -560,6 +562,15 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("Judging insight", organizer_page)
         self.assertIn("Activity log", organizer_page)
+        self.assertIn("Model-assisted review", organizer_page)
+        self.assertIn("trained on synthetic events", organizer_page)
+        self.assertEqual(call("GET", "/organizer/evt_01", cookie=judge_a)[0], 403)
+        status, model_signals, _ = call("GET", "/api/events/evt_01/ml-review-signals", cookie=organizer)
+        self.assertEqual(status, 200)
+        self.assertEqual(model_signals["version"], "judge-anomaly-iforest-v2")
+        self.assertGreater(model_signals["evaluated"], 0)
+        for denied in (judge_a, participant):
+            self.assertEqual(call("GET", "/api/events/evt_01/ml-review-signals", cookie=denied)[0], 403)
 
 
 if __name__ == "__main__":

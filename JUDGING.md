@@ -4,6 +4,24 @@ This document describes the shipped assignment, scoring, and normalization
 code in `src/judging.py` and `src/scoring.py`. The organizer's fixture is used
 for the numeric proof below.
 
+## Model-assisted review
+
+The organizer desk includes a separate, advisory v2 Isolation Forest review
+list trained by a teammate on simulated 0–5 judging data. It reads only
+submitted scorecards, derives peer statistics without the target review, and
+uses only earlier reviews for judge-history features. A scorecard needs two
+other reviews to be evaluated. The local runtime uses a compressed JSON tree
+export, so the Docker portal needs no machine-learning packages and never
+loads the training pickle. A regression test compares a portable decision
+score with the original scikit-learn artifact.
+
+The teammate's held-out synthetic evaluation reports precision 0.52 and
+recall 0.56. These are **not** estimates for real events; strict and generous
+judges showed more false alarms. The fixture produced 15 advisory signals,
+which require a human to inspect the original scorecard and context. This
+model does not alter scores, rankings, assignments, eligibility, or awards.
+The deterministic review-attention rule remains visible alongside it.
+
 ## Assignment strategy
 
 An organizer invites judges with a single-use email-bound link, selects their

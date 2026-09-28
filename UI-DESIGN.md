@@ -7,6 +7,22 @@ screen inventory also serves as a polish checklist.
 
 ## Visual direction
 
+### Three selectable styles
+
+The header's Appearance control now offers three persistent visual styles,
+independent of the saved light/dark preference. **Event Desk** preserves the
+original restrained teal and blue work surface. **Pulse** keeps its layout but
+adds an indigo and aqua event hero, energized action treatment, and one subtle
+phase pulse that stops under reduced-motion settings. **Studio** uses a bright
+coral and ink editorial composition, large type, and an original local SVG of
+the build → share → judge journey. It is informed by the user's reference
+screenshots without reusing their artwork, logos, people, or event details.
+
+The same live event data, role actions, and backend permission checks power all
+three styles. The selector is available on the home, event, gallery, and role
+workspaces. A preference survives navigation and reload. Desktop (1440 px) and
+mobile (390 px) browser screenshots were checked for the event page.
+
 The installed [frontend-design skill](https://github.com/anthropics/skills/tree/main/skills/frontend-design)
 guides the design pass. Its first question is what is distinctive about this
 product. BeyondBug's identity should come from the visible event lifecycle and

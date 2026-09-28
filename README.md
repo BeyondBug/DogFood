@@ -6,7 +6,9 @@ assignment, weighted scoring, normalized rankings, community voting, comments,
 and result publication. Organizers can assign configured prizes after
 publication and issue distinct participant and winner certificates. Each
 public certificate ID can be checked against the local database. Visitors can
-switch between light and dark modes; their choice persists in the browser.
+choose Event Desk, Pulse, or Studio visual styles and switch between light and
+dark modes; both choices persist in the browser. Studio uses original local
+illustration; every style uses the same event data and role actions.
 The portal runs on one laptop with FastAPI, SQLite, and locally bundled assets.
 Public visitors can browse and search events at `/events`; each event has its
 own page and event-scoped gallery links. Galleries paginate beyond 48 projects,
@@ -82,6 +84,10 @@ database too.
    Judging insight highlights reviews that differ from an agreeing peer group;
    opening a signal shows the original scorecard. This is advisory and cannot
    change a score or ranking.
+   The optional model-assisted section uses the teammate's v2 anomaly forest
+   to suggest additional reviews for inspection. It runs from a local,
+   dependency-free model export and is visible only to organizers. Its
+   synthetic-data performance is not a real-event accuracy guarantee.
    Submissions must be closed first. Public result routes return 404 until
    publication; project edits and submitted scores then lock.
 6. For an event with an active voting window, the organizer chooses invited

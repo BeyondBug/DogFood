@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 580" role="img" aria-labelledby="title desc">
+  <title id="title">Ideas become projects</title>
+  <desc id="desc">Three stacked illustrated blocks for building, sharing, and judging a hackathon project.</desc>
+  <defs><pattern id="dots" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.4" fill="#f2aaa5"/></pattern></defs>
+  <path d="M26 78h588v476H26z" fill="url(#dots)" opacity=".55"/>
+  <path d="M115 142l27-28h333l-28 28z" fill="#ffd7d2" stroke="#242634" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M447 142l28-28v111l-28 27z" fill="#f5a19d" stroke="#242634" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="115" y="142" width="332" height="110" fill="#fff" stroke="#242634" stroke-width="4"/>
+  <text x="141" y="220" fill="#242634" font-family="Arial,sans-serif" font-size="76" font-weight="900" letter-spacing="-5">BUILD</text>
+  <path d="M71 272l27-28h358l-28 28z" fill="#ffbcb6" stroke="#242634" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M428 272l28-28v113l-28 27z" fill="#e38582" stroke="#242634" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="71" y="272" width="357" height="112" fill="#f04542" stroke="#242634" stroke-width="4"/>
+  <text x="97" y="351" fill="#fff" font-family="Arial,sans-serif" font-size="74" font-weight="900" letter-spacing="-5">SHARE</text>
+  <path d="M132 403l27-28h383l-28 28z" fill="#dcdcf2" stroke="#242634" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M514 403l28-28v110l-28 27z" fill="#b1b1db" stroke="#242634" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="132" y="403" width="382" height="109" fill="#fff" stroke="#242634" stroke-width="4"/>
+  <text x="158" y="480" fill="#242634" font-family="Arial,sans-serif" font-size="77" font-weight="900" letter-spacing="-5">JUDGE</text>
+  <path d="M454 40l10 25 25 10-25 10-10 25-10-25-25-10 25-10z" fill="#f04542" stroke="#242634" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M78 90l6 14 14 6-14 6-6 14-6-14-14-6 14-6z" fill="#ffd46d" stroke="#242634" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M538 200l9 20 20 9-20 9-9 20-9-20-20-9 20-9z" fill="#ffd46d" stroke="#242634" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M76 451c-30-15-36-46-20-58 13-10 27-1 29 9 7-10 25-13 34 0 13 19-9 39-43 49z" fill="#ff8881" stroke="#242634" stroke-width="3"/>
+  <path d="M561 304c14 0 25 11 25 25s-11 25-25 25-25-11-25-25 11-25 25-25zm-14 25h28m-14-14v28" fill="none" stroke="#242634" stroke-width="4" stroke-linecap="round"/>
+</svg>

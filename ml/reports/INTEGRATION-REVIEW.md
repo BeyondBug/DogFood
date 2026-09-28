@@ -1,9 +1,40 @@
 # Judge anomaly model integration review
 
+## Current status: v2 organizer aid
+
+The September 28 v2 contribution is integrated into the organizer's Judging
+insight panel as **advisory review signals**. The earlier v1 analysis below is
+retained as the record of why that version was gated. The v2 training notebook
+uses 0–5 scores, peer statistics that exclude the target review, prior judge
+reviews, and an event-based evaluation split. Duration and edit-count inputs
+remain out of scope because the portal does not record them.
+
+The portal derives each feature from submitted scorecards and the active rubric.
+Reviews with fewer than two peers are skipped. Its runtime uses a reviewed,
+compressed JSON export of the 300 trees and a standard-library reader; Docker
+still installs no NumPy, joblib, or scikit-learn and loads no pickle. The
+portable decision function is regression-tested against the trained artifact.
+
+The model appears only on organizer pages. It never changes scorecards, judge
+assignments, normalization, rankings, or certificates. Its synthetic test
+precision (0.52) and recall (0.56) are **not** real-event accuracy claims.
+Consistently strict and generous judges had higher false-alarm rates in the
+teammate's synthetic test. The deterministic peer-median attention rule remains
+visible alongside it and is documented in `JUDGING.md`.
+The organizer-only API is `/api/events/{event_id}/ml-review-signals`; direct
+judge and participant requests are denied with HTTP 403 in the integration
+suite. Original scorecards remain available through organizer-only links.
+
+One model detail is intentional: `feature_config_v2.json` repeats three feature
+names to weight them more heavily. The runtime reads the ordered feature list
+exactly, including repeats, and the exported tree check catches schema drift.
+
+## Historical v1 gate
+
 The `ml/` contribution from PR #1 is preserved on `Develop` and `Features` as
-research. Its model is **not** loaded by the portal, used for rankings, or
-shown to organizers. The shipped review-attention rule remains the operational
-baseline described in [JUDGING.md](../../JUDGING.md).
+research. Its v1 model is **not** loaded by the portal or used for rankings.
+The shipped review-attention rule remains the operational baseline described
+in [JUDGING.md](../../JUDGING.md).
 
 ## Why inference is gated
 

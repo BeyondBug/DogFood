@@ -1,8 +1,13 @@
 (() => {
   const key = 'beyondbug-theme';
+  const styleKey = 'beyondbug-style';
+  const styles = ['desk', 'pulse', 'studio'];
   let theme = 'light';
   try { theme = localStorage.getItem(key) === 'dark' ? 'dark' : 'light'; } catch {}
   document.documentElement.dataset.theme = theme;
+  let style = 'desk';
+  try { const saved = localStorage.getItem(styleKey); if (styles.includes(saved)) style = saved; } catch {}
+  document.documentElement.dataset.style = style;
 
   document.addEventListener('DOMContentLoaded', () => {
     const back = document.querySelector('[data-back-link]');
@@ -39,5 +44,17 @@
       update();
     }));
     update();
+    const choices = document.querySelectorAll('[data-style-choice]');
+    const updateStyle = () => choices.forEach(choice => choice.setAttribute('aria-pressed', String(choice.dataset.styleChoice === document.documentElement.dataset.style)));
+    choices.forEach(choice => choice.addEventListener('click', () => {
+      const next = choice.dataset.styleChoice;
+      if (!styles.includes(next)) return;
+      document.documentElement.dataset.style = next;
+      try { localStorage.setItem(styleKey, next); } catch {}
+      updateStyle();
+      const picker = choice.closest('details');
+      if (picker) picker.open = false;
+    }));
+    updateStyle();
   });
 })();

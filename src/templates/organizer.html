@@ -154,6 +154,11 @@
     </div>
     {% else %}<p class="attention-empty">No reviews meet the attention rule with the available peer evidence.</p>{% endif %}
     <p class="attention-method">Peer median excludes the review shown. Scores are compared after the same judge calibration used for ranking; the original score appears above. A signal needs at least two peers, a gap of 1.5/5, and peer median absolute deviation at most 0.5/5. {{ insight.attention.limited_evidence_projects }} reviewed projects have fewer than three reviews and cannot trigger this signal. <a href="/api/events/{{ event.id }}/judging-insight">See all data</a></p>
+    <details class="calibration-detail ml-insight"><summary>Model-assisted review · {{ ml_insight.signals|length }} signals</summary>
+      <p>The {{ ml_insight.version }} model uses score differences, rubric spread, and prior judge reviews to suggest scorecards for organizer inspection. It was trained on synthetic events. Its signals are advisory; they do not change scores, rankings, or eligibility. {{ ml_insight.evaluated }} reviews had enough peer evidence; {{ ml_insight.limited }} did not.</p>
+      {% if ml_insight.signals %}<div class="attention-list">{% for item in ml_insight.signals[:12] %}<a class="attention-row" href="/organizer/{{ event.id }}/reviews/{{ item.scorecard_id }}"><span class="attention-project"><strong>{{ item.project }}</strong><small>{{ item.judge }}</small></span><span class="attention-measure"><strong>{{ '%.2f'|format(item.score) }}</strong><small>Original / 5</small></span><span class="attention-measure"><strong>{{ '%.2f'|format(item.peer_mean) }}</strong><small>Peer average / 5</small></span><span class="attention-peers">{{ item.risk|capitalize }} signal · {{ item.peer_count }} peers</span></a>{% endfor %}</div>{% else %}<p class="attention-empty">No scorecards meet the model's review thresholds.</p>{% endif %}
+      <p class="attention-method">The model was tested on simulated judging data and may flag consistently strict or generous judges more often. Inspect the original review and event context before acting. <a href="/api/events/{{ event.id }}/judging-insight">Rule-based evidence</a> remains available separately.</p>
+    </details>
     {% if insight.movements %}
     <div class="movement-list">
       {% for row in insight.movements[:12] %}
