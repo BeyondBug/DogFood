@@ -172,15 +172,22 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
   verification remain operator workflows, not built-in features.
 - Published scores are locked. Correcting a submitted review after publication
   requires an explicit future workflow; this release does not provide one.
-- Duplicate repository URLs are flagged and excluded from rankings pending
-  organizer review. The heuristic can flag legitimate forks or miss copied
-  work under a different URL.
+- Matching repository URLs among submitted projects are flagged and excluded
+  from rankings. Drafts do not trigger the flag, and edits recalculate it.
+  The heuristic can flag legitimate forks or miss copied work under a
+  different URL; there is no organizer override in this release.
+- A teammate contributed an Isolation Forest prototype in `ml/`. It is
+  research, not a live portal feature: its 1–10 synthetic training scale and
+  feature set do not yet match the 0–5 scorecards. The
+  [integration review](ml/reports/INTEGRATION-REVIEW.md) gives the deployment
+  checks; the organizer's deterministic review-attention view remains active.
 
 ## Project documents
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): deployment, trust boundaries, and choices
 - [DATA-MODEL.md](DATA-MODEL.md): schema, seed import, exports, and migrations
 - [JUDGING.md](JUDGING.md): assignment, score math, normalization, fixture proof
+- [ML integration review](ml/reports/INTEGRATION-REVIEW.md): contributed model and deployment gate
 - [THREAT-MODEL.md](THREAT-MODEL.md): abuse cases, controls, and residual risks
 - [UI-DESIGN.md](UI-DESIGN.md): visual direction and screen inventory
 - [T3-EVIDENCE.md](T3-EVIDENCE.md): independently tested public-voting features
