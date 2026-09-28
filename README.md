@@ -64,12 +64,13 @@ database too.
 
 ## Walk through one event
 
-1. Sign in as the organizer, open `/dashboard`, and create an event with a
+1. Sign in as the site administrator, open `/dashboard`, and create an event with a
    guided four-step form for the description, UTC schedule, tracks, and prizes.
-   Its unfinished values stay in this browser. The organizer desk
+   Its unfinished values stay in this browser. Creating the event gives that
+   administrator its event-scoped organizer role. The organizer desk
    has an Event details panel for later schedule and description edits. Event
-   creation is available to administrators and existing event organizers;
-   new participant accounts cannot create events through the UI or API.
+   creation is administrator-only; organizer, judge, and participant accounts
+   cannot create events through the UI or API.
 2. Sign in as a participant, open the new event page, join, create a team,
    and copy a single-use invite link. Save a project draft, then submit it.
    `/dashboard` lists each event where the account has a role, including team,
