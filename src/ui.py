@@ -106,7 +106,7 @@ def event_directory(request: Request, q: str = "", page: int = Query(default=1, 
         "total": total, "page": current_page, "last_page": last_page,
         "first_result": (current_page - 1) * page_size + 1 if total else 0,
         "last_result": min(current_page * page_size, total),
-    })
+    }, headers={"Cache-Control": "no-store"})
 
 
 @router.get("/admin", response_class=HTMLResponse)
