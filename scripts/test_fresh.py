@@ -34,6 +34,8 @@ def main() -> None:
     environment = os.environ.copy()
     environment["DOGFOOD_PORT"] = str(port)
     environment["DOGFOOD_TEST_URL"] = base
+    environment["DOGFOOD_BOOTSTRAP_EMAIL"] = "integration-admin@beyondbug.local"
+    environment["DOGFOOD_BOOTSTRAP_PASSWORD"] = "DisposableTestAdmin2026!"
     command = ["docker", "compose", "-p", project]
     print(f"Fresh test portal: {base} ({project})", flush=True)
     try:

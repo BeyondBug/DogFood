@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>DOGFOOD · {% block title %}BeyondBug{% endblock %}</title><script src="/static/theme.js"></script><link rel="stylesheet" href="/static/fonts.css"><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/workspace.css"><link rel="stylesheet" href="/static/theme.css"><script src="/static/app.js" defer></script></head>
 <body>
-  <header class="site-header"><a class="brand" href="/">BeyondBug<span class="brand-mark" aria-hidden="true">✳</span></a><nav aria-label="Main navigation"><a href="/events">Events</a><a href="/projects">Gallery</a>{% if principal %}<a href="/dashboard">Dashboard</a>{% else %}<a href="/account">Sign in</a>{% endif %}{% include "theme_controls.html" %}</nav></header>
+  <header class="site-header"><a class="brand" href="/">BeyondBug<span class="brand-mark" aria-hidden="true">✳</span></a><nav aria-label="Main navigation"><a href="/events">Events</a><a href="/projects">Gallery</a>{% include "account_menu.html" %}{% include "theme_controls.html" %}</nav></header>
   {% if request.url.path != '/' and not request.url.path.startswith('/projects/') and not request.url.path.startswith('/join/') %}<div class="wrap page-back"><a class="page-back-link" data-back-link href="/events"><span aria-hidden="true">←</span> Back</a></div>{% endif %}
   <div id="flash" class="flash" role="status" aria-live="polite" hidden></div>
   {% block content %}{% endblock %}

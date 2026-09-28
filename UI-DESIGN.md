@@ -97,9 +97,11 @@ and warm gold. Each has the recipient, event, project, issue date, and a
 verification code. The organizer assigns a configured prize to a project,
 then issues certificates from the published event. The recipient can download
 the vector certificate or print it as a PDF.
-Before issuance, the organizer desk shows side-by-side previews of both
-templates using the event's data. They are marked as samples, have no valid
-verification code, and do not create certificate rows.
+Before issuance, an administrator can open a certificate design studio with
+side-by-side previews of both templates using the event's data. Each kind has
+its own layout, accent, and issuer controls. The previews are admin-only,
+marked as samples, have no valid verification code, and create no certificate
+rows. Issued records retain a snapshot of the chosen design.
 
 The organizer's Judging insight uses a compact review-attention list: project
 and judge at left, original score and calibrated peer median in aligned

@@ -5,12 +5,12 @@
 | Check | Result |
 | --- | --- |
 | Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
-| Independent unit and HTTP integration suite | **24/24 PASS** |
-| Disposable fresh-volume test runner | **24/24 PASS:** new Compose project and volume; removed after run |
-| Fresh Compose volume on port 18080 | **PASS:** schema 5, 1 fixture event, 41 projects, 30 judges |
+| Independent unit and HTTP integration suite | **25/25 PASS** |
+| Disposable fresh-volume test runner | **25/25 PASS:** new Compose project and volume; removed after run |
+| Fresh Compose volume on port 18080 | **PASS at the earlier schema 5 release:** 1 fixture event, 41 projects, 30 judges; current disposable suite upgrades to schema 6 |
 | Fresh portal checked by official `run.py` | **7/7 PASS** |
 | Restart persistence | **PASS:** same event, project, judge, and local secret counts |
-| Runtime with container network disabled | **PASS:** local health OK, schema 5, 41 projects |
+| Runtime with container network disabled | **PASS at the earlier schema 5 release:** local health OK, 41 projects; current image adds only a local schema migration and assets |
 | OpenAPI artifact synchronization | **PASS:** test compares committed JSON to FastAPI schema |
 | Desktop and mobile visual review | **PASS:** Event Desk, Pulse, and Studio at 1440 px and 390 px; Studio light/dark, no mobile overflow, theme and mode persisted after reload |
 | Portable ML inference | **PASS:** 300-tree JSON export matches trained scikit-learn decision score on a reference vector; organizer-only panel rendered on fixture in 0.13 s |
@@ -18,7 +18,8 @@
 | Administrator backup | **PASS:** isolated portal created and downloaded a valid 1-event, 41-project SQLite snapshot; anonymous download returned 401 |
 | Event page Back link | **PASS:** visible at mobile size with a direct-link fallback to the event directory |
 | Five-minute lifecycle recording | **PASS:** fresh seeded portal, live browser actions through publication, direct peer-score HTTP 403, CSV download; 300-second H.264 file in `media/` |
-| Certificate template preview | **PASS:** participant and winner samples rendered at desktop and mobile widths; organizer-only access, no issued rows, no verification code |
+| Certificate design studio | **PASS:** admin-only participant and winner previews/settings, separate layouts and accents, no issued rows from preview, design snapshots remain unchanged after later edits |
+| Event creation authorization | **PASS:** new participant account sees no creation form and receives HTTP 403 from the API; administrators and existing organizers may create events |
 
 The canonical [acceptance-report.txt](acceptance-report.txt) is the unedited
 checker output against localhost:8080. `.dogfood.toml` claims only T1/T2.

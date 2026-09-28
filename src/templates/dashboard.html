@@ -3,18 +3,18 @@
 {% block content %}
 <main class="wrap workspace-main dashboard-main">
   <div class="page-heading">
-    <div><p class="section-kicker">Welcome back, {{ principal.name }}</p><h1>Your events</h1><p>Continue your work or create a new hackathon.</p><div class="dashboard-quick-links"><a class="text-link" href="/my/certificates">My certificates</a>{% if principal.is_admin %}<a class="text-link" href="/admin">Administrator overview</a>{% endif %}</div></div>
+    <div><p class="section-kicker">Welcome back, {{ principal.name }}</p><h1>Your events</h1><p>{% if can_create_event %}Continue your work or create a new hackathon.{% else %}Browse events and continue your work as a participant or judge.{% endif %}</p><div class="dashboard-quick-links"><a class="text-link" href="/my/certificates">My certificates</a>{% if principal.is_admin %}<a class="text-link" href="/admin">Administrator overview</a>{% endif %}</div></div>
     <form data-action="logout"><button class="text-button" type="submit">Sign out</button></form>
   </div>
   <div class="dashboard-grid">
     <section class="panel dashboard-events">
       <h2>Your roles</h2>
       {% if roles %}<div class="role-list">{% for item in roles %}<a class="role-item" href="/{{ 'workspace' if item.role == 'participant' else item.role }}/{{ item.event_id }}"><span><strong>{{ item.name }}</strong><small>{{ item.role|capitalize }}</small></span><span aria-hidden="true">↗</span></a>{% endfor %}</div>
-      {% else %}<div class="empty-state compact"><h3>Start with an event</h3><p>Create your event here, or browse an event and join as a participant.</p></div>{% endif %}
+      {% else %}<div class="empty-state compact"><h3>Start with an event</h3><p>{% if can_create_event %}Create your event here, or browse an event and join as a participant.{% else %}Browse an event and join as a participant. An organizer can invite you to judge.{% endif %}</p></div>{% endif %}
       <h2 class="subheading">Discover events</h2>
       <div class="role-list">{% for item in events %}<a class="role-item" href="/events/{{ item.id }}"><span><strong>{{ item.name }}</strong><small>Submissions close {{ item.submissions_close[:10] }}</small></span><span aria-hidden="true">↗</span></a>{% endfor %}</div>
     </section>
-    <section class="panel panel-tint setup-wizard" id="create-event">
+    {% if can_create_event %}<section class="panel panel-tint setup-wizard" id="create-event">
       <div class="setup-heading"><div><h2>Create an event</h2><p>Four short steps, then your organizer desk will guide rubric and judge setup.</p></div><span data-setup-progress>Step 1 of 4</span></div>
       <ol class="setup-rail" aria-label="Event setup progress"><li class="active">Describe</li><li>Schedule</li><li>Tracks</li><li>Review</li></ol>
       <form data-action="create-event" data-setup-wizard>
@@ -24,7 +24,7 @@
         <fieldset class="setup-step" data-step="3"><legend>Review before creating</legend><div class="setup-review" data-setup-review></div><p class="muted">Your event starts with a weighted default rubric. You can change it and invite judges from the organizer desk. The setup draft stays in this browser until you create the event.</p></fieldset>
         <div class="setup-actions"><button class="button button-secondary" type="button" data-setup-back hidden>Back</button><button class="button button-primary" type="button" data-setup-next>Continue</button><button class="button button-primary" type="submit" data-setup-create hidden>Create event</button><span class="setup-save-state" aria-live="polite">Draft saved in this browser</span></div>
       </form>
-    </section>
+    </section>{% else %}<section class="panel panel-tint"><h2>Find an event</h2><p>Explore hackathons, review their tracks, and join one that is open for registration.</p><a class="button button-primary" href="/events">Browse events</a></section>{% endif %}
   </div>
 </main>
 {% endblock %}
