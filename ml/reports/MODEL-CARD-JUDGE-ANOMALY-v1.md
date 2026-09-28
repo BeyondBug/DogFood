@@ -1,5 +1,10 @@
 # Model Card — BeyondBug Judge Anomaly Detection v1
 
+**Status:** contributed research artifact; not integrated into the portal.
+The evaluation below applies to synthetic 1–10 scores and is not a result on
+BeyondBug's 0–5 scorecards. See [INTEGRATION-REVIEW.md](INTEGRATION-REVIEW.md)
+for the deployment gate and known feature mismatch.
+
 ## Purpose
 Assistive anomaly detection for hackathon judging review.
 Surfaces unusual review patterns for organizer inspection.

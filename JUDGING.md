@@ -143,13 +143,13 @@ strict judge can still create unusual gaps. Organizers should inspect the
 rubric, project and written review before acting. Neither the rule nor the
 view changes scoring, assignment, publication, or awards.
 
-The proposed machine-learning architecture remains a research option. The
-current schema does not record review duration or edit counts, so those cannot
-be used as live features. Synthetic examples must use the actual 0–5 rubric
-and stable per-judge behavior. Any trained model would need an offline bundle,
-event-separated evaluation, a deterministic baseline comparison, and measured
-false-positive rates for consistently strict judges before it could replace
-or supplement this rule. No ML-based integrity claim is made for this release.
+The contributed Isolation Forest is preserved as a research artifact in `ml/`.
+It is not loaded by the portal: its synthetic training uses 1–10 scores, and
+the current schema does not record two of its features, review duration or
+edit count. [The integration review](ml/reports/INTEGRATION-REVIEW.md) lists
+the retraining, evaluation, and offline packaging checks it must pass before
+it can supplement this rule. No ML-based integrity claim is made for this
+release.
 
 The `rankings.csv` export includes raw and adjusted values. The pure scoring
 tests cover constant, sparse, and disconnected cases.
