@@ -168,13 +168,13 @@ strict judge can still create unusual gaps. Organizers should inspect the
 rubric, project and written review before acting. Neither the rule nor the
 view changes scoring, assignment, publication, or awards.
 
-The contributed Isolation Forest is preserved as a research artifact in `ml/`.
-It is not loaded by the portal: its synthetic training uses 1–10 scores, and
-the current schema does not record two of its features, review duration or
-edit count. [The integration review](ml/reports/INTEGRATION-REVIEW.md) lists
-the retraining, evaluation, and offline packaging checks it must pass before
-it can supplement this rule. No ML-based integrity claim is made for this
-release.
+The earlier v1 Isolation Forest remains in `ml/` as research history and is
+not loaded. The retrained v2 model uses the portal's 0–5 scale, excludes the
+candidate review from peer statistics, uses only features the portal records,
+and runs from a reviewed JSON tree export. Review duration and edit count were
+removed because the portal does not record them. The v2 signal is an organizer
+triage aid with documented synthetic precision and recall; it is not evidence
+of misconduct and makes no scoring decision.
 
 The `rankings.csv` export includes raw and adjusted values. The pure scoring
 tests cover constant, sparse, and disconnected cases.

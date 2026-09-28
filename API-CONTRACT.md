@@ -16,11 +16,12 @@ official acceptance routes are declared in `.dogfood.toml`.
 | Judge work | `GET /api/judge/assignments?event_id={id}`, `/api/judge/scores`; `PUT /api/judge/assignments/{id}/scorecard` | Own assignment and scorecards only |
 | Organizer review | `GET /api/events/{id}/progress`, `/rankings`, `/audit`; `POST /api/events/{id}/results/publish` | Event organizer |
 | Results | `GET /api/events/{id}/results`, `/results/{id}` | Public only after publication |
+| Participant feedback | `GET /api/events/{id}/my-feedback` | Participant's own team, after publication; reviewer identities omitted |
 | Voting setup | `GET/PUT /api/events/{id}/voting`; `POST /api/events/{id}/voter-invites`, `/api/voter-invites/{token}/accept` | Public schedule; organizer setup; named voter accepts |
 | Ballots | `GET /api/events/{id}/ballot`; `POST /api/events/{id}/votes`; `GET /api/events/{id}/votes/summary`, `/api/events/{id}/votes/results` | Eligible voter; organizer-only interim summary; public tally after publication |
 | Comments | `GET/POST /api/projects/{id}/comments`; `DELETE /api/comments/{id}` | Public read, logged-in write during voting, organizer hide |
-| CSV | `GET /api/events/{id}/exports/{projects,teams,assignments,scores,rankings}.csv` | Event organizer |
-| Administration | `GET /api/admin/overview` | Bootstrapped global admin |
+| CSV | `GET /api/events/{id}/exports/{projects,participants,teams,judges,assignments,scores,rankings,audit,votes,certificates}.csv` | Event organizer |
+| Administration | `GET /api/admin/overview`; `POST /api/admin/events/{id}/organizers`, `/judges` | Bootstrapped global admin |
 
 API errors use `401` for missing login, `403` for a known forbidden action,
 `404` for missing or unpublished public resources, `409` for phase conflicts,

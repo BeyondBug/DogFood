@@ -1408,6 +1408,54 @@
         }
       }
     },
+    "/api/admin/events/{event_id}/organizers": {
+      "post": {
+        "summary": "Create Organizer Account",
+        "description": "Assign an existing account or provision a local organizer account.",
+        "operationId": "create_organizer_account_api_admin_events__event_id__organizers_post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminOrganizerAccount"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/events/{event_id}/judges": {
       "post": {
         "summary": "Create Judge Account",
@@ -2110,6 +2158,44 @@
       "get": {
         "summary": "Public Results",
         "operationId": "public_results_api_events__event_id__results_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/{event_id}/my-feedback": {
+      "get": {
+        "summary": "Participant Feedback",
+        "description": "Published, anonymized scorecards for the signed-in participant's team.",
+        "operationId": "participant_feedback_api_events__event_id__my_feedback_get",
         "parameters": [
           {
             "name": "event_id",
@@ -3222,6 +3308,28 @@
         ],
         "title": "AdminJudgeAccount"
       },
+      "AdminOrganizerAccount": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email"
+        ],
+        "title": "AdminOrganizerAccount"
+      },
       "BatchInput": {
         "properties": {
           "reviews_per_project": {
@@ -3660,6 +3768,36 @@
             "title": "Demo Url",
             "default": ""
           },
+          "thumbnail_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Thumbnail Url",
+            "default": ""
+          },
+          "image_urls": {
+            "type": "string",
+            "maxLength": 5000,
+            "title": "Image Urls",
+            "default": ""
+          },
+          "video_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Video Url",
+            "default": ""
+          },
+          "live_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Live Url",
+            "default": ""
+          },
+          "tech_tags": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Tech Tags",
+            "default": ""
+          },
           "status": {
             "type": "string",
             "title": "Status",
@@ -3702,6 +3840,36 @@
             "type": "string",
             "maxLength": 1000,
             "title": "Demo Url",
+            "default": ""
+          },
+          "thumbnail_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Thumbnail Url",
+            "default": ""
+          },
+          "image_urls": {
+            "type": "string",
+            "maxLength": 5000,
+            "title": "Image Urls",
+            "default": ""
+          },
+          "video_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Video Url",
+            "default": ""
+          },
+          "live_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Live Url",
+            "default": ""
+          },
+          "tech_tags": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Tech Tags",
             "default": ""
           },
           "track_id": {

@@ -80,8 +80,8 @@ database too.
    their tracks, and batch assign projects. Invite status shows pending,
    accepted, and expired links. The desk shows setup readiness,
    its recommended next action, missing coverage, and pending reviews. A site
-   administrator can instead open an event's organizer desk and create a new
-   judge account directly, choosing review tracks. The generated temporary
+   administrator can instead open an event's organizer desk, assign a separate
+   organizer, or create a new judge account directly, choosing review tracks. The generated temporary
    password is shown once and must be shared privately; existing accounts use
    the email-bound invitation flow.
 4. A judge signs in at `/account` with the supplied email and temporary
@@ -102,7 +102,8 @@ database too.
    to suggest additional reviews for inspection. It runs from a local,
    dependency-free model export and is visible only to organizers. Its
    synthetic-data performance is not a real-event accuracy guarantee.
-   Submissions must be closed first. Public result routes return 404 until
+   Participants then see anonymized criterion scores and written feedback for
+   their own team's project. Submissions must be closed first. Public result routes return 404 until
    publication; project edits and submitted scores then lock.
 6. For an event with an active voting window, the organizer chooses invited
    voters or existing participants. Eligible voters receive a stable shuffled
@@ -126,8 +127,10 @@ The server enforces event roles, team membership, assignment ownership, and
 deadlines for direct API requests as well as browser actions. Team membership
 freezes at submission close, and published events reject project changes.
 The participant workspace checks required and recommended submission fields
-and previews the information a judge will see. It does not make external
-requests to validate repository or demo links.
+and previews the information a judge will see. Projects can include repository,
+interactive demo, live project, hosted video, thumbnail, image gallery, and
+technology-tag metadata. BeyondBug does not make external requests to validate
+those user-supplied links.
 
 ## Tests and acceptance
 
@@ -163,8 +166,9 @@ map.
 - For a consistent live backup, run
   `docker compose exec portal python -m src.backup /data/portal-backup.sqlite3`,
   then `docker compose cp portal:/data/portal-backup.sqlite3 ./portal-backup.sqlite3`.
-- Organizer CSV exports cover projects, teams, assignments, scorecards, and
-  raw/adjusted rankings. Open them from the organizer desk or use the API.
+- Organizer CSV exports cover projects, participants, teams, judges,
+  assignments, scorecards, raw/adjusted rankings, audit history, votes, and
+  certificates. Open them from the organizer desk or use the API.
 - The default service binds only to `127.0.0.1:8080`. Put a TLS reverse proxy
   in front of it for a shared deployment; disable demo mode first.
 - [CAPACITY.md](CAPACITY.md) gives measured local gallery throughput and the
@@ -205,16 +209,18 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
   from rankings. Drafts do not trigger the flag, and edits recalculate it.
   The heuristic can flag legitimate forks or miss copied work under a
   different URL; there is no organizer override in this release.
-- A teammate contributed an Isolation Forest prototype in `ml/`. It is
-  research, not a live portal feature: its 1–10 synthetic training scale and
-  feature set do not yet match the 0–5 scorecards. The
-  [integration review](ml/reports/INTEGRATION-REVIEW.md) gives the deployment
-  checks; the organizer's deterministic review-attention view remains active.
+- The organizer's optional Isolation Forest is trained on synthetic 0–5 event
+  data and is live as an advisory inspection queue. Its held-out synthetic
+  precision and recall are not real-event accuracy claims; strict and generous
+  judges produced more false alarms. It never changes scores, rankings,
+  eligibility, or awards. The deterministic review-attention view remains
+  visible beside it.
 
 ## Project documents
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): deployment, trust boundaries, and choices
 - [DATA-MODEL.md](DATA-MODEL.md): schema, seed import, exports, and migrations
+- [WRITE-UP-QUEST.md](WRITE-UP-QUEST.md): publication-ready engineering write-up
 - [JUDGING.md](JUDGING.md): assignment, score math, normalization, fixture proof
 - [ML integration review](ml/reports/INTEGRATION-REVIEW.md): contributed model and deployment gate
 - [THREAT-MODEL.md](THREAT-MODEL.md): abuse cases, controls, and residual risks

@@ -76,6 +76,14 @@ form .button{align-self:flex-start}
 .criterion-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .criterion-grid label{background:#f4f7f5;padding:11px}
 .criterion-grid input{margin-top:auto}
+.feedback-summary{display:grid;grid-template-columns:auto auto;gap:2px 12px;text-align:right;font-variant-numeric:tabular-nums}
+.feedback-summary strong{font-size:1.35rem}.feedback-summary span{color:var(--muted);font-size:.75rem}
+.feedback-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.feedback-card{background:var(--paper);border:1px solid var(--rule);padding:24px}
+.feedback-card>div,.feedback-card dl>div{display:flex;justify-content:space-between;gap:18px}
+.feedback-card h3{margin:0}.feedback-card time{color:var(--muted);font-size:.78rem}
+.feedback-card dl{border-top:1px solid var(--rule);margin:18px 0}.feedback-card dl>div{padding:9px 0;border-bottom:1px solid var(--rule)}
+.feedback-card dt{color:var(--muted)}.feedback-card dd{margin:0;font-weight:700}.feedback-card p{white-space:pre-wrap}
 .metric-strip{display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:20px;border:1px solid var(--rule);background:white}
 .metric-strip>div{display:flex;flex-direction:column;padding:22px 25px;border-right:1px solid var(--rule)}
 .metric-strip>div:last-child{border-right:0}
@@ -139,6 +147,9 @@ td a{font-weight:700;color:var(--blue)}
 .detail-body h2{font-size:1.2rem}
 .detail-body p{white-space:pre-wrap;color:var(--muted)}
 .detail-body aside{display:flex;flex-direction:column;align-items:start;gap:11px}
+.project-hero-image{display:block;width:100%;max-height:420px;object-fit:cover;border:1px solid var(--rule);margin-bottom:28px}
+.technology-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}.technology-tags span{padding:6px 9px;background:var(--shade);color:var(--teal);font-size:.78rem;font-weight:700}
+.project-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:28px}.project-gallery img{width:100%;aspect-ratio:16/10;object-fit:cover;border:1px solid var(--rule)}
 .prize-section{border-top:1px solid var(--rule)}
 .prize-list{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .prize-list>div{background:white;border:1px solid var(--rule);padding:24px;display:flex;flex-direction:column;min-height:118px}
@@ -371,6 +382,7 @@ td a{font-weight:700;color:var(--blue)}
 @media(max-width:780px){.dashboard-grid,.workspace-grid,.organizer-grid,.detail-body,.ballot-choices{grid-template-columns:1fr}.review-item{grid-template-columns:1fr;gap:25px}.metric-strip{grid-template-columns:repeat(2,1fr)}.metric-strip>div:nth-child(2){border-right:0}.metric-strip>div:nth-child(-n+2){border-bottom:1px solid var(--rule)}.prize-list{grid-template-columns:repeat(2,1fr)}.audit-list>div{grid-template-columns:1fr 1fr}.audit-list time{grid-column:1/-1}}
 @media(max-width:420px){.assignment-form{grid-template-columns:1fr}.assignment-form input,.assignment-form .button{width:100%}}
 @media(max-width:620px){.workspace-main{padding-block:50px 80px}.page-heading{align-items:start;flex-direction:column}.page-heading h1,.account-intro h1{font-size:3.5rem}.auth-panels,.form-two,.criterion-grid,.prize-list{grid-template-columns:1fr}.account-layout{padding-block:56px 80px}.panel{padding:22px}.rubric-bar,.table-heading,.publish-row,.callout{align-items:flex-start;flex-direction:column}.review-item{padding:20px}.review-context h2{font-size:1.6rem}.metric-strip strong{font-size:2.2rem}.result-list>a{grid-template-columns:42px 1fr;gap:12px}.result-score{grid-column:2;font-size:1.25rem}.detail-heading{padding-top:54px}.detail-heading h1{font-size:3.5rem}.detail-meta{flex-direction:column;gap:5px}.invite-main .panel{padding:28px}}
+@media(max-width:620px){.feedback-grid{grid-template-columns:1fr}.feedback-summary{text-align:left}}
 @media(max-width:620px){.event-settings summary{align-items:flex-start;flex-direction:column;gap:3px}}
 @media(max-width:780px){.event-directory-row{grid-template-columns:minmax(0,1fr) 80px 155px;gap:15px}.event-directory-phase{grid-column:1/-1}.event-directory-arrow{display:none}}
 @media(max-width:620px){.event-directory-search>div{flex-direction:column}.event-directory-search button{width:100%}.event-directory-heading span:last-child{display:none}.event-directory-row{grid-template-columns:1fr 1fr;gap:10px 14px;padding:22px 4px}.event-directory-name{grid-column:1/-1}.event-directory-pages{flex-wrap:wrap;gap:12px}.event-directory-pages span{order:-1;flex-basis:100%;text-align:center}}

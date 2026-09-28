@@ -1,7 +1,7 @@
 # Data model
 
 SQLite is the source of truth. `src/db.py` contains the exact versioned SQL
-schema; `PRAGMA user_version` advances from 0 through 6 at startup. Every
+schema; `PRAGMA user_version` advances from 0 through 7 at startup. Every
 connection enables foreign keys and a busy timeout. Event-scoped APIs check
 the event ID as well as the acting user's role.
 
@@ -16,7 +16,7 @@ the event ID as well as the acting user's role.
 | `tracks`, `prizes` | Event ID and name | Track names are unique within an event |
 | `teams`, `team_members` | Event, captain/creator, member role | Membership and team-size checks are transactional |
 | `team_invites` | Hashed token, team, creator, expiry, use count, revocation time | Default one use; at most four members enforced in service |
-| `projects` | Event, team, track, title, summary, description, URLs, draft/submitted status, timestamps, `duplicate_of` | Team edits stop at the server deadline |
+| `projects` | Event, team, track, title, summary, description, repository/demo/live/video/thumbnail URLs, gallery URLs, technology tags, draft/submitted status, timestamps, `duplicate_of` | Team edits stop at the server deadline |
 | `judge_profiles`, `judge_tracks` | Judge user, event, accepted status, eligible tracks | One judge profile per user and event |
 | `judge_invites` | Hashed token, event, invited email, creator, expiry, acceptance time | Acceptance requires matching account email |
 | `judge_conflicts` | Judge, project, reason, creation time | Assignment excludes declared conflicts |
@@ -73,13 +73,19 @@ environment variables.
 | `fixtures.json` → `src/seed.py` | Published JSON | Startup only |
 | `/api/events/{id}/exports/projects.csv` | Project and team rows | Organizer |
 | `/api/events/{id}/exports/teams.csv` | One row per team member | Organizer |
+| `/api/events/{id}/exports/participants.csv` | Registered accounts and team membership | Organizer |
+| `/api/events/{id}/exports/judges.csv` | Judges, status, and eligible tracks | Organizer |
 | `/api/events/{id}/exports/assignments.csv` | Judge/project assignment and status | Organizer |
 | `/api/events/{id}/exports/scores.csv` | Criterion-level scorecard rows | Organizer |
 | `/api/events/{id}/exports/rankings.csv` | Raw and adjusted scores, coverage, duplicates | Organizer |
+| `/api/events/{id}/exports/audit.csv` | Consequential event changes | Organizer |
+| `/api/events/{id}/exports/votes.csv` | Final ballot records | Organizer |
+| `/api/events/{id}/exports/certificates.csv` | Issued participation and winner records | Organizer |
 | `python -m src.backup DESTINATION` | Consistent SQLite database copy | Local operator |
 | `/api/events/{id}/certificates` | Issued certificate metadata | Organizer |
 | `/api/admin/events/{id}/certificate-designs/{kind}` | Participant or winner design settings | Site administrator |
 | `/api/admin/events/{id}/judges` | Create a local judge account, accepted profile, and review tracks; returns a temporary password once | Site administrator |
+| `/api/admin/events/{id}/organizers` | Assign an existing account or create a local organizer account with a temporary password | Site administrator |
 | `/api/auth/password` | Change password and revoke all existing sessions | Signed-in account |
 | `/events/{id}/certificates/preview/{kind}.svg` | Watermarked, non-verifiable SVG sample | Site administrator |
 | `/api/certificates/{id}/verify` | Public database-backed verification JSON | Public |
@@ -96,8 +102,9 @@ Version 1 created the core tables. Version 2 added judge invitations and
 conflicts. Version 3 added voting windows, invite eligibility, ballots,
 attempt signals, and comments. Version 4 added prize assignments and
 certificates. Version 5 added persistent login throttling. Version 6 added
-per-event certificate designs and issuance-time design snapshots. Migrations run
-before fixture seeding.
+per-event certificate designs and issuance-time design snapshots. Version 7
+added project media links and technology tags. Migrations run before fixture
+seeding.
 `rubrics.version` and each
 scorecard's `rubric_id` preserve scoring context, but changing a rubric is
 currently blocked once assignments exist. Published results lock scorecard

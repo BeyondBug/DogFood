@@ -176,6 +176,7 @@ document.addEventListener('change', event => {
 const submissionLabels = {
   title: 'Project title', track_id: 'Track', summary: 'Short summary',
   description: 'Full description', repo_url: 'Repository link', demo_url: 'Demo link',
+  thumbnail_url: 'Thumbnail', video_url: 'Demo video', live_url: 'Live project', tech_tags: 'Technology tags',
 };
 function updateSubmissionCheck() {
   const form = document.querySelector('#submission-form');
@@ -320,6 +321,23 @@ document.addEventListener('submit', async event => {
         const credentials = form.parentElement.querySelector('[data-judge-account-result]');
         credentials.querySelector('[data-judge-email]').textContent = result.email;
         credentials.querySelector('[data-judge-password]').textContent = result.temporary_password;
+        credentials.hidden = false;
+        form.reset();
+        credentials.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
+      case 'admin-organizer-account': {
+        result = await api('POST', `/api/admin/events/${form.dataset.event}/organizers`, data);
+        const credentials = form.parentElement.querySelector('[data-organizer-account-result]');
+        credentials.querySelector('[data-organizer-email]').textContent = result.email;
+        const passwordRow = credentials.querySelector('[data-organizer-password-row]');
+        const existing = credentials.querySelector('[data-organizer-existing]');
+        if (result.temporary_password) {
+          credentials.querySelector('[data-organizer-password]').textContent = result.temporary_password;
+          passwordRow.hidden = false; existing.hidden = true;
+        } else {
+          passwordRow.hidden = true; existing.hidden = false;
+        }
         credentials.hidden = false;
         form.reset();
         credentials.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
