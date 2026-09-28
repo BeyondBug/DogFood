@@ -14,7 +14,7 @@ Public visitors can browse and search events at `/events`; each event has its
 own page and event-scoped gallery links. Galleries paginate beyond 48 projects,
 so large events remain browsable.
 
-Watch the [five-minute browser walkthrough](media/beyondbug-demo-silent.mp4),
+Watch the [five-minute browser walkthrough](media/beyondbug-demo.mp4),
 recorded from a fresh local event. The silent, captioned video shows real form
 actions for event creation, team formation, draft and final submission, judge
 assignment, weighted scoring, a direct 403 peer-score denial, result
