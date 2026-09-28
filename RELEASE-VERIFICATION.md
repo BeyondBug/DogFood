@@ -1,6 +1,6 @@
 # Release verification
 
-## Current status — 27 September 2026
+## Current status — 28 September 2026
 
 | Check | Result |
 | --- | --- |
@@ -16,6 +16,7 @@
 | Local gallery read probe | **PASS:** 500/500 at 20 workers and 1,000/1,000 at 50 workers; see [CAPACITY.md](CAPACITY.md) |
 | Administrator backup | **PASS:** isolated portal created and downloaded a valid 1-event, 41-project SQLite snapshot; anonymous download returned 401 |
 | Event page Back link | **PASS:** visible at mobile size with a direct-link fallback to the event directory |
+| Five-minute lifecycle recording | **PASS:** fresh seeded portal, live browser actions through publication, direct peer-score HTTP 403, CSV download; 300-second H.264 file in `media/` |
 
 The canonical [acceptance-report.txt](acceptance-report.txt) is the unedited
 checker output against localhost:8080. `.dogfood.toml` claims only T1/T2.

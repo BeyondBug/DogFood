@@ -12,11 +12,12 @@ Public visitors can browse and search events at `/events`; each event has its
 own page and event-scoped gallery links. Galleries paginate beyond 48 projects,
 so large events remain browsable.
 
-Watch the [five-minute silent lifecycle demo](media/beyondbug-demo-silent.mp4),
-captured from a running local event. Its captions show event creation, team
-formation, draft and final submission, judge assignment and scoring, and
-result publication. [DEMO-SCRIPT.md](DEMO-SCRIPT.md) lists the live actions for
-a narrated recording.
+Watch the [five-minute browser walkthrough](media/beyondbug-demo-silent.mp4),
+recorded from a fresh local event. The silent, captioned video shows real form
+actions for event creation, team formation, draft and final submission, judge
+assignment, weighted scoring, a direct 403 peer-score denial, result
+publication, judging insight, and CSV export. [DEMO-SCRIPT.md](DEMO-SCRIPT.md)
+lists the actions so the lifecycle can be repeated.
 
 ## Run it
 
