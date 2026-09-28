@@ -54,6 +54,11 @@ flagged with `duplicate_of=prj_07` and excluded from ranking. Its four
 historical scorecards remain in the database for traceability. The initial
 ranking therefore uses 122 completed reviews over 40 unique projects.
 
+For newly created events, duplicate flags compare only **submitted** projects
+with a nonempty, identical repository URL. The earliest submitted record is
+the canonical one. Drafts never make another project a duplicate; editing a
+repository URL before the deadline recalculates the event's flags.
+
 Fixture import is a first-boot operation. It does not overwrite edits when
 the container restarts. Demo mode adds four known local sessions and passwords
 for acceptance and walkthroughs; disabling demo mode removes those known

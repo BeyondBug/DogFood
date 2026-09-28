@@ -5,8 +5,8 @@
 | Check | Result |
 | --- | --- |
 | Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
-| Independent unit and HTTP integration suite | **21/21 PASS** |
-| Disposable fresh-volume test runner | **21/21 PASS:** new Compose project and volume; removed after run |
+| Independent unit and HTTP integration suite | **23/23 PASS** |
+| Disposable fresh-volume test runner | **23/23 PASS:** new Compose project and volume; removed after run |
 | Fresh Compose volume on port 18080 | **PASS:** schema 5, 1 fixture event, 41 projects, 30 judges |
 | Fresh portal checked by official `run.py` | **7/7 PASS** |
 | Restart persistence | **PASS:** same event, project, judge, and local secret counts |
@@ -66,7 +66,7 @@ container was not available here, so native ARM64 execution remains untested.
 
 ```sh
 docker compose up --build
-python3 -m unittest discover -s tests -v
+python3 scripts/test_fresh.py
 python3 run.py .dogfood.toml > acceptance-report.txt
 ```
 
