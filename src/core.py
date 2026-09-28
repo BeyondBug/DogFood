@@ -262,7 +262,7 @@ def create_event(payload: EventCreate, request: Request):
     principal = require_login(request)
     with closing(connect()) as db:
         if not can_create_event(db, principal):
-            raise HTTPException(status_code=403, detail="Only administrators and event organizers can create events")
+            raise HTTPException(status_code=403, detail="Administrator access required")
     date_fields = ["registration_open", "registration_close", "submissions_open", "submissions_close", "judging_open", "judging_close"]
     dates = {key: time_value(getattr(payload, key)) for key in date_fields}
     for opening, closing_name in (("registration_open", "registration_close"), ("submissions_open", "submissions_close"), ("judging_open", "judging_close")):
