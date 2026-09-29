@@ -84,6 +84,9 @@ account from local environment variables.
 | --- | --- | --- |
 | `fixtures.json` → `src/seed.py` | Published JSON | Startup only |
 | `/api/events/{id}/exports/projects.csv` | Project and team rows, including `answers_json` for event questions | Organizer |
+| `/api/events/{id}/exports/portable.json` | Portable pre-judging event bundle with tracks, prizes, prompts, people, teams, projects and judge profiles | Organizer |
+| `/api/events/{id}/imports/portable.json?dry_run=true` | Validate a bundle without writing | Organizer, open target event |
+| `/api/events/{id}/imports/portable.json` | Atomic import of a validated bundle; new account passwords returned once | Organizer, empty open target event |
 | `/api/events/{id}/exports/teams.csv` | One row per team member | Organizer |
 | `/api/events/{id}/exports/participants.csv` | Registered accounts and team membership | Organizer |
 | `/api/events/{id}/exports/judges.csv` | Judges, status, and eligible tracks | Organizer |
@@ -105,10 +108,13 @@ account from local environment variables.
 | `/certificates/{id}.svg` | Vector certificate for print or download | Public |
 
 CSV columns have stable headers, use Python's CSV quoting, and prefix text
-that would otherwise open as a spreadsheet formula. SQLite snapshots support
-whole-installation import and export, but no portable cross-platform bulk
-import is claimed. A future importer should map external IDs and
-reconcile duplicates before modifying live events.
+that would otherwise open as a spreadsheet formula. The portable JSON bundle
+uses names and email addresses as mapping keys and generates new local IDs on
+import. It is a pre-judging data exchange, not a complete historical archive;
+scores, ballots, certificates, and audit history remain in their CSV exports
+and whole-installation SQLite snapshots. Imports require an empty target event
+and run inside one transaction. A dry run validates its shape and references
+without writing.
 
 ## Migration and retention
 

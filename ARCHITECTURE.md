@@ -77,6 +77,7 @@ are organizer-only until publication; public vote results then become visible.
 | `src/judge_records.py` | Ed25519-signed judge participation records and public verification |
 | `src/webhooks.py` | Optional signed event callbacks, durable delivery queue, and retry worker |
 | `src/submission_questions.py` | Organizer-defined project questions, private answers, and required-answer enforcement |
+| `src/portable_bundle.py` | Bounded, transactional pre-judging event import and portable JSON export |
 | `src/backup.py`, `src/restore.py` | Consistent SQLite snapshot and offline restore |
 | `src/ui.py` | Public and role workspaces from live records |
 | `src/main.py` | Application assembly, gallery, acceptance routes |
@@ -136,8 +137,10 @@ safety copy of the previous database. Migrations run forward at startup; take
 a backup before upgrading. CSV exports provide paths
 out for projects, participants, teams, judges, assignments, scorecards,
 rankings, audit history, votes, and certificates. Fixture JSON is an initial
-import format, not a portable cross-platform bulk import facility. A whole
-SQLite snapshot can be restored from an existing BeyondBug installation.
+import format for initial fixture seeding. The portable JSON bundle moves
+pre-judging event data into an empty open event with new local IDs. A whole
+SQLite snapshot can restore a complete BeyondBug installation, including
+historical results and audit data.
 The admin overview reads disk and database size, offers an on-demand
 `PRAGMA quick_check`, and writes/downloads SQLite snapshots through
 administrator-only routes. Snapshots live under the data volume, outside

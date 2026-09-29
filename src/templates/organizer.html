@@ -201,6 +201,11 @@
     {% else %}<div class="empty-state compact"><h3>No completed reviews yet</h3><p>Assign eligible judges after submissions close. This view will explain the ranking once reviews arrive.</p></div>{% endif %}
   </section>
 
+  <section class="table-section" id="portable-exchange">
+    <div class="table-heading"><div><h2>Portable event data</h2><p>Move participants, teams, projects, tracks, questions, and judge profiles between installations.</p></div><a class="text-link" href="/api/events/{{ event.id }}/exports/portable.json" download="{{ event.id }}-portable.json">Download JSON bundle</a></div>
+    {% if not questions_locked and not event.results_published_at and not submissions_closed %}<form data-action="portable-import" data-event="{{ event.id }}"><label>Import into this empty event<input type="file" name="bundle" accept=".json,application/json" required></label><p class="muted">The file is checked before import. New local account passwords appear once afterward. Reviews and ballots are exported separately as CSV; use a SQLite snapshot for a complete BeyondBug restore.</p><button class="button button-secondary" type="submit">Check and import bundle</button></form><div class="panel" data-import-credentials hidden><strong>Imported account credentials — copy now</strong><p>These passwords are shown only once. Share them privately and ask each account to change its password.</p><pre data-import-credentials-text></pre></div>{% else %}<p class="muted">Import is available only before submissions close and before this event has any teams or projects.</p>{% endif %}
+  </section>
+
   <section class="table-section">
     <div class="table-heading"><div><h2>Community voting</h2><p>Choose who can vote. Totals stay private until results are published.</p></div></div>
     <div class="organizer-grid">

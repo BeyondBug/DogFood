@@ -341,6 +341,13 @@ map.
 - Organizer CSV exports cover projects, participants, teams, judges,
   assignments, scorecards, raw/adjusted rankings, audit history, votes, and
   certificates. Open them from the organizer desk or use the API.
+- The organizer desk can download a portable JSON event bundle and import it
+  into a new, open event after a dry run. The bundle carries tracks, prizes,
+  submission questions, participants, teams, projects, and judge profiles.
+  New local account passwords are shown once to the importing organizer.
+  Review scores, ballots, certificates, and audit history remain available
+  through CSV exports or a full BeyondBug SQLite snapshot; the JSON bundle is
+  intended for pre-judging migration.
 - The default service binds only to `127.0.0.1:8080`. Put a TLS reverse proxy
   in front of it for a shared deployment; disable demo mode first.
 - [CAPACITY.md](CAPACITY.md) gives measured local gallery throughput and the
@@ -360,9 +367,11 @@ and does not change `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 - T3 is not claimed in `.dogfood.toml`: its voting and comment features work,
   but the supplied checker has no T3 checks. T4 is not claimed: certificates,
-  signed judge records, the gallery widget, and optional webhooks are implemented;
-  portable bulk import from other systems remains absent. Full BeyondBug
-  database snapshots can be imported through the offline restore command.
+  signed judge records, the gallery widget, optional webhooks, CSV exports,
+  a portable pre-judging JSON bundle, and full snapshot restore are implemented.
+  The JSON bundle does not round-trip historical scorecards, ballots,
+  certificates, or audit events. Full BeyondBug database snapshots can be
+  imported through the offline restore command.
   Certificate verification depends on the local
   database, so it is not a cryptographic signature.
 - Community voting cannot establish one human per account. Invite acceptance

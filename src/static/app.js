@@ -298,6 +298,23 @@ document.addEventListener('submit', async event => {
         }));
         await api('PUT', `/api/events/${form.dataset.event}/submission-questions`, data);
         refresh(); return;
+      case 'portable-import': {
+        const file = form.querySelector('[name=bundle]')?.files?.[0];
+        if (!file || file.size > 4_000_000) throw new Error('Choose a JSON bundle smaller than 4 MB.');
+        const bundle = JSON.parse(await file.text());
+        const path = `/api/events/${form.dataset.event}/imports/portable.json`;
+        const check = await api('POST', `${path}?dry_run=true`, bundle);
+        if (!window.confirm(`Import ${check.participants} participants, ${check.teams} teams, ${check.projects} projects, and ${check.judges} judges into this event?`)) return;
+        result = await api('POST', path, bundle);
+        const credentials = form.parentElement.querySelector('[data-import-credentials]');
+        credentials.querySelector('[data-import-credentials-text]').textContent = result.new_account_credentials.length
+          ? result.new_account_credentials.map(item => `${item.email}  ${item.temporary_password}`).join('\n')
+          : 'All accounts already existed; no new passwords were created.';
+        credentials.hidden = false;
+        notice(`Imported ${result.projects} projects. Copy any new account credentials below before leaving this page.`);
+        credentials.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
       case 'join-event':
         await api('POST', `/api/events/${form.dataset.event}/registration`, {});
         window.location.assign(`/workspace/${form.dataset.event}`);

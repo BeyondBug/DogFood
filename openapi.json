@@ -1651,6 +1651,100 @@
         }
       }
     },
+    "/api/events/{event_id}/exports/portable.json": {
+      "get": {
+        "summary": "Export Portable",
+        "operationId": "export_portable_api_events__event_id__exports_portable_json_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/{event_id}/imports/portable.json": {
+      "post": {
+        "summary": "Import Portable",
+        "operationId": "import_portable_api_events__event_id__imports_portable_json_post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Dry Run"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Bundle"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -4026,6 +4120,74 @@
         "type": "object",
         "title": "BatchInput"
       },
+      "Bundle": {
+        "properties": {
+          "format": {
+            "type": "string",
+            "title": "Format"
+          },
+          "event": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Event"
+          },
+          "tracks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Tracks"
+          },
+          "prizes": {
+            "items": {
+              "$ref": "#/components/schemas/Prize"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Prizes"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/Prompt"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Questions"
+          },
+          "participants": {
+            "items": {
+              "$ref": "#/components/schemas/Person"
+            },
+            "type": "array",
+            "maxItems": 2000,
+            "title": "Participants"
+          },
+          "teams": {
+            "items": {
+              "$ref": "#/components/schemas/Team"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Teams"
+          },
+          "judges": {
+            "items": {
+              "$ref": "#/components/schemas/Judge"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Judges"
+          }
+        },
+        "type": "object",
+        "required": [
+          "format",
+          "tracks"
+        ],
+        "title": "Bundle"
+      },
       "CommentInput": {
         "properties": {
           "body": {
@@ -4348,6 +4510,36 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "Judge": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email"
+          },
+          "tracks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Tracks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email"
+        ],
+        "title": "Judge"
+      },
       "JudgeInvite": {
         "properties": {
           "email": {
@@ -4416,6 +4608,146 @@
           "new_password"
         ],
         "title": "PasswordChange"
+      },
+      "Person": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email"
+        ],
+        "title": "Person"
+      },
+      "Prize": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Description",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "Prize"
+      },
+      "Project": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 800,
+            "title": "Summary",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000,
+            "title": "Description",
+            "default": ""
+          },
+          "repo_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Repo Url",
+            "default": ""
+          },
+          "demo_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Demo Url",
+            "default": ""
+          },
+          "live_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Live Url",
+            "default": ""
+          },
+          "video_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Video Url",
+            "default": ""
+          },
+          "thumbnail_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Thumbnail Url",
+            "default": ""
+          },
+          "image_urls": {
+            "type": "string",
+            "maxLength": 5000,
+            "title": "Image Urls",
+            "default": ""
+          },
+          "tech_tags": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Tech Tags",
+            "default": ""
+          },
+          "track": {
+            "type": "string",
+            "title": "Track"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "draft"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "answers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Answers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "track"
+        ],
+        "title": "Project"
       },
       "ProjectInput": {
         "properties": {
@@ -4620,6 +4952,26 @@
         ],
         "title": "ProjectUpdate"
       },
+      "Prompt": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 3,
+            "title": "Label"
+          },
+          "required": {
+            "type": "boolean",
+            "title": "Required",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "title": "Prompt"
+      },
       "PublishResultsInput": {
         "properties": {
           "acknowledge_limited_evidence": {
@@ -4747,6 +5099,39 @@
           "criteria"
         ],
         "title": "ScorecardInput"
+      },
+      "Team": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 2,
+            "title": "Name"
+          },
+          "members": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Members"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/Project"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Projects"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "members"
+        ],
+        "title": "Team"
       },
       "TeamCreate": {
         "properties": {

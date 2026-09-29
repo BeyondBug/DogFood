@@ -26,6 +26,7 @@ from .certificates import router as certificate_router
 from .judge_records import router as judge_records_router
 from .webhooks import delivery_loop, router as webhooks_router
 from .submission_questions import router as submission_questions_router, validate_answers, save_answers
+from .portable_bundle import router as portable_bundle_router
 from .ui import router as ui_router
 from .db import connect, initialize, utc_now
 from .seed import seed
@@ -57,6 +58,7 @@ app.include_router(ui_router)
 app.include_router(judge_records_router)
 app.include_router(webhooks_router)
 app.include_router(submission_questions_router)
+app.include_router(portable_bundle_router)
 
 
 @app.middleware("http")
