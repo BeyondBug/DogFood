@@ -51,6 +51,18 @@ def creator_cookie():
 
 
 class LifecycleTests(unittest.TestCase):
+    def test_demo_role_launcher_signs_into_each_seeded_role(self):
+        status, account, _ = call("GET", "/account")
+        self.assertEqual(status, 200)
+        self.assertIn("Explore every role", account)
+        for role in ("administrator", "organizer", "judge_a", "judge_b", "participant"):
+            status, result, cookie = call("POST", "/api/auth/demo-login", {"role": role})
+            self.assertEqual(status, 200, result)
+            self.assertEqual(result["role"], role)
+            status, identity, _ = call("GET", "/api/auth/me", cookie=cookie.split(";", 1)[0])
+            self.assertEqual(status, 200, identity)
+            self.assertEqual(identity["is_admin"], role == "administrator")
+
     def test_participant_dashboard_tracks_event_team_and_submission(self):
         suffix = uuid.uuid4().hex[:10]
         status, event, _ = call("POST", "/api/events", {

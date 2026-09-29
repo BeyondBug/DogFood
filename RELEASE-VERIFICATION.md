@@ -5,8 +5,8 @@
 | Check | Result |
 | --- | --- |
 | Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
-| Independent unit and HTTP integration suite | **38/38 PASS** |
-| Disposable fresh-volume test runner | **38/38 PASS:** new Compose project and volume; removed after run |
+| Independent unit and HTTP integration suite | **39/39 PASS** |
+| Disposable fresh-volume test runner | **39/39 PASS:** new Compose project and volume; removed after run |
 | Fresh disposable Compose volume | **PASS on schema 10:** fixture seed, migrations, lifecycle, permissions, custom questions, scoring, voting, certificates, pairwise ranking, signed records, webhooks, bulk and portable import, embeds, backup/restore, OpenAPI, and portable ML checks run before the volume is removed |
 | Fresh portal checked by official `run.py` | **7/7 PASS** |
 | Restart persistence | **PASS:** same event, project, judge, and local secret counts |
