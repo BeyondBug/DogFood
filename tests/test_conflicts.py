@@ -32,7 +32,9 @@ class ConflictTests(unittest.TestCase):
         self.assertEqual(call("POST", f"/api/events/{event_id}/registration", {}, organizer)[0], 201)
         _, team, _ = call("POST", f"/api/events/{event_id}/teams", {"name": "Maker team"}, organizer)
         status, project, _ = call("POST", f"/api/events/{event_id}/projects", {
-            "team_id": team["id"], "track_id": track_id, "title": "Conflict candidate", "status": "submitted",
+            "team_id": team["id"], "track_id": track_id, "title": "Conflict candidate",
+            "summary": "Conflict test", "description": "A complete project for conflict testing.",
+            "repo_url": "https://example.org/conflict", "status": "submitted",
         }, organizer)
         self.assertEqual(status, 201, project)
         self.assertEqual(call("PUT", f"/api/events/{event_id}/rubric", {

@@ -626,6 +626,9 @@ def update_project(project_id: str, payload: ProjectUpdate, request: Request):
         track = db.execute("SELECT 1 FROM tracks WHERE id=? AND event_id=?", (payload.track_id, project["event_id"])).fetchone()
         if track is None:
             raise HTTPException(status_code=422, detail="Track does not belong to this event")
+        if payload.status == "submitted" and not all((payload.summary.strip(), payload.description.strip(),
+                                                       payload.repo_url.strip())):
+            raise HTTPException(status_code=422, detail="Submitted projects require a summary, description, and repository URL")
         from .submission_questions import validate_answers, save_answers
         answers = validate_answers(db, project["event_id"], project_id, payload.answers, payload.status)
         now = utc_now()

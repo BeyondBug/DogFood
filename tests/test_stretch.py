@@ -116,10 +116,13 @@ class StretchTests(unittest.TestCase):
         status, hook, _ = call("POST", f"/api/events/{event_id}/webhooks",
                                {"url": "https://example.invalid/beyondbug"}, admin)
         self.assertEqual(status, 201, hook)
+        self.assertEqual(call("POST", f"/api/events/{event_id}/webhooks",
+                              {"url": "http://127.0.0.1/internal"}, admin)[0], 422)
         self.assertTrue(hook["secret"])
         self.assertEqual(call("POST", f"/api/events/{event_id}/webhooks/{hook['id']}/test", {}, admin)[0], 200)
         deliveries = call("GET", f"/api/events/{event_id}/webhooks/deliveries", cookie=admin)[1]
-        self.assertEqual(deliveries["deliveries"][0]["status"], "failed")
+        self.assertEqual(deliveries["deliveries"][0]["status"], "pending")
+        self.assertEqual(deliveries["deliveries"][0]["attempt_count"], 1)
 
 
 if __name__ == "__main__":

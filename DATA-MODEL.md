@@ -1,7 +1,7 @@
 # Data model
 
 SQLite is the source of truth. `src/db.py` contains the exact versioned SQL
-schema; `PRAGMA user_version` advances from 0 through 11 at startup. Every
+schema; `PRAGMA user_version` advances from 0 through 12 at startup. Every
 connection enables foreign keys and a busy timeout. Event-scoped APIs check
 the event ID as well as the acting user's role.
 

@@ -325,8 +325,8 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 - T3 and T4 are not claimed in `.dogfood.toml` because the supplied checker
   contains no checks for either tier. [TIER-COVERAGE.md](docs/TIER-COVERAGE.md)
   maps independent evidence and remaining limits: there is no quadratic ballot;
-  webhooks cover event-scoped audited actions with one delivery attempt and no
-  automatic retry. The setup bundle moves editable pre-event data, while the
+  webhooks cover event-scoped audited actions with three bounded attempts and
+  short backoff. The setup bundle moves editable pre-event data, while the
   complete event archive round-trips judging, voting, certificates, audit, and
   integration history between installations. Evidence is kept separate from the
   official T1/T2 acceptance result. Certificate verification remains database-backed, while

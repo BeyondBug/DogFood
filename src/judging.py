@@ -297,6 +297,13 @@ def batch_assign(event_id: str, payload: BatchInput, request: Request):
         projects = db.execute("SELECT id,team_id,track_id FROM projects WHERE event_id=? AND status='submitted' AND duplicate_of IS NULL ORDER BY id", (event_id,)).fetchall()
         judges = db.execute("SELECT id,user_id FROM judge_profiles WHERE event_id=? AND status='accepted' ORDER BY id", (event_id,)).fetchall()
         loads = {judge["id"]: db.execute("SELECT COUNT(*) FROM judge_assignments WHERE judge_id=?", (judge["id"],)).fetchone()[0] for judge in judges}
+        cojudges = {judge["id"]: set() for judge in judges}
+        for row in db.execute(
+            "SELECT a.judge_id AS left_id,b.judge_id AS right_id FROM judge_assignments a"
+            " JOIN judge_assignments b ON b.project_id=a.project_id AND b.judge_id<>a.judge_id"
+            " WHERE a.event_id=?", (event_id,),
+        ):
+            cojudges.setdefault(row["left_id"], set()).add(row["right_id"])
         created = []
         shortages = []
         for project in projects:
@@ -313,11 +320,18 @@ def batch_assign(event_id: str, payload: BatchInput, request: Request):
                 if db.execute("SELECT 1 FROM judge_conflicts WHERE judge_id=? AND project_id=?", (judge["id"], project["id"])).fetchone():
                     continue
                 candidates.append(judge["id"])
-            for judge_id in sorted(candidates, key=lambda item: (loads[item], item))[:needed]:
+            selected = []
+            for judge_id in sorted(candidates,
+                                   key=lambda item: (loads[item], -len(cojudges.get(item, set())), item))[:needed]:
                 assignment_id = identifier("asg")
                 db.execute("INSERT INTO judge_assignments(id,event_id,project_id,judge_id,assigned_at,reason) VALUES(?,?,?,?,?,?)",
-                           (assignment_id, event_id, project["id"], judge_id, utc_now(), "Balanced track-matched batch"))
+                           (assignment_id, event_id, project["id"], judge_id, utc_now(),
+                            "Overlap-aware balanced track-matched batch"))
                 loads[judge_id] += 1
+                for peer in current | set(selected):
+                    cojudges.setdefault(judge_id, set()).add(peer)
+                    cojudges.setdefault(peer, set()).add(judge_id)
+                selected.append(judge_id)
                 created.append({"assignment_id": assignment_id, "project_id": project["id"], "judge_id": judge_id})
             if len(candidates) < needed:
                 shortages.append({"project_id": project["id"], "missing": needed - len(candidates)})

@@ -55,7 +55,8 @@ class SubmissionQuestionTests(unittest.TestCase):
                                                                      status="draft"), request)
                 project_id = created["id"]
                 with patch("src.core.require_login", return_value=Principal("member", "member@example.org", "member", False)):
-                    update_project(project_id, ProjectUpdate(title="Project", track_id="track", status="submitted",
+                    update_project(project_id, ProjectUpdate(title="Project", summary="Ready", description="Complete project.",
+                                                             repo_url="https://example.org/project", track_id="track", status="submitted",
                                                              answers={question_id: "  A clear answer  "}), request)
                 with patch("src.submission_questions.require_login", return_value=Principal("member", "member@example.org", "member", False)):
                     result = project_answers("event", project_id, request)

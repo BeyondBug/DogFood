@@ -368,9 +368,15 @@ class LifecycleTests(unittest.TestCase):
             "image_urls": "\n".join(f"https://example.org/{index}.png" for index in range(6)),
         }, organizer_cookie)
         self.assertEqual(status, 422)
+        status, _, _ = call("POST", f"/api/events/{event_id}/projects", {
+            "team_id": team["id"], "track_id": track_id, "title": "Incomplete final",
+            "status": "submitted",
+        }, organizer_cookie)
+        self.assertEqual(status, 422)
         status, project, _ = call("POST", f"/api/events/{event_id}/projects", {
             "team_id": team["id"], "track_id": track_id, "title": "Scored project " + suffix,
             "summary": "A complete rich submission.",
+            "description": "A complete project description for the judging lifecycle.",
             "repo_url": "https://example.org/source", "demo_url": "https://example.org/demo",
             "live_url": "https://example.org/live", "video_url": "https://example.org/video",
             "thumbnail_url": "https://example.org/thumbnail.png",
@@ -647,7 +653,8 @@ class LifecycleTests(unittest.TestCase):
         }, cookie2)
         self.assertEqual(status, 201, draft)
         status, final, _ = call("PUT", f"/api/projects/{draft['id']}", {
-            "title": "Project " + suffix, "summary": "Finished", "track_id": track_id,
+            "title": "Project " + suffix, "summary": "Finished", "description": "A finished project.",
+            "repo_url": "https://example.org/project-" + suffix, "track_id": track_id,
             "status": "submitted",
         }, cookie)
         self.assertEqual(status, 200, final)
@@ -698,6 +705,7 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(status, 201, draft)
         status, submitted, _ = call("POST", f"/api/events/{event_id}/projects", {
             "team_id": second_team, "track_id": track_id, "title": "Submitted candidate",
+            "summary": "Submitted", "description": "A complete submitted candidate.",
             "repo_url": shared_repo, "status": "submitted",
         }, second)
         self.assertEqual(status, 201, submitted)
@@ -709,7 +717,7 @@ class LifecycleTests(unittest.TestCase):
 
         self.assertIsNone(ranked_projects()[submitted["id"]]["duplicate_of"])
         status, _, _ = call("PUT", f"/api/projects/{draft['id']}", {
-            "title": "Draft candidate", "track_id": track_id,
+            "title": "Draft candidate", "summary": "Draft", "description": "A complete draft candidate.", "track_id": track_id,
             "repo_url": shared_repo, "status": "submitted",
         }, first)
         self.assertEqual(status, 200)
@@ -728,7 +736,7 @@ class LifecycleTests(unittest.TestCase):
             {"decision": "cleared", "reason": "No duplicate signal exists."}, second,
         )[0], 403)
         status, _, _ = call("PUT", f"/api/projects/{submitted['id']}", {
-            "title": "Submitted candidate", "track_id": track_id,
+            "title": "Submitted candidate", "summary": "Submitted", "description": "A complete submitted candidate.", "track_id": track_id,
             "repo_url": "https://example.org/independent-repository", "status": "submitted",
         }, second)
         self.assertEqual(status, 200)

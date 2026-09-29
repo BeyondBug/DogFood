@@ -8,6 +8,7 @@ import hashlib
 import hmac
 import html
 import io
+import ipaddress
 import json
 import secrets
 import subprocess
@@ -15,7 +16,7 @@ import tempfile
 import urllib.error
 import urllib.request
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -407,6 +408,15 @@ def _webhook_url(value: str) -> str:
     parsed = urlparse(value.strip())
     if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username or parsed.password:
         raise HTTPException(status_code=422, detail="Webhook URL must be an http(s) URL without credentials")
+    hostname = parsed.hostname.casefold().rstrip(".")
+    if hostname == "localhost" or hostname.endswith((".localhost", ".local")):
+        raise HTTPException(status_code=422, detail="Webhook URL cannot target a local host")
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        address = None
+    if address and not address.is_global:
+        raise HTTPException(status_code=422, detail="Webhook URL must use a public network address")
     return value.strip()
 
 
@@ -436,12 +446,14 @@ def list_webhooks(event_id: str, request: Request):
 
 
 def deliver_pending_webhooks(limit: int = 50) -> int:
-    """Attempt queued deliveries once each; the outbox rows record every outcome."""
+    """Deliver due outbox rows with three bounded attempts and short backoff."""
+    now = utc_now()
     with closing(connect()) as db:
         rows = db.execute(
-            "SELECT d.id,d.payload_json,w.url,w.secret FROM webhook_deliveries d"
+            "SELECT d.id,d.payload_json,d.attempt_count,w.url,w.secret FROM webhook_deliveries d"
             " JOIN webhooks w ON w.id=d.webhook_id WHERE d.status='pending'"
-            " ORDER BY d.created_at,d.id LIMIT ?", (limit,),
+            " AND (d.next_attempt_at IS NULL OR d.next_attempt_at<=?)"
+            " ORDER BY d.created_at,d.id LIMIT ?", (now, limit),
         ).fetchall()
     for row in rows:
         payload = row["payload_json"].encode()
@@ -458,9 +470,16 @@ def deliver_pending_webhooks(limit: int = 50) -> int:
         except (urllib.error.URLError, TimeoutError, OSError, ValueError) as failure:
             error = str(failure)[:500]
         with closing(connect()) as db:
-            db.execute("UPDATE webhook_deliveries SET status=?,response_code=?,error=?,attempted_at=? WHERE id=?",
-                       ("delivered" if status and 200 <= status < 300 else "failed", status, error,
-                        utc_now(), row["id"]))
+            succeeded = bool(status and 200 <= status < 300)
+            attempts = row["attempt_count"] + 1
+            terminal = succeeded or attempts >= 3
+            next_attempt = None if terminal else (
+                datetime.now(timezone.utc) + timedelta(seconds=(2, 10)[attempts - 1])
+            ).isoformat(timespec="seconds")
+            db.execute("UPDATE webhook_deliveries SET status=?,response_code=?,error=?,attempted_at=?,"
+                       "attempt_count=?,next_attempt_at=? WHERE id=?",
+                       ("delivered" if succeeded else "failed" if terminal else "pending", status, error,
+                        utc_now(), attempts, next_attempt, row["id"]))
             db.commit()
     return len(rows)
 
@@ -490,7 +509,8 @@ def webhook_deliveries(event_id: str, request: Request):
     principal = require_login(request)
     with closing(connect()) as db:
         require_event_role(db, principal, event_id, "organizer")
-        rows = db.execute("SELECT d.id,d.webhook_id,d.event_type,d.status,d.response_code,d.error,d.created_at,d.attempted_at "
+        rows = db.execute("SELECT d.id,d.webhook_id,d.event_type,d.status,d.response_code,d.error,d.created_at,d.attempted_at,"
+                          "d.attempt_count,d.next_attempt_at "
                           "FROM webhook_deliveries d JOIN webhooks w ON w.id=d.webhook_id WHERE w.event_id=? "
                           "ORDER BY d.created_at DESC LIMIT 200", (event_id,)).fetchall()
     return {"deliveries": [dict(row) for row in rows]}
