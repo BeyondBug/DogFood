@@ -14,6 +14,8 @@ Public visitors can browse and search events at `/events`; each event has its
 own page and event-scoped gallery links. Galleries paginate beyond 48 projects,
 so large events remain browsable.
 
+Read the published [DOGFOOD Write Up Quest article on DEV Community](https://dev.to/joker53/beyondbug-the-score-that-moved-the-boundary-that-held-3kk).
+
 ## System at a glance
 
 ```mermaid
@@ -365,7 +367,8 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 - [ARCHITECTURE.md](ARCHITECTURE.md): deployment, trust boundaries, and choices
 - [API-CONTRACT.md](docs/API-CONTRACT.md): route groups and authorization boundaries
 - [DATA-MODEL.md](DATA-MODEL.md): schema, seed import, exports, and migrations
-- [WRITE-UP-QUEST.md](docs/WRITE-UP-QUEST.md): publication-ready engineering write-up
+- [Published DEV Community article](https://dev.to/joker53/beyondbug-the-score-that-moved-the-boundary-that-held-3kk): DOGFOOD Write Up Quest entry
+- [WRITE-UP-QUEST.md](docs/WRITE-UP-QUEST.md): repository copy of the engineering write-up
 - [Write-up cover](media/beyondbug-writeup-cover.jpg): 1000×420 DEV Community cover
 - [JUDGING.md](JUDGING.md): assignment, score math, normalization, fixture proof
 - [ML integration review](ml/reports/INTEGRATION-REVIEW.md): contributed model and deployment gate
