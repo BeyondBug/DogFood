@@ -34,7 +34,8 @@ class VotingTests(unittest.TestCase):
         status, team, _ = call("POST", f"/api/events/{event_id}/teams", {"name": "Open team"}, organizer)
         self.assertEqual(status, 201, team)
         status, project, _ = call("POST", f"/api/events/{event_id}/projects", {
-            "team_id": team["id"], "track_id": track_id, "title": "Open project", "status": "submitted",
+            "team_id": team["id"], "track_id": track_id, "title": "Open project", "summary": "Open vote",
+            "description": "A complete open-voting project.", "repo_url": "https://example.org/open", "status": "submitted",
         }, organizer)
         self.assertEqual(status, 201, project)
         now = datetime.now(timezone.utc)
@@ -94,7 +95,9 @@ class VotingTests(unittest.TestCase):
             status, team, _ = call("POST", f"/api/events/{event_id}/teams", {"name": team_name}, cookie)
             self.assertEqual(status, 201)
             status, result, _ = call("POST", f"/api/events/{event_id}/projects", {
-                "team_id": team["id"], "track_id": track_id, "title": title, "status": "submitted",
+                "team_id": team["id"], "track_id": track_id, "title": title, "summary": title,
+                "description": "A complete participant-voting project.",
+                "repo_url": "https://example.org/" + title.lower().replace(" ", "-"), "status": "submitted",
             }, cookie)
             self.assertEqual(status, 201, result)
             return result["id"]
@@ -164,7 +167,9 @@ class VotingTests(unittest.TestCase):
             status, team, _ = call("POST", f"/api/events/{event_id}/teams", {"name": team_name}, cookie)
             self.assertEqual(status, 201, team)
             status, project, _ = call("POST", f"/api/events/{event_id}/projects", {
-                "team_id": team["id"], "track_id": track_id, "title": title, "status": "submitted",
+                "team_id": team["id"], "track_id": track_id, "title": title, "summary": title,
+                "description": "A complete invited-voting project.",
+                "repo_url": "https://example.org/" + title.lower().replace(" ", "-"), "status": "submitted",
             }, cookie)
             self.assertEqual(status, 201, project)
             return project["id"]

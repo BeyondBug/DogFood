@@ -8,7 +8,7 @@ The image installs pinned wheels from `vendor/wheels` with `--no-index` and
 serves Jinja templates, JavaScript, CSS, and IBM Plex Sans from its own
 filesystem. There are no outbound runtime calls or hosted services.
 
-Startup applies SQLite schema migrations (`PRAGMA user_version` 1 through 11),
+Startup applies SQLite schema migrations (`PRAGMA user_version` 1 through 12),
 loads `fixtures.json` if its event is absent, and prints the demo auth headers
 when demo mode is enabled. A restart leaves user changes intact. The health
 route checks database access. A one-worker process keeps SQLite write
@@ -159,7 +159,7 @@ rejected or rolled-back one never is. A background task in the single app
 process drains the outbox every two seconds and sends HMAC-SHA256 signed
 callbacks. Each delivery is attempted once; its status, response code and
 error are retained for the organizer. Receiver failure never rolls back the
-event action. Automatic retry with backoff is not implemented. The widget reads the public gallery without credentials.
+event action. Delivery uses three bounded attempts with short backoff; explicit local and private-address targets are rejected. The widget reads the public gallery without credentials.
 Judge records sign a fixed JSON payload with a locally stored Ed25519 key.
 Public verification checks the payload against its stored public key; an
 operator must publish or pin that key independently for third parties to

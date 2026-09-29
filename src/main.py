@@ -101,6 +101,12 @@ def _deadline_passed(value: str) -> bool:
     return datetime.now(timezone.utc) >= datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def _validate_final_project(payload: ProjectInput) -> None:
+    if payload.status == "submitted" and not all((payload.summary.strip(), payload.description.strip(),
+                                                   payload.repo_url.strip())):
+        raise HTTPException(status_code=422, detail="Submitted projects require a summary, description, and repository URL")
+
+
 @app.get("/health")
 def health():
     with closing(connect()) as db:
@@ -292,6 +298,7 @@ def create_project(event_id: str, payload: ProjectInput, request: Request):
         existing = db.execute("SELECT 1 FROM projects WHERE team_id=?", (payload.team_id,)).fetchone()
         if existing:
             raise HTTPException(status_code=409, detail="This team already has a project")
+        _validate_final_project(payload)
         answers = validate_answers(db, event_id, None, payload.answers, payload.status)
         project_id = "prj_" + uuid.uuid4().hex[:16]
         now = utc_now()
