@@ -33,6 +33,11 @@ form .button{align-self:flex-start}
 .auth-panels .panel{min-width:0}
 .auth-panels form{margin-top:26px}
 .auth-panels .button{margin-top:6px}
+.demo-launcher{margin-top:38px;max-width:520px;background:var(--shade)}
+.demo-launcher h2{margin-bottom:8px}
+.demo-launcher>p:not(.section-kicker){font-size:.92rem;line-height:1.55;color:var(--muted)}
+.demo-role-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:20px}
+.demo-role-grid .button{width:100%}
 .dashboard-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:20px;align-items:start}
 .dashboard-main{padding-top:42px}
 .dashboard-main .page-heading{margin-bottom:30px}
@@ -382,6 +387,7 @@ td a{font-weight:700;color:var(--blue)}
 @media(max-width:780px){.dashboard-grid,.workspace-grid,.organizer-grid,.detail-body,.ballot-choices{grid-template-columns:1fr}.review-item{grid-template-columns:1fr;gap:25px}.metric-strip{grid-template-columns:repeat(2,1fr)}.metric-strip>div:nth-child(2){border-right:0}.metric-strip>div:nth-child(-n+2){border-bottom:1px solid var(--rule)}.prize-list{grid-template-columns:repeat(2,1fr)}.audit-list>div{grid-template-columns:1fr 1fr}.audit-list time{grid-column:1/-1}}
 @media(max-width:420px){.assignment-form{grid-template-columns:1fr}.assignment-form input,.assignment-form .button{width:100%}}
 @media(max-width:620px){.workspace-main{padding-block:50px 80px}.page-heading{align-items:start;flex-direction:column}.page-heading h1,.account-intro h1{font-size:3.5rem}.auth-panels,.form-two,.criterion-grid,.prize-list{grid-template-columns:1fr}.account-layout{padding-block:56px 80px}.panel{padding:22px}.rubric-bar,.table-heading,.publish-row,.callout{align-items:flex-start;flex-direction:column}.review-item{padding:20px}.review-context h2{font-size:1.6rem}.metric-strip strong{font-size:2.2rem}.result-list>a{grid-template-columns:42px 1fr;gap:12px}.result-score{grid-column:2;font-size:1.25rem}.detail-heading{padding-top:54px}.detail-heading h1{font-size:3.5rem}.detail-meta{flex-direction:column;gap:5px}.invite-main .panel{padding:28px}}
+@media(max-width:420px){.demo-role-grid{grid-template-columns:1fr}}
 @media(max-width:620px){.feedback-grid{grid-template-columns:1fr}.feedback-summary{text-align:left}}
 @media(max-width:620px){.event-settings summary{align-items:flex-start;flex-direction:column;gap:3px}}
 @media(max-width:780px){.event-directory-row{grid-template-columns:minmax(0,1fr) 80px 155px;gap:15px}.event-directory-phase{grid-column:1/-1}.event-directory-arrow{display:none}}

@@ -56,7 +56,11 @@ def _event(db, event_id: str):
 def account(request: Request, next: str = ""):
     if current_principal(request):
         return RedirectResponse("/dashboard", status_code=303)
-    return templates.TemplateResponse(request, "account.html", {"principal": None, "next_url": next if next.startswith("/") and not next.startswith("//") else ""})
+    return templates.TemplateResponse(request, "account.html", {
+        "principal": None,
+        "next_url": next if next.startswith("/") and not next.startswith("//") else "",
+        "demo_mode": os.getenv("DOGFOOD_DEMO_MODE", "0") == "1",
+    })
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
