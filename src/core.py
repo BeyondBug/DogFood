@@ -142,11 +142,16 @@ def require_before(value: str | None, message: str) -> None:
 
 
 def audit(db, event_id: str | None, actor: str, action: str, entity: str, entity_id: str, details: dict | None = None) -> None:
-    db.execute(
+    moment = utc_now()
+    cursor = db.execute(
         "INSERT INTO audit_entries(event_id,actor_user_id,action,entity_type,entity_id,details_json,created_at)"
         " VALUES(?,?,?,?,?,?,?)",
-        (event_id, actor, action, entity, entity_id, json.dumps(details or {}, sort_keys=True), utc_now()),
+        (event_id, actor, action, entity, entity_id, json.dumps(details or {}, sort_keys=True), moment),
     )
+    if event_id:
+        from .webhooks import enqueue_audit
+        enqueue_audit(db, event_id, cursor.lastrowid, actor, action, entity, entity_id,
+                      details or {}, moment)
 
 
 class RegisterInput(BaseModel):

@@ -7,6 +7,7 @@
     <div class="progress-number"><strong>{{ submitted_count }} / {{ assignments|length }}</strong><span>Submitted reviews</span></div>
   </div>
   <p class="muted">Model-assisted review signals are visible only to event organizers after enough peer evidence exists. They never change your scores or replace your judgment.</p>
+  {% if judge_record_id %}<p><a class="text-link" href="/api/judge-records/{{ judge_record_id }}/verify">View your signed judge participation record ↗</a></p>{% endif %}
   {% if rubric %}<div class="rubric-bar"><strong>{{ rubric.name }}</strong><span>{% for criterion in criteria %}{{ criterion.name }} {{ criterion.weight }}{% if not loop.last %} · {% endif %}{% endfor %}</span></div>{% endif %}
   {% if assignments %}
   <div class="review-list">

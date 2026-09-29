@@ -73,15 +73,16 @@ Open [http://localhost:8080](http://localhost:8080). On first boot the app
 creates its SQLite database and loads the official `fixtures.json`: one closed
 event, 8 tracks, 30 judges, 40 teams, 41 project records, and 126 historical
 scorecards. The fixture event's original submission deadline is retained, so
-late submissions are rejected. To demonstrate a live submission, sign in as
-the site administrator and create a new event with a future deadline.
+late submissions are rejected. For the one-command local demo, sign in as the
+seeded demo administrator and create a new event with a future deadline.
 
-Administrator features require a local bootstrap account. On a fresh volume,
-start the same Compose service with operator-chosen credentials:
+For a shared deployment, disable demo mode and set an operator-chosen local
+administrator account on a fresh volume:
 
 ```sh
 DOGFOOD_BOOTSTRAP_EMAIL=admin@example.org \
 DOGFOOD_BOOTSTRAP_PASSWORD='replace-with-12-or-more-characters' \
+DOGFOOD_DEMO_MODE=0 \
 docker compose up
 ```
 
@@ -90,7 +91,8 @@ example password in a shared deployment.
 
 The image installs pinned Python wheels from `vendor/wheels` for Linux x86-64
 and ARM64; fonts, scripts, templates, and fixture data are also local. The
-container makes no external runtime requests. A first offline *build* needs
+container makes no external runtime requests unless an administrator configures
+an optional webhook receiver. A first offline *build* needs
 the matching `python:3.12-slim` base image already present in Docker's local
 image store. No cloud account, hosted database, authentication provider, or
 external API is used. [Release verification](RELEASE-VERIFICATION.md) records
@@ -103,6 +105,7 @@ password `BeyondBugDemo2026!` on the seeded portal:
 
 | Role | Email | Main page |
 | --- | --- | --- |
+| Administrator | `demo-admin@beyondbug.local` | `/admin` |
 | Organizer | `organizer@beyondbug.local` | `/organizer/evt_01` |
 | Judge A | `tomas.varga@example.org` | `/judge/evt_01` |
 | Judge B | `wei.lindqvist@example.org` | `/judge/evt_01` |
@@ -114,7 +117,30 @@ volume, set `DOGFOOD_DEMO_MODE=0`, and configure
 `DOGFOOD_BOOTSTRAP_EMAIL` and `DOGFOOD_BOOTSTRAP_PASSWORD` (at least 12
 characters). Set `DOGFOOD_COOKIE_SECURE=1` when serving through HTTPS.
 Disabling demo mode removes its known sessions and passwords from an existing
-database too.
+database and revokes the seeded demo administrator's access too.
+
+## Embed a gallery
+
+The organizer desk provides a copyable iframe and a preview for each event.
+The widget at `/widgets/events/{event_id}/gallery` displays submitted projects
+only, includes pagination, and links each project back to the portal. It uses
+local CSS and fonts. Set the portal's public URL before embedding it on another
+site; `localhost` is only reachable from the operator's machine.
+
+## Webhooks and signed records
+
+An administrator can configure up to five HTTPS receivers per event in the
+organizer desk; loopback HTTP is allowed for local tests. Audited event actions
+are queued in SQLite in the same transaction as the action. The portal sends
+JSON with `X-BeyondBug-Delivery` and an `X-BeyondBug-Signature` HMAC-SHA256
+header, retries failures with backoff, and shows delivery status to organizers.
+The secret is displayed once. No receiver is needed for offline startup or
+normal portal use. A receiving service should deduplicate on the delivery ID.
+
+Judge participation records use a separate Ed25519 key stored in the local
+data volume. Download the public verification response to retain the exact
+payload, signature, and public key. Retain the public key fingerprint outside
+the portal if protection from host-key replacement matters.
 
 ## Walk through one event
 
@@ -174,6 +200,10 @@ database too.
    Team members can open
    `/my/certificates`, download vector artwork, or print from a public
    verification page after issuance.
+8. Issue signed judge participation records from the organizer desk. Each
+   judge with a completed review receives one immutable Ed25519 record. The
+   judge desk links to the public verification response, which includes the
+   exact signed JSON, signature, and public key for independent checking.
 
 ## Judging and normalization pipeline
 
@@ -299,6 +329,12 @@ map.
 - For a consistent live backup, run
   `docker compose exec portal python -m src.backup /data/portal-backup.sqlite3`,
   then `docker compose cp portal:/data/portal-backup.sqlite3 ./portal-backup.sqlite3`.
+  To import a full BeyondBug snapshot, stop the portal, place the backup in
+  the data volume, run
+  `docker compose run --rm portal python -m src.restore /data/portal-backup.sqlite3`,
+  then restart. The restore checks integrity,
+  schema, and foreign keys and preserves the prior database beside it. The
+  portal must be stopped so its SQLite WAL files have closed.
 - Organizer CSV exports cover projects, participants, teams, judges,
   assignments, scorecards, raw/adjusted rankings, audit history, votes, and
   certificates. Open them from the organizer desk or use the API.
@@ -314,14 +350,17 @@ map.
   scheduled backup is claimed.
 
 The active team develops on `Features`, tests integrations on `Develop`, and
-promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
+promotes reviewed releases to `main`. This requested expansion is on `Addons`
+and does not change `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Known limits
 
 - T3 is not claimed in `.dogfood.toml`: its voting and comment features work,
-  but the supplied checker has no T3 checks. T4 is not claimed: certificates
-  are implemented, while webhooks, signed judge records, widgets, and bulk
-  import remain absent. Certificate verification depends on the local
+  but the supplied checker has no T3 checks. T4 is not claimed: certificates,
+  signed judge records, the gallery widget, and optional webhooks are implemented;
+  portable bulk import from other systems remains absent. Full BeyondBug
+  database snapshots can be imported through the offline restore command.
+  Certificate verification depends on the local
   database, so it is not a cryptographic signature.
 - Community voting cannot establish one human per account. Invite acceptance
   matches an account email but does not verify inbox ownership; participant

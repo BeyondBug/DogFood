@@ -327,6 +327,8 @@ def judge_workspace(event_id: str, request: Request):
         judge = db.execute("SELECT id FROM judge_profiles WHERE event_id=? AND user_id=?", (event_id, principal.user_id)).fetchone()
         if judge is None:
             raise HTTPException(status_code=403, detail="Judge profile not found")
+        judge_record = db.execute("SELECT id FROM judge_records WHERE event_id=? AND judge_id=?",
+                                  (event_id, judge["id"])).fetchone()
         rubric = db.execute("SELECT id,name,version FROM rubrics WHERE event_id=? AND is_active=1", (event_id,)).fetchone()
         criteria = db.execute("SELECT slug,name,weight,max_score FROM rubric_criteria WHERE rubric_id=? ORDER BY sort_order", (rubric["id"],)).fetchall() if rubric else []
         assignments = db.execute("SELECT a.id,p.id AS project_id,p.title,p.summary,p.description,p.repo_url,p.demo_url,p.video_url,p.live_url,p.tech_tags,t.name AS track,"
@@ -353,6 +355,7 @@ def judge_workspace(event_id: str, request: Request):
         "criteria": [dict(row) for row in criteria], "assignments": items, "judge_id": judge["id"],
         "submitted_count": sum(item["status"] == "submitted" for item in items),
         "judging_editable": judging_editable,
+        "judge_record_id": judge_record["id"] if judge_record else None,
     })
 
 
@@ -406,6 +409,10 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
             " AND duplicate_of IS NULL ORDER BY title,id", (event_id,),
         ).fetchall()
         certificate_count = db.execute("SELECT COUNT(*) FROM certificates WHERE event_id=?", (event_id,)).fetchone()[0]
+        webhooks = db.execute("SELECT id,url,active FROM webhook_subscriptions WHERE event_id=? ORDER BY created_at",
+                              (event_id,)).fetchall() if principal.is_admin else []
+        webhook_failures = db.execute("SELECT COUNT(*) FROM webhook_deliveries WHERE event_id=? AND status='failed'",
+                                      (event_id,)).fetchone()[0] if principal.is_admin else 0
     now = datetime.now(timezone.utc)
     judge_invites = [{**dict(row), "status": ("Accepted" if row["accepted_at"] else
                      "Expired" if time_value(row["expires_at"]) <= now else "Pending")}
@@ -454,6 +461,7 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
         "submissions_closed": submissions_closed,
         "prizes": [dict(row) for row in prizes], "eligible_projects": [dict(row) for row in eligible_projects],
         "certificate_count": certificate_count,
+        "webhooks": [dict(row) for row in webhooks], "webhook_failures": webhook_failures,
         "setup_checks": setup_checks, "next_action": next_action,
         "pending_invites": pending_invites, "coverage_gaps": coverage_gaps,
         "incomplete_reviews": incomplete_reviews,

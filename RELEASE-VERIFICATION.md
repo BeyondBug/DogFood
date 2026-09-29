@@ -5,14 +5,15 @@
 | Check | Result |
 | --- | --- |
 | Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
-| Independent unit and HTTP integration suite | **30/30 PASS** |
-| Disposable fresh-volume test runner | **30/30 PASS:** new Compose project and volume; removed after run |
-| Fresh disposable Compose volume | **PASS on schema 8:** fixture seed, migrations, lifecycle, permissions, scoring, voting, certificates, duplicate adjudication, backup, OpenAPI, and portable ML checks run before the volume is removed |
-| Fresh portal checked by official `run.py` | **7/7 PASS** |
+| Independent unit and HTTP integration suite | **36/36 PASS** |
+| Disposable fresh-volume test runner | **36/36 PASS:** new Compose project and volume; removed after run; tests execute inside the offline portal image |
+| Fresh disposable Compose volume | **PASS on schema 10:** fixture seed, migrations, lifecycle, permissions, scoring, voting, certificates, duplicate adjudication, backup and restore, signed judge records, webhook delivery, OpenAPI, and portable ML checks run before the volume is removed |
+| Fresh portal checked by official `run.py` | **7/7 PASS** on separate disposable port 18080 |
 | Restart persistence | **PASS:** same event, project, judge, and local secret counts |
-| Runtime with container network disabled | **PASS on current schema 8 image:** isolated in Docker, local `/health` returned HTTP 200 without external access |
+| Runtime with container network disabled | **PASS on earlier schema 8 image:** isolated in Docker, local `/health` returned HTTP 200 without external access; schema 10 has not been rechecked this way |
 | OpenAPI artifact synchronization | **PASS:** test compares committed JSON to FastAPI schema |
 | Desktop and mobile visual review | **PASS:** Event Desk, Pulse, and Studio at 1440 px and 390 px; Studio light/dark, no mobile overflow, theme and mode persisted after reload |
+| New gallery widget visual review | **Desktop PASS:** public fixture gallery rendered in a headless browser with 12 cards and page navigation. The headless mobile capture returned a blank/default-size frame, so this revision has no reliable mobile screenshot evidence for the widget. Its 560 px CSS breakpoint is present but remains visually unverified. |
 | Portable ML inference | **PASS:** 300-tree JSON export matches trained scikit-learn decision score on a reference vector; organizer-only panel rendered on fixture in 0.13 s |
 | Local gallery read probe | **PASS:** 500/500 at 20 workers and 1,000/1,000 at 50 workers; see [CAPACITY.md](CAPACITY.md) |
 | Administrator backup | **PASS:** isolated portal created and downloaded a valid 1-event, 41-project SQLite snapshot; anonymous download returned 401 |
@@ -23,10 +24,12 @@
 | Participant and judge onboarding | **PASS:** per-event team and draft progress, published anonymized feedback, admin-only judge and organizer provisioning, judge sign-in, password change, and organizer-only ML signals |
 
 The canonical [acceptance-report.txt](acceptance-report.txt) is the unedited
-checker output against localhost:8080. `.dogfood.toml` claims only T1/T2.
+checker output against a disposable fresh portal on port 18080. `.dogfood.toml` claims only T1/T2.
 [T3-EVIDENCE.md](T3-EVIDENCE.md) records separately tested capabilities that
-the supplied checker does not test. All checks above ran after the current
-schema, certificates, theme, judging insight, review attention, and login-throttling changes.
+the supplied checker does not test. The current 36-test run covers schema 10
+and the new Addons work; older capacity, network-disabled, demo, and visual
+checks below remain historical evidence rather than a claim of re-running
+them against this exact source revision.
 
 ## Verification history
 
@@ -75,7 +78,9 @@ python3 scripts/test_fresh.py
 python3 run.py .dogfood.toml > acceptance-report.txt
 ```
 
-The canonical [acceptance report](acceptance-report.txt) uses localhost:8080.
+The current [acceptance report](acceptance-report.txt) uses a disposable
+localhost:18080 portal; the submitted `.dogfood.toml` targets the normal
+localhost:8080 Compose service.
 The official checker exercises seven HTTP behaviors; it does not verify all
 UI paths, T3 voting, or the full ranking methodology. The independent suite
 and [JUDGING.md](JUDGING.md) provide additional evidence. A fresh offline

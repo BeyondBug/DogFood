@@ -6,7 +6,7 @@ official acceptance routes are declared in `.dogfood.toml`.
 
 | Area | Routes | Access |
 | --- | --- | --- |
-| Health and gallery | `GET /health`, `/`, `/events/{id}`, `/projects`, `/projects/{id}` | Public; draft projects hidden |
+| Health and gallery | `GET /health`, `/`, `/events/{id}`, `/projects`, `/projects/{id}`, `/widgets/events/{id}/gallery` | Public; draft projects hidden, including in the embeddable gallery |
 | Accounts | `POST /api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/password`; `GET /api/auth/me` | Local account/session; password change revokes existing sessions |
 | Events | `GET /api/events`, `/api/events/{id}`; `POST /api/events`, `/api/events/{id}/registration`; `PATCH /api/events/{id}` | Public reads; administrator creates; participant registers; event organizer edits |
 | Teams | `POST /api/events/{id}/teams`, `/api/teams/{id}/invites`, `/api/team-invites/{token}/join`; `GET /api/events/{id}/my-team` | Participant/member/captain checks |
@@ -22,6 +22,8 @@ official acceptance routes are declared in `.dogfood.toml`.
 | Comments | `GET/POST /api/projects/{id}/comments`; `DELETE /api/comments/{id}` | Public read, logged-in write during voting, organizer hide |
 | CSV | `GET /api/events/{id}/exports/{projects,participants,teams,judges,assignments,scores,rankings,audit,votes,certificates}.csv` | Event organizer |
 | Awards and certificates | `PUT /api/events/{id}/prizes/{prize}/winner`; `POST/GET /api/events/{id}/certificates`; `GET /api/me/certificates`, `/api/certificates/{id}/verify` | Organizer awards/issues; recipient reads own list; verification is public |
+| Judge participation records | `POST /api/events/{id}/judge-records/issue`; `GET /api/me/judge-records`, `/api/judge-records/{id}/verify` | Organizer issues after publication; judge reads own list; signed record and public key are public |
+| Webhooks | `POST/GET /api/events/{id}/webhooks`, `DELETE /api/events/{id}/webhooks/{hook}`, `GET /api/events/{id}/webhooks/deliveries` | Site administrator configures optional receivers; organizer reads delivery status; signed callbacks follow audited event writes |
 | Administration | `GET /api/admin/overview`; `POST /api/admin/events/{id}/organizers`, `/judges`, `/api/admin/backups`; `GET /api/admin/backups/{file}`; `PUT /api/admin/events/{id}/certificate-designs/{kind}` | Bootstrapped global admin |
 
 API errors use `401` for missing login, `403` for a known forbidden action,

@@ -18,6 +18,20 @@
     <div><strong>{{ ranking.overlap_components|length }}</strong><span>Overlap groups</span></div>
   </div>
 
+  <details class="readiness-panel">
+    <summary><strong>Share this gallery</strong><span>Embed submitted projects on another site</span></summary>
+    <p class="readiness-note">The widget shows public submissions only. Set the portal URL to the address visitors can reach before embedding it on a public site.</p>
+    <label>Iframe code<textarea rows="3" readonly onclick="this.select()">&lt;iframe src="{{ request.base_url }}widgets/events/{{ event.id }}/gallery" title="{{ event.name }} projects" width="100%" height="640" loading="lazy"&gt;&lt;/iframe&gt;</textarea></label>
+    <a class="text-link" href="/widgets/events/{{ event.id }}/gallery" target="_blank" rel="noopener noreferrer">Preview gallery widget ↗</a>
+  </details>
+  {% if principal.is_admin %}<details class="readiness-panel" id="webhooks">
+    <summary><strong>Event webhooks</strong><span>{{ webhooks|selectattr('active')|list|length }} active · {{ webhook_failures }} failed deliveries</span></summary>
+    <p class="readiness-note">Audited event actions are queued locally and sent as signed JSON. Keep the signing secret shown after creation; it is not displayed again. HTTPS is required except for loopback testing.</p>
+    <form data-action="create-webhook" data-event="{{ event.id }}"><label>Receiver URL<input name="url" type="url" required placeholder="https://example.org/hook"></label><button class="button button-secondary" type="submit">Add webhook</button></form>
+    {% for hook in webhooks %}<div class="readiness-note"><strong>{{ hook.url }}</strong> · {{ 'Active' if hook.active else 'Disabled' }}{% if hook.active %}<form data-action="disable-webhook" data-event="{{ event.id }}" data-webhook="{{ hook.id }}"><button class="button button-secondary" type="submit">Disable</button></form>{% endif %}</div>{% endfor %}
+    <a class="text-link" href="/api/events/{{ event.id }}/webhooks/deliveries">Review delivery status ↗</a>
+  </details>{% endif %}
+
   <section class="organizer-next" aria-label="Recommended next action">
     <div><span>Next action</span><h2>{{ next_action.label }}</h2><p>{{ next_action.reason }}</p></div>
     <a class="button button-primary" href="{{ next_action.href }}">{{ next_action.label }}</a>
@@ -133,6 +147,11 @@
       {% if not event.results_published_at %}<form data-action="publish" data-event="{{ event.id }}">{% if thin_evidence or insight.overlap_components|length > 1 %}<label class="acknowledge-check"><input type="checkbox" name="acknowledge_limited_evidence"> I reviewed the limited evidence: {{ thin_evidence }} projects have one review and there are {{ insight.overlap_components|length }} overlap groups.</label>{% endif %}{% if unresolved_duplicates %}<p class="insight-warning">Resolve {{ unresolved_duplicates }} possible duplicate{{ '' if unresolved_duplicates == 1 else 's' }} before publication.</p>{% endif %}<button class="button button-primary" type="submit">Publish results</button></form>{% endif %}
     </div>
   </section>
+
+  {% if event.results_published_at %}<section class="table-section" id="judge-records">
+    <div class="table-heading"><div><h2>Judge participation records</h2><p>Issue Ed25519 signed records for judges with completed reviews. Each record includes its public key and can be verified independently.</p></div></div>
+    <form data-action="issue-judge-records" data-event="{{ event.id }}"><button class="button button-secondary" type="submit">Issue judge records</button></form>
+  </section>{% endif %}
 
   <section class="table-section judging-insight" id="judging-insight">
     <div class="table-heading"><div><h2>Judging insight</h2><p>See where calibration changed the order and which reviews contributed. Original scorecards remain untouched.</p></div><a class="text-link" href="/api/events/{{ event.id }}/judging-insight">View data</a></div>

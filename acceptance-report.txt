@@ -1,5 +1,5 @@
 DOGFOOD 2026 acceptance report
-portal: http://localhost:8080
+portal: http://127.0.0.1:18080
 claimed: T1 T2
 fixtures: fixtures.json
 

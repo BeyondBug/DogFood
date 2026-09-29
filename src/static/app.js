@@ -399,6 +399,17 @@ document.addEventListener('submit', async event => {
         result = await api('POST', `/api/events/${form.dataset.event}/certificates/issue`, {});
         notice(`${result.total_created} new certificates issued.`);
         setTimeout(refresh, 1200); return;
+      case 'issue-judge-records':
+        result = await api('POST', `/api/events/${form.dataset.event}/judge-records/issue`, {});
+        notice(`${result.count} new judge records issued.`);
+        setTimeout(refresh, 1200); return;
+      case 'create-webhook':
+        result = await api('POST', `/api/events/${form.dataset.event}/webhooks`, { url: data.url });
+        notice(`Webhook created. Copy this secret now: ${result.secret_hex}`);
+        return;
+      case 'disable-webhook':
+        await api('DELETE', `/api/events/${form.dataset.event}/webhooks/${form.dataset.webhook}`);
+        refresh(); return;
       case 'voting-config':
         data.opens_at = `${data.opens_at}:00Z`;
         data.closes_at = `${data.closes_at}:00Z`;

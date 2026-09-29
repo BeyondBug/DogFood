@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import asyncio
 import io
 import uuid
 from contextlib import asynccontextmanager, closing
@@ -17,10 +18,12 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from .auth import current_principal, has_event_role, require_event_role, require_login
-from .core import csv_safe, reconcile_submitted_duplicates, require_web_url, router as core_router
+from .core import audit, csv_safe, reconcile_submitted_duplicates, require_web_url, router as core_router
 from .judging import router as judging_router
 from .public import router as public_router
 from .certificates import router as certificate_router
+from .judge_records import router as judge_records_router
+from .webhooks import delivery_loop, router as webhooks_router
 from .ui import router as ui_router
 from .db import connect, initialize, utc_now
 from .seed import seed
@@ -34,13 +37,23 @@ templates = Jinja2Templates(directory=str(ROOT / "templates"))
 async def lifespan(_: FastAPI):
     initialize()
     seed()
-    yield
+    worker = asyncio.create_task(delivery_loop())
+    try:
+        yield
+    finally:
+        worker.cancel()
+        try:
+            await worker
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(title="BeyondBug", version="0.1.0", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
 app.include_router(core_router)
 app.include_router(ui_router)
+app.include_router(judge_records_router)
+app.include_router(webhooks_router)
 
 
 @app.middleware("http")
@@ -196,6 +209,34 @@ def public_project(project_id: str):
     return dict(row)
 
 
+@app.get("/widgets/events/{event_id}/gallery", response_class=HTMLResponse)
+def gallery_widget(request: Request, event_id: str, page: int = Query(default=1, ge=1)):
+    """A small, public gallery suitable for embedding as an iframe."""
+    with closing(connect()) as db:
+        event = db.execute("SELECT id,name FROM events WHERE id=?", (event_id,)).fetchone()
+        if event is None:
+            raise HTTPException(status_code=404, detail="Event not found")
+        total = db.execute(
+            "SELECT COUNT(*) FROM projects WHERE event_id=? AND status='submitted'",
+            (event_id,),
+        ).fetchone()[0]
+        page_size = 12
+        last_page = max(1, (total + page_size - 1) // page_size)
+        current_page = min(page, last_page)
+        projects = db.execute(
+            "SELECT p.id,p.title,p.summary,t.name AS track_name,m.name AS team_name"
+            " FROM projects p JOIN tracks t ON t.id=p.track_id"
+            " JOIN teams m ON m.id=p.team_id"
+            " WHERE p.event_id=? AND p.status='submitted'"
+            " ORDER BY p.submitted_at DESC,p.id DESC LIMIT ? OFFSET ?",
+            (event_id, page_size, (current_page - 1) * page_size),
+        ).fetchall()
+    return templates.TemplateResponse(request, "gallery_widget.html", {
+        "event": dict(event), "projects": [dict(row) for row in projects],
+        "page": current_page, "last_page": last_page, "total": total,
+    })
+
+
 @app.post("/api/events/{event_id}/projects", status_code=201)
 def create_project(event_id: str, payload: ProjectInput, request: Request):
     principal = require_login(request)
@@ -247,11 +288,8 @@ def create_project(event_id: str, payload: ProjectInput, request: Request):
              now if payload.status == "submitted" else None, now, None),
         )
         reconcile_submitted_duplicates(db, event_id)
-        db.execute(
-            "INSERT INTO audit_entries(event_id,actor_user_id,action,entity_type,entity_id,created_at)"
-            " VALUES(?,?,?,?,?,?)",
-            (event_id, principal.user_id, "project.created", "project", project_id, now),
-        )
+        audit(db, event_id, principal.user_id, "project.created", "project", project_id,
+              {"status": payload.status})
         db.commit()
     return {"id": project_id, "status": payload.status}
 

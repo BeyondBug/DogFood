@@ -1,7 +1,7 @@
 # Data model
 
 SQLite is the source of truth. `src/db.py` contains the exact versioned SQL
-schema; `PRAGMA user_version` advances from 0 through 7 at startup. Every
+schema; `PRAGMA user_version` advances from 0 through 10 at startup. Every
 connection enables foreign keys and a busy timeout. Event-scoped APIs check
 the event ID as well as the acting user's role.
 
@@ -32,6 +32,8 @@ the event ID as well as the acting user's role.
 | `event_awards` | Configured prize, event, submitted winning project, assigning organizer and time | One selected project per prize; selection locks after winner certificates issue |
 | `certificate_designs` | Event and participant/winner kind, layout, palette, issuer line, updater and time | Only a site administrator may change a design; one setting per event and kind |
 | `certificates` | Opaque ID, event, recipient, project, participant/winner kind, optional prize, issuance time, design JSON snapshot | Unique participant record per event/recipient and unique winner record per event/recipient/prize; later design edits do not change issued artwork |
+| `judge_records` | Event, judge, exact JSON payload, Ed25519 signature, public key, issuance time | One immutable participation record per judge and event; public verification checks the signature |
+| `webhook_subscriptions`, `webhook_deliveries` | Event URL, secret, active flag; audit event, payload, status, retry timing | Delivery rows commit with audited writes; receiver secrets stay server-side; failures do not block the event action |
 | `app_keys`, `login_attempts` | Local HMAC secret; account and IP digests, outcome, timestamp | Failed logins and lockouts persist across process restarts without storing raw IPs |
 
 Generated IDs are opaque strings with prefixes such as `evt_`, `tm_`, and
@@ -70,8 +72,10 @@ log records the actor and evidence.
 Fixture import is a first-boot operation. It does not overwrite edits when
 the container restarts. Demo mode adds four known local sessions and passwords
 for acceptance and walkthroughs; disabling demo mode removes those known
-credentials. An operator can bootstrap a global admin account from local
-environment variables.
+credentials. Demo mode also creates a distinct local administrator so the
+one-command walkthrough can open a new event. Turning demo mode off revokes
+that administrator access. An operator can bootstrap their own global admin
+account from local environment variables.
 
 ## Import, export, backup
 
@@ -89,6 +93,7 @@ environment variables.
 | `/api/events/{id}/exports/votes.csv` | Final ballot records | Organizer |
 | `/api/events/{id}/exports/certificates.csv` | Issued participation and winner records | Organizer |
 | `python -m src.backup DESTINATION` | Consistent SQLite database copy | Local operator |
+| `python -m src.restore SOURCE` | Validated whole-installation SQLite restore | Local operator, portal stopped |
 | `/api/events/{id}/certificates` | Issued certificate metadata | Organizer |
 | `/api/admin/events/{id}/certificate-designs/{kind}` | Participant or winner design settings | Site administrator |
 | `/api/admin/events/{id}/judges` | Create a local judge account, accepted profile, and review tracks; returns a temporary password once | Site administrator |
@@ -99,8 +104,9 @@ environment variables.
 | `/certificates/{id}.svg` | Vector certificate for print or download | Public |
 
 CSV columns have stable headers, use Python's CSV quoting, and prefix text
-that would otherwise open as a spreadsheet formula. No bulk import or full
-archive format is claimed. A future importer should map external IDs and
+that would otherwise open as a spreadsheet formula. SQLite snapshots support
+whole-installation import and export, but no portable cross-platform bulk
+import is claimed. A future importer should map external IDs and
 reconcile duplicates before modifying live events.
 
 ## Migration and retention
@@ -110,7 +116,9 @@ conflicts. Version 3 added voting windows, invite eligibility, ballots,
 attempt signals, and comments. Version 4 added prize assignments and
 certificates. Version 5 added persistent login throttling. Version 6 added
 per-event certificate designs and issuance-time design snapshots. Version 7
-added project media links and technology tags. Migrations run before fixture
+added project media links and technology tags. Version 8 added duplicate
+adjudication; version 9 added signed judge records; version 10 added webhook
+subscriptions and durable deliveries. Migrations run before fixture
 seeding.
 `rubrics.version` and each
 scorecard's `rubric_id` preserve scoring context, but changing a rubric is
