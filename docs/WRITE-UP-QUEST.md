@@ -1,5 +1,7 @@
 # BeyondBug: the score that moved, the boundary that held
 
+Published on [DEV Community](https://dev.to/joker53/beyondbug-the-score-that-moved-the-boundary-that-held-3kk) for the DOGFOOD Write Up Quest.
+
 > We built a self-hosted hackathon platform in 72 hours. The interface was the
 > visible part. The real work was making deadlines, roles, judging, calibration,
 > abuse controls, audit history, and offline operation agree with each other.
