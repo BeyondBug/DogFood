@@ -422,6 +422,13 @@ CREATE INDEX ix_open_vote_attempts_voter_time ON open_vote_attempts(event_id,ope
 CREATE INDEX ix_open_vote_attempts_ip_time ON open_vote_attempts(event_id,ip_digest,created_at);
 """
 
+SCHEMA_V12 = """
+ALTER TABLE webhook_deliveries ADD COLUMN attempt_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE webhook_deliveries ADD COLUMN next_attempt_at TEXT;
+CREATE INDEX IF NOT EXISTS ix_webhook_deliveries_due
+ON webhook_deliveries(status,next_attempt_at,created_at);
+"""
+
 
 def initialize() -> None:
     path = database_path()
@@ -429,7 +436,7 @@ def initialize() -> None:
     with closing(connect()) as db:
         db.execute("PRAGMA journal_mode = WAL")
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        if version > 11:
+        if version > 12:
             raise RuntimeError(f"Database schema version {version} is newer than this app")
         if version == 0:
             db.executescript(SCHEMA_V1)
@@ -477,4 +484,8 @@ def initialize() -> None:
         if version == 10:
             db.executescript(SCHEMA_V11)
             db.execute("PRAGMA user_version = 11")
+            version = 11
+        if version == 11:
+            db.executescript(SCHEMA_V12)
+            db.execute("PRAGMA user_version = 12")
         db.commit()

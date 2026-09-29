@@ -544,7 +544,7 @@ The image supports x86-64 and ARM64 wheels and installs them with `--no-index`.
 docker compose up
 ```
 
-On first boot, migrations run through schema version 11, the official fixture
+On first boot, migrations run through schema version 12, the official fixture
 is imported once, and demo authorization headers are printed. The sign-in page
 also exposes five demo role shortcuts. Restarts preserve changes. Demo mode can
 be disabled for a real deployment, with the global administrator bootstrapped
