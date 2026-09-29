@@ -24,7 +24,7 @@ from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel, Field
 
 from .auth import hash_password, require_event_role, require_login
-from .core import audit, identifier, time_value
+from .core import audit, enqueue_webhooks, identifier, time_value
 from .db import connect, utc_now
 
 
@@ -41,7 +41,8 @@ class PairwiseVoteInput(BaseModel):
 
 def _pairwise_ranking(db, event_id: str) -> dict:
     projects = [dict(row) for row in db.execute(
-        "SELECT id,title FROM projects WHERE event_id=? AND status='submitted' AND duplicate_of IS NULL ORDER BY id",
+        "SELECT p.id,p.title,p.track_id,t.name AS track FROM projects p JOIN tracks t ON t.id=p.track_id"
+        " WHERE p.event_id=? AND p.status='submitted' AND p.duplicate_of IS NULL ORDER BY p.id",
         (event_id,),
     )]
     ids = {row["id"] for row in projects}
@@ -76,10 +77,18 @@ def _pairwise_ranking(db, event_id: str) -> dict:
         strengths = updated
     rows = [{**project, "strength": strengths[project["id"]], "wins": wins[project["id"]],
              "comparisons": games[project["id"]]} for project in projects]
-    rows.sort(key=lambda row: (-row["strength"], -row["comparisons"], row["id"]))
-    for index, row in enumerate(rows, 1):
-        row["rank"] = index if row["comparisons"] else None
-    return {"method": "Bradley-Terry MM with 0.5 pseudo-wins", "completed": len(comparisons), "projects": rows}
+    # Pairs are drawn within a track, so strengths are comparable only inside
+    # one track's comparison graph. Rank within each track, never across.
+    rows.sort(key=lambda row: (row["track"], -row["strength"], -row["comparisons"], row["id"]))
+    position: dict[str, int] = {}
+    for row in rows:
+        if row["comparisons"]:
+            position[row["track_id"]] = position.get(row["track_id"], 0) + 1
+            row["rank"] = position[row["track_id"]]
+        else:
+            row["rank"] = None
+    return {"method": "Bradley-Terry MM with 0.5 pseudo-wins, ranked within track",
+            "completed": len(comparisons), "projects": rows}
 
 
 @router.post("/api/events/{event_id}/pairwise/assignments/batch")
@@ -104,7 +113,11 @@ def create_pairwise_assignments(event_id: str, payload: PairwiseBatchInput, requ
             raise HTTPException(status_code=409, detail="Pairwise mode needs two projects and an accepted judge")
         created = []
         project_rows = list(projects)
-        candidates = [(project_rows[i], project_rows[j]) for i in range(len(project_rows)) for j in range(i + 1, len(project_rows))]
+        # Pair only within a track: a track judge never sees another track, and
+        # cross-track pairs would need a judge eligible for both tracks.
+        candidates = [(project_rows[i], project_rows[j]) for i in range(len(project_rows))
+                      for j in range(i + 1, len(project_rows))
+                      if project_rows[i]["track_id"] == project_rows[j]["track_id"]]
         target = max(1, (len(project_rows) * payload.comparisons_per_project + 1) // 2)
         coverage = {row["id"]: 0 for row in project_rows}
         pairs = []
@@ -419,33 +432,43 @@ def list_webhooks(event_id: str, request: Request):
     return {"webhooks": [dict(row) for row in rows]}
 
 
-def emit_webhook_event(event_id: str, event_type: str, data: dict) -> None:
-    envelope = {"id": identifier("evtmsg"), "type": event_type, "event_id": event_id,
-                "created_at": utc_now(), "data": data}
-    payload = json.dumps(envelope, sort_keys=True, separators=(",", ":"))
+def deliver_pending_webhooks(limit: int = 50) -> int:
+    """Attempt queued deliveries once each; the outbox rows record every outcome."""
     with closing(connect()) as db:
-        hooks = db.execute("SELECT id,url,secret FROM webhooks WHERE event_id=? AND active=1", (event_id,)).fetchall()
-        deliveries = []
-        for hook in hooks:
-            delivery_id = identifier("whd")
-            db.execute("INSERT INTO webhook_deliveries(id,webhook_id,event_type,payload_json,status,created_at)"
-                       " VALUES(?,?,?,?, 'pending',?)", (delivery_id, hook["id"], event_type, payload, utc_now()))
-            deliveries.append((delivery_id, dict(hook)))
-        db.commit()
-    for delivery_id, hook in deliveries:
-        signature = hmac.new(hook["secret"].encode(), payload.encode(), hashlib.sha256).hexdigest()
-        request = urllib.request.Request(hook["url"], data=payload.encode(), method="POST",
-                                         headers={"Content-Type": "application/json", "X-BeyondBug-Signature": "sha256=" + signature})
+        rows = db.execute(
+            "SELECT d.id,d.payload_json,w.url,w.secret FROM webhook_deliveries d"
+            " JOIN webhooks w ON w.id=d.webhook_id WHERE d.status='pending'"
+            " ORDER BY d.created_at,d.id LIMIT ?", (limit,),
+        ).fetchall()
+    for row in rows:
+        payload = row["payload_json"].encode()
+        signature = hmac.new(row["secret"].encode(), payload, hashlib.sha256).hexdigest()
+        request = urllib.request.Request(row["url"], data=payload, method="POST", headers={
+            "Content-Type": "application/json", "X-BeyondBug-Delivery": row["id"],
+            "X-BeyondBug-Signature": "sha256=" + signature})
         status, error = None, None
         try:
             with urllib.request.urlopen(request, timeout=3) as response:
                 status = response.status
-        except (urllib.error.URLError, TimeoutError, OSError) as failure:
+        except urllib.error.HTTPError as failure:
+            status, error = failure.code, str(failure)[:500]
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as failure:
             error = str(failure)[:500]
         with closing(connect()) as db:
             db.execute("UPDATE webhook_deliveries SET status=?,response_code=?,error=?,attempted_at=? WHERE id=?",
-                       ("delivered" if status and 200 <= status < 300 else "failed", status, error, utc_now(), delivery_id))
+                       ("delivered" if status and 200 <= status < 300 else "failed", status, error,
+                        utc_now(), row["id"]))
             db.commit()
+    return len(rows)
+
+
+def emit_webhook_event(event_id: str, event_type: str, data: dict) -> None:
+    """Queue a non-audited notification (for example webhook.test) and deliver it now."""
+    with closing(connect()) as db:
+        db.execute("BEGIN IMMEDIATE")
+        enqueue_webhooks(db, event_id, event_type, data)
+        db.commit()
+    deliver_pending_webhooks()
 
 
 @router.post("/api/events/{event_id}/webhooks/{webhook_id}/test")

@@ -11,7 +11,7 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -464,7 +464,7 @@ class PublishResultsInput(BaseModel):
 
 
 @router.post("/events/{event_id}/results/publish")
-def publish_results(event_id: str, payload: PublishResultsInput, request: Request, background_tasks: BackgroundTasks):
+def publish_results(event_id: str, payload: PublishResultsInput, request: Request):
     principal = require_login(request)
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
@@ -506,9 +506,6 @@ def publish_results(event_id: str, payload: PublishResultsInput, request: Reques
                "projects_with_one_review": thin,
                "overlap_groups": len(insight["overlap_components"])})
         db.commit()
-    from .stretch import emit_webhook_event
-    background_tasks.add_task(emit_webhook_event, event_id, "results.published", {"published_at": now,
-                              "ranked_projects": sum(row["rank"] is not None for row in ranking["projects"])})
     return {"published_at": now, "ranked_projects": sum(row["rank"] is not None for row in ranking["projects"])}
 
 

@@ -181,12 +181,51 @@ of misconduct and makes no scoring decision.
 The `rankings.csv` export includes raw and adjusted values. The pure scoring
 tests cover constant, sparse, and disconnected cases.
 
+### Why penalty 3: a planted-truth simulation study
+
+A calibration method should be judged on data where the right answer is known.
+`scripts/normalization_study.py` keeps the fixture's **real review graph**
+(122 reviews, 40 projects, 30 judges, including the one-review judges and the
+eight projects with only two reviews), plants project quality `U(1.5, 4.5)`,
+judge severity `N(0, 0.4)` and review noise `N(0, 0.3)`, then compares each
+estimator with the planted truth over 400 seeded trials:
+
+| Estimator | Mean absolute error | Kendall τ with true order |
+| --- | ---: | ---: |
+| Raw mean | 0.230 | 0.806 |
+| Calibrated, λ = 0.01 (almost no shrinkage) | 0.283 | 0.770 |
+| Calibrated, λ = 1 | 0.191 | 0.839 |
+| **Calibrated, λ = 3 (shipped)** | **0.201** | **0.830** |
+| Calibrated, λ = 5 | 0.207 | 0.825 |
+
+Without shrinkage the model is *worse* than raw averaging, because judges with
+one or two reviews absorb project quality into their offset. Shrinkage fixes
+that. λ = 1 scored marginally better than the shipped λ = 3 in this synthetic
+setting; we keep 3 because it is more conservative for one-review judges on
+real data and the difference (0.009 τ) is within what a different noise
+assumption would change. `tests/test_normalization_study.py` fails the build
+if the shipped setting stops beating raw means on this graph.
+
+On the fixture itself, the spread of judges' mean scores is σ = 0.414 before
+calibration and σ = 0.288 after (λ = 1 gives 0.236; λ = 0.01 *raises* it to
+0.555 by over-correcting sparse judges). Spread reduction is reported as a
+diagnostic only: removing all between-judge spread is not the goal, because
+some of it is real differences in the projects each judge happened to see.
+
+Reproduce: `python3 scripts/normalization_study.py` (about 15 seconds,
+standard library only).
+
 ## Pairwise Mode
 
 Pairwise Mode is an optional, separate judging path. After submissions close,
 an organizer chooses a target number of comparisons per project. The backend
-forms unique pairs and assigns them only to accepted judges eligible for both
-tracks, excluding the judge's own team and declared conflicts. A judge can
+forms unique pairs **within a track** and assigns each to an accepted judge of
+that track, excluding the judge's own team and declared conflicts. Pairing
+within a track keeps the track-isolation rule and avoids needing judges who
+cover two tracks: on the fixture, cross-track pairing left 34 of 60 requested
+pairs without an eligible judge, while within-track pairing assigns all 60.
+Because each track is its own comparison graph, strengths are ranked within a
+track and never compared across tracks. A judge can
 submit only their assigned pair, and publication locks later edits.
 
 For positive project strengths `s_i`, the Bradley–Terry model uses:

@@ -144,10 +144,14 @@ The admin overview reads disk and database size, offers an on-demand
 `PRAGMA quick_check`, and writes/downloads SQLite snapshots through
 administrator-only routes. Snapshots live under the data volume, outside
 public static assets. An operator must copy them off-host and arrange any
-retention. Webhook delivery is optional: each audited event action writes a
-delivery row in the same database transaction; the single-process worker sends
-HMAC-signed callbacks with bounded retries. Receiver failure never rolls back
-the event action. The widget reads the public gallery without credentials.
+retention. Webhook delivery is optional: `audit()` writes one pending delivery row per
+active endpoint in the same database transaction as the audited action (a
+transactional outbox), so every committed state change is announced and a
+rejected or rolled-back one never is. A background task in the single app
+process drains the outbox every two seconds and sends HMAC-SHA256 signed
+callbacks. Each delivery is attempted once; its status, response code and
+error are retained for the organizer. Receiver failure never rolls back the
+event action. Automatic retry with backoff is not implemented. The widget reads the public gallery without credentials.
 Judge records sign a fixed JSON payload with a locally stored Ed25519 key.
 Public verification checks the payload against its stored public key; an
 operator must publish or pin that key independently for third parties to

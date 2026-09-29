@@ -448,7 +448,11 @@ organizer toward evidence, but it has no write path into judging outcomes.
 The primary result remains the weighted rubric with transparent judge-severity
 calibration. Pairwise Mode is a separate experiment: the organizer generates
 project pairs, assigned judges choose one project from each pair, and a
-regularized Bradley–Terry estimator recovers latent strengths. Stable ordering
+regularized Bradley–Terry estimator recovers latent strengths. Pairs are formed
+and ranked within one track, so every assignment stays inside a judge's stated
+eligibility and the resulting strengths are never compared across disconnected
+track graphs. On the official fixture this changed assignment coverage from
+26/60 cross-track pairs to 60/60 eligible within-track pairs. Stable ordering
 and assignment ownership keep the flow reproducible and isolated.
 
 A pairwise vote never edits a criterion score, normalized ranking, prize, or
@@ -458,7 +462,11 @@ visible as limited evidence rather than being presented as certainty.
 
 The same isolated module provides CSV account import, a public gallery embed,
 a sanitized event archive, Ed25519-signed judge participation records, and
-HMAC-signed webhook deliveries with visible status. A signed judge record
+HMAC-signed webhook deliveries with visible status. The audit log is also a
+transactional outbox: every committed event-scoped audited action queues its
+delivery in the same SQLite transaction, while a rejected or rolled-back action
+queues nothing. A small background worker delivers pending rows off the request
+path and records the response. A signed judge record
 proves its payload matches the issuer's signature; an external verifier still
 needs to pin or otherwise trust that issuer key.
 
@@ -587,14 +595,17 @@ T2  csv export works .................. PASS
 ```
 
 Our separate test runner starts a disposable Compose project on a random port,
-creates a fresh named volume, runs 39 unit and HTTP integration tests, and
+creates a fresh named volume, runs 41 unit and HTTP integration tests, and
 removes only that test environment. It covers deadlines, role denials, team
 limits, conflicts, publication locks, normalization edge cases, stable ballot
 randomization, rate limits, duplicate handling, certificate behavior, backups,
 OpenAPI synchronization, portable ML inference, Pairwise Mode, webhooks,
 custom questions, portable bundle round trips, safe restore, bulk import,
 embeds, Ed25519 judge records, and all five demo role tours. The combined
-release result is 39/39.
+release result is 41/41. One test reruns a planted-truth study on the fixture's
+real review graph and fails if the shipped calibration stops outperforming raw
+averages; another proves committed audited writes enter the webhook outbox while
+rejected writes do not.
 
 We also tested the current image with its Docker network disconnected;
 its local health endpoint returned HTTP 200. The five-minute lifecycle video
@@ -613,7 +624,7 @@ an experimental comparison mode cannot silently change official results. We
 also added signed webhooks, an embeddable gallery, Ed25519 judge participation
 records, bulk CSV account import, portable pre-judging exchange, and validated
 command-line restore. The remaining cuts are account recovery, email delivery,
-anonymous open-link voting, exhaustive webhook coverage, and browser-based
+anonymous open-link voting, automatic webhook retries, and browser-based
 restore.
 
 Certificates are publicly verifiable against the local database, but they are
