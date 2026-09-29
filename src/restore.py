@@ -29,7 +29,7 @@ def restore_backup(source: Path, destination: Path | None = None) -> Path | None
         if db.execute("PRAGMA foreign_key_check").fetchone():
             raise ValueError("Backup has broken foreign keys")
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        if not 1 <= version <= 10:
+        if not 1 <= version <= 11:
             raise ValueError(f"Unsupported database schema version: {version}")
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if not {"users", "events", "projects", "scorecards"}.issubset(tables):

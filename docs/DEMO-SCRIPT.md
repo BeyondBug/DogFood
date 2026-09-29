@@ -26,7 +26,8 @@ three, so set the UI's “Reviews per project” field to 1. This does not affec
 the fixture proof.
 
 A five-minute silent, captioned browser recording is committed at
-`media/beyondbug-demo.mp4`. It was captured from a fresh, disposable
+The published walkthrough is available on [YouTube](https://youtu.be/MwQeCSS8QFo),
+with the submission copy at `media/beyondbug-demo.mp4`. It was captured from a fresh, disposable
 Compose volume and shows the actions above, including the direct peer-score
 denial. This guide lets another person repeat the lifecycle; its time ranges
 are a suggested narration outline rather than exact cuts in the recording.

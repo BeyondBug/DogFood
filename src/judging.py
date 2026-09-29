@@ -642,9 +642,13 @@ def export_workflow(event_id: str, kind: str, request: Request):
                               " FROM audit_entries WHERE event_id=? ORDER BY id", (event_id,)).fetchall()
             data = [tuple(row[column] for column in columns) for row in rows]
         elif kind == "votes":
-            columns = ("ballot_id", "voter_user_id", "project_id", "cast_at")
-            rows = db.execute("SELECT id AS ballot_id,voter_user_id,project_id,cast_at"
-                              " FROM ballots WHERE event_id=? ORDER BY cast_at,id", (event_id,)).fetchall()
+            columns = ("ballot_id", "voter_user_id", "voter_type", "project_id", "cast_at", "risk_signal")
+            rows = db.execute(
+                "SELECT id AS ballot_id,voter_user_id,'account' AS voter_type,"
+                "project_id,cast_at,'' AS risk_signal FROM ballots WHERE event_id=?"
+                " UNION ALL SELECT id,open_voter_id,'open_link',project_id,cast_at,risk_signal"
+                " FROM open_ballots WHERE event_id=? ORDER BY cast_at,ballot_id", (event_id, event_id)
+            ).fetchall()
             data = [tuple(row[column] for column in columns) for row in rows]
         elif kind == "certificates":
             columns = ("certificate_id", "user_id", "project_id", "kind", "prize_id", "issued_at")

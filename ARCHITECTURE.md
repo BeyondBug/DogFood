@@ -77,6 +77,7 @@ are organizer-only until publication; public vote results then become visible.
 | `src/stretch.py` | Pairwise ranking, optional signed callbacks, bulk import, embeds, archives, and signed judge records |
 | `src/submission_questions.py` | Organizer-defined project questions, private answers, and required-answer enforcement |
 | `src/portable_bundle.py` | Bounded, transactional pre-judging event import and portable JSON export |
+| `src/event_archive.py` | Complete cross-install event history export and transactional restore |
 | `src/backup.py`, `src/restore.py` | Consistent SQLite snapshot and offline restore |
 | `src/ui.py` | Public and role workspaces from live records |
 | `src/main.py` | Application assembly, gallery, acceptance routes |
@@ -117,6 +118,11 @@ are organizer-only until publication; public vote results then become visible.
   Eligible choices exclude the voter's team and flagged duplicates. A secret
   event seed drives stable per-voter HMAC ordering. Attempt logs store a keyed
   IP digest instead of the address, and rate limits use account and digest.
+- An open-link ballot belongs to one event-scoped browser identity stored as a
+  keyed digest. Browser/network limits, a daily accepted-vote ceiling, keyed
+  user-agent signals, and shared-network flags provide review evidence without
+  storing raw network identifiers. They mitigate abuse but cannot establish
+  one human per vote.
 - Voting eligibility and the window are rechecked inside the vote transaction.
   Organizer configuration locks once ballots exist. Comments are accepted only
   during voting, are rate limited, and can be hidden with an audit entry.
@@ -136,10 +142,12 @@ safety copy of the previous database. Migrations run forward at startup; take
 a backup before upgrading. CSV exports provide paths
 out for projects, participants, teams, judges, assignments, scorecards,
 rankings, audit history, votes, and certificates. Fixture JSON is an initial
-import format for initial fixture seeding. The portable JSON bundle moves
-pre-judging event data into an empty open event with new local IDs. A whole
-SQLite snapshot can restore a complete BeyondBug installation, including
-historical results and audit data.
+import format for initial fixture seeding. The setup bundle moves pre-judging
+event data into an empty open event with new local IDs. The complete event
+archive moves historical judging, voting, certificates, pairwise records,
+audit entries, and integration history across installations in one transaction;
+passwords and outbound secrets rotate. A SQLite snapshot restores the entire
+BeyondBug installation.
 The admin overview reads disk and database size, offers an on-demand
 `PRAGMA quick_check`, and writes/downloads SQLite snapshots through
 administrator-only routes. Snapshots live under the data volume, outside

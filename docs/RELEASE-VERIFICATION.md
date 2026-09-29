@@ -5,9 +5,9 @@
 | Check | Result |
 | --- | --- |
 | Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
-| Independent unit and HTTP integration suite | **41/41 PASS** |
-| Disposable fresh-volume test runner | **41/41 PASS:** new Compose project and volume; removed after run |
-| Fresh disposable Compose volume | **PASS on schema 10:** fixture seed, migrations, lifecycle, permissions, custom questions, scoring, voting, certificates, pairwise ranking, signed records, webhooks, bulk and portable import, embeds, backup/restore, OpenAPI, and portable ML checks run before the volume is removed |
+| Independent unit and HTTP integration suite | **43/43 PASS** |
+| Disposable fresh-volume test runner | **43/43 PASS:** new Compose project and volume; removed after run |
+| Fresh disposable Compose volume | **PASS on schema 11:** fixture seed, migrations, lifecycle, permissions, custom questions, scoring, authenticated and open-link voting, certificates, pairwise ranking, signed records, webhooks, complete event archives, embeds, backup/restore, OpenAPI, and portable ML checks run before the volume is removed |
 | Fresh portal checked by official `run.py` | **7/7 PASS** |
 | Restart persistence | **PASS:** same event, project, judge, and local secret counts |
 | Runtime with container network disabled | **PASS:** isolated in Docker, local `/health` returned HTTP 200; webhooks remain optional |

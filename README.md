@@ -54,8 +54,9 @@ flowchart LR
     class API,TX,DATA,AUDIT system;
 ```
 
-Watch the [five-minute browser walkthrough](media/beyondbug-demo.mp4),
-recorded from a fresh local event. The silent, captioned video shows real form
+Watch the [five-minute browser walkthrough on YouTube](https://youtu.be/MwQeCSS8QFo),
+with an offline copy committed at [media/beyondbug-demo.mp4](media/beyondbug-demo.mp4).
+Recorded from a fresh local event, the captioned video shows real form
 actions for event creation, team formation, draft and final submission, judge
 assignment, weighted scoring, a direct 403 peer-score denial, result
 publication, judging insight, and CSV export. [DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md)
@@ -322,18 +323,20 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Known limits
 
 - T3 and T4 are not claimed in `.dogfood.toml` because the supplied checker
-  contains no checks for either tier. Both are **partial**, and
-  [TIER-COVERAGE.md](docs/TIER-COVERAGE.md) lists each gap: there is no anonymous
-  open-link voting mode or quadratic ballot; webhooks cover event-scoped
-  audited actions with one delivery attempt and no automatic retry; the
-  portable JSON bundle does not carry historical reviews, ballots or audit
-  entries (a full SQLite restore does). Evidence is kept separate from the
+  contains no checks for either tier. [TIER-COVERAGE.md](docs/TIER-COVERAGE.md)
+  maps independent evidence and remaining limits: there is no quadratic ballot;
+  webhooks cover event-scoped audited actions with one delivery attempt and no
+  automatic retry. The setup bundle moves editable pre-event data, while the
+  complete event archive round-trips judging, voting, certificates, audit, and
+  integration history between installations. Evidence is kept separate from the
   official T1/T2 acceptance result. Certificate verification remains database-backed, while
   judge participation records use independently verifiable Ed25519 signatures.
-- Community voting cannot establish one human per account. Invite acceptance
-  matches an account email but does not verify inbox ownership; participant
-  mode excludes accounts created after voting opens, but earlier fake accounts
-  remain possible. Use curated invites for high-stakes public prizes.
+- Community voting cannot prove one human per vote. Open-link mode binds a vote
+  to a private browser identity, rate-limits keyed network and user-agent
+  digests, caps accepted votes per network, and flags shared-network patterns.
+  Clearing cookies, rotating networks, and spoofing user agents can still evade
+  those controls. Invite acceptance matches an account email but does not verify
+  inbox ownership. Use curated invites for high-stakes public prizes.
 - Invite links are copied by an organizer or captain; the portal does not send
   email. There is no outbound email dependency.
 - SQLite with one application worker suits small and medium self-hosted
