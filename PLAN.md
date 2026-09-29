@@ -2,7 +2,7 @@
 
 > **Historical document:** this is the pre-kickoff plan, retained to show how
 > the implementation evolved. For shipped behavior use [README.md](README.md),
-> [ARCHITECTURE.md](ARCHITECTURE.md), and [RELEASE-VERIFICATION.md](RELEASE-VERIFICATION.md).
+> [ARCHITECTURE.md](ARCHITECTURE.md), and [RELEASE-VERIFICATION.md](docs/RELEASE-VERIFICATION.md).
 
 Planning document only. No project code is written here. The coding window is
 2026-09-26 18:00 UTC through 2026-09-29 18:00 UTC after the organizer's
@@ -24,7 +24,7 @@ five-minute demo. Spend remaining time on one polished T3 slice or a bonus.
 The checker currently contains seven checks and cannot verify T3/T4, so do not
 claim those tiers until the organizers clarify how they will be verified.
 Build the event landing page and role-specific workspaces to a professional
-standard alongside these flows; see [UI-DESIGN.md](UI-DESIGN.md).
+standard alongside these flows; see [UI-DESIGN.md](docs/UI-DESIGN.md).
 
 ## Chosen stack and boundaries
 
@@ -114,13 +114,13 @@ the demo recorder. The human owner handles registration, public-repo access,
 and final submission. The assistant drafts and implements in the shared
 workspace, with the human reviewing product decisions and demo behavior. If
 other teammates become active, assign them a bounded package from
-[DELIVERY-BOARD.md](DELIVERY-BOARD.md). No project code or code commit occurs
+[DELIVERY-BOARD.md](docs/DELIVERY-BOARD.md). No project code or code commit occurs
 before kickoff.
 
 The fixture event is already closed. The live lifecycle test and demo must
 create a separate event with future dates; the historical fixture event remains
 closed for the acceptance probe. Detailed gates and route agreements are in
-[DELIVERY-BOARD.md](DELIVERY-BOARD.md) and [API-CONTRACT.md](API-CONTRACT.md).
+[DELIVERY-BOARD.md](docs/DELIVERY-BOARD.md) and [API-CONTRACT.md](docs/API-CONTRACT.md).
 
 **0–12 hours:** Create repository, license, Compose setup, migrations, seed,
 authentication, roles, event and team flows, submission deadline enforcement,

@@ -3,7 +3,7 @@
 This maps the [published tier ladder](https://dogfoodhack.com/#tiers) to
 working code and validation. The organizer's `run.py` has seven T1/T2 checks;
 it does not certify every item below. `.dogfood.toml` claims **T1 and T2**.
-The exact checker output is in [acceptance-report.txt](acceptance-report.txt).
+The exact checker output is in [acceptance-report.txt](../acceptance-report.txt).
 
 | Tier | Published requirement | Current evidence | Status |
 | --- | --- | --- | --- |
@@ -35,4 +35,4 @@ The exact checker output is in [acceptance-report.txt](acceptance-report.txt).
 `docker compose up` seeds the published fixture. The fresh-volume suite, exact
 official checker and network-disabled startup are recorded in
 [RELEASE-VERIFICATION.md](RELEASE-VERIFICATION.md). T3 voting limitations are
-expanded in [T3-EVIDENCE.md](T3-EVIDENCE.md) and [THREAT-MODEL.md](THREAT-MODEL.md).
+expanded in [T3-EVIDENCE.md](T3-EVIDENCE.md) and [THREAT-MODEL.md](../THREAT-MODEL.md).
