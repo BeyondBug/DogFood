@@ -309,6 +309,19 @@ ALTER TABLE projects ADD COLUMN live_url TEXT NOT NULL DEFAULT '';
 ALTER TABLE projects ADD COLUMN tech_tags TEXT NOT NULL DEFAULT '';
 """
 
+SCHEMA_V8 = """
+CREATE TABLE IF NOT EXISTS duplicate_decisions (
+    project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    canonical_project_id TEXT REFERENCES projects(id),
+    decision TEXT NOT NULL CHECK(decision IN ('confirmed','cleared')),
+    reason TEXT NOT NULL,
+    decided_by TEXT NOT NULL REFERENCES users(id),
+    decided_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_duplicate_decisions_event ON duplicate_decisions(event_id,decision);
+"""
+
 
 def initialize() -> None:
     path = database_path()
@@ -316,7 +329,7 @@ def initialize() -> None:
     with closing(connect()) as db:
         db.execute("PRAGMA journal_mode = WAL")
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        if version > 7:
+        if version > 8:
             raise RuntimeError(f"Database schema version {version} is newer than this app")
         if version == 0:
             db.executescript(SCHEMA_V1)
@@ -348,4 +361,8 @@ def initialize() -> None:
         if version == 6:
             db.executescript(SCHEMA_V7)
             db.execute("PRAGMA user_version = 7")
+            version = 7
+        if version == 7:
+            db.executescript(SCHEMA_V8)
+            db.execute("PRAGMA user_version = 8")
         db.commit()

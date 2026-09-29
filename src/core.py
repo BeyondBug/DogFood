@@ -53,11 +53,68 @@ def reconcile_submitted_duplicates(db, event_id: str) -> None:
         first = first_by_repo.setdefault(row["repo_url"], row["id"])
         if first != row["id"]:
             duplicate_by_id[row["id"]] = first
+    decisions = {row["project_id"]: row for row in db.execute(
+        "SELECT project_id,canonical_project_id,decision FROM duplicate_decisions WHERE event_id=?",
+        (event_id,),
+    )}
     current = db.execute("SELECT id,duplicate_of FROM projects WHERE event_id=?", (event_id,)).fetchall()
     for row in current:
         desired = duplicate_by_id.get(row["id"])
+        decision = decisions.get(row["id"])
+        if decision and (desired is None or decision["canonical_project_id"] != desired):
+            db.execute("DELETE FROM duplicate_decisions WHERE project_id=?", (row["id"],))
+            decision = None
+        if decision and decision["decision"] == "cleared":
+            desired = None
+        elif decision and decision["decision"] == "confirmed":
+            desired = decision["canonical_project_id"] or desired
         if row["duplicate_of"] != desired:
             db.execute("UPDATE projects SET duplicate_of=? WHERE id=?", (desired, row["id"]))
+
+
+class DuplicateDecisionInput(BaseModel):
+    decision: str
+    reason: str = Field(min_length=3, max_length=500)
+
+
+@router.put("/events/{event_id}/projects/{project_id}/duplicate-decision")
+def decide_duplicate(event_id: str, project_id: str, payload: DuplicateDecisionInput, request: Request):
+    """Let an organizer confirm or clear an automatically detected duplicate."""
+    principal = require_login(request)
+    if payload.decision not in ("confirmed", "cleared"):
+        raise HTTPException(status_code=422, detail="Decision must be confirmed or cleared")
+    with closing(connect()) as db:
+        db.execute("BEGIN IMMEDIATE")
+        require_event_role(db, principal, event_id, "organizer")
+        event = db.execute("SELECT results_published_at FROM events WHERE id=?", (event_id,)).fetchone()
+        if event is None:
+            raise HTTPException(status_code=404, detail="Event not found")
+        if event["results_published_at"]:
+            raise HTTPException(status_code=409, detail="Published results lock duplicate decisions")
+        project = db.execute(
+            "SELECT id,duplicate_of,status FROM projects WHERE id=? AND event_id=?", (project_id, event_id)
+        ).fetchone()
+        prior = db.execute(
+            "SELECT canonical_project_id FROM duplicate_decisions WHERE project_id=?", (project_id,)
+        ).fetchone()
+        if project is None or project["status"] != "submitted":
+            raise HTTPException(status_code=404, detail="Submitted project not found")
+        canonical = project["duplicate_of"] or (prior["canonical_project_id"] if prior else None)
+        if canonical is None:
+            raise HTTPException(status_code=409, detail="This project has no duplicate signal to adjudicate")
+        now = utc_now()
+        db.execute(
+            "INSERT INTO duplicate_decisions(project_id,event_id,canonical_project_id,decision,reason,decided_by,decided_at) "
+            "VALUES(?,?,?,?,?,?,?) ON CONFLICT(project_id) DO UPDATE SET canonical_project_id=excluded.canonical_project_id,"
+            "decision=excluded.decision,reason=excluded.reason,decided_by=excluded.decided_by,decided_at=excluded.decided_at",
+            (project_id, event_id, canonical, payload.decision, payload.reason.strip(), principal.user_id, now),
+        )
+        reconcile_submitted_duplicates(db, event_id)
+        audit(db, event_id, principal.user_id, "project.duplicate_" + payload.decision, "project", project_id,
+              {"canonical_project_id": canonical, "reason": payload.reason.strip()})
+        db.commit()
+    return {"project_id": project_id, "decision": payload.decision,
+            "duplicate_of": canonical if payload.decision == "confirmed" else None}
 
 
 def csv_safe(value):
@@ -509,6 +566,8 @@ def update_project(project_id: str, payload: ProjectUpdate, request: Request):
         if track is None:
             raise HTTPException(status_code=422, detail="Track does not belong to this event")
         now = utc_now()
+        if repo_url != project["repo_url"]:
+            db.execute("DELETE FROM duplicate_decisions WHERE project_id=?", (project_id,))
         db.execute(
             "UPDATE projects SET title=?,summary=?,description=?,repo_url=?,demo_url=?,thumbnail_url=?,image_urls=?,video_url=?,live_url=?,tech_tags=?,track_id=?,status=?,submitted_at=?,updated_at=?,duplicate_of=? WHERE id=?",
             (payload.title.strip(), payload.summary.strip(), payload.description.strip(), repo_url,

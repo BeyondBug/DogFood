@@ -157,6 +157,9 @@ def accept_judge_invite(token: str, request: Request):
             raise HTTPException(status_code=404, detail="Invite link is invalid or expired")
         if invitation["email"] != principal.email.casefold():
             raise HTTPException(status_code=403, detail="This invite belongs to another email address")
+        if db.execute("SELECT 1 FROM judge_profiles WHERE event_id=? AND user_id=?",
+                      (invitation["event_id"], principal.user_id)).fetchone():
+            raise HTTPException(status_code=409, detail="You are already a judge for this event")
         judge_id = identifier("jdg")
         db.execute("INSERT INTO judge_profiles(id,event_id,user_id,status) VALUES(?,?,?,'accepted')",
                    (judge_id, invitation["event_id"], principal.user_id))
@@ -456,8 +459,12 @@ def organizer_scorecard(event_id: str, scorecard_id: str, request: Request):
         return detail
 
 
+class PublishResultsInput(BaseModel):
+    acknowledge_limited_evidence: bool = False
+
+
 @router.post("/events/{event_id}/results/publish")
-def publish_results(event_id: str, request: Request):
+def publish_results(event_id: str, payload: PublishResultsInput, request: Request):
     principal = require_login(request)
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
@@ -474,10 +481,30 @@ def publish_results(event_id: str, request: Request):
         missing = [row["id"] for row in ranking["projects"] if row["duplicate_of"] is None and row["review_count"] == 0]
         if missing:
             raise HTTPException(status_code=409, detail=f"Unreviewed projects: {', '.join(missing[:5])}")
+        unresolved = [row["id"] for row in db.execute(
+            "SELECT p.id FROM projects p LEFT JOIN duplicate_decisions d ON d.project_id=p.id "
+            "WHERE p.event_id=? AND p.status='submitted' AND p.duplicate_of IS NOT NULL AND d.project_id IS NULL",
+            (event_id,),
+        )]
+        if unresolved:
+            raise HTTPException(status_code=409, detail=f"Resolve possible duplicates before publishing: {', '.join(unresolved[:5])}")
+        insight = judging_insight(db, event_id, ranking)
+        thin = [row["id"] for row in ranking["projects"]
+                if row["duplicate_of"] is None and 0 < row["review_count"] < 2]
+        disconnected = len(insight["overlap_components"]) > 1
+        if (thin or disconnected) and not payload.acknowledge_limited_evidence:
+            raise HTTPException(status_code=409, detail={
+                "message": "Limited judging evidence requires organizer acknowledgement",
+                "projects_with_one_review": thin,
+                "overlap_groups": len(insight["overlap_components"]),
+            })
         now = utc_now()
         db.execute("UPDATE events SET results_published_at=? WHERE id=?", (now, event_id))
         audit(db, event_id, principal.user_id, "results.published", "event", event_id,
-              {"ranked_projects": sum(row["rank"] is not None for row in ranking["projects"])})
+              {"ranked_projects": sum(row["rank"] is not None for row in ranking["projects"]),
+               "limited_evidence_acknowledged": bool(thin or disconnected),
+               "projects_with_one_review": thin,
+               "overlap_groups": len(insight["overlap_components"])})
         db.commit()
     return {"published_at": now, "ranked_projects": sum(row["rank"] is not None for row in ranking["projects"])}
 
@@ -560,7 +587,8 @@ def export_scores(event_id: str, request: Request):
     columns = ("project_id", "title", "judge_id", "judge", "status", "comment", "submitted_at", "slug", "score")
     writer.writerow(columns)
     writer.writerows(tuple(csv_safe(row[column]) for column in columns) for row in rows)
-    return Response(output.getvalue(), media_type="text/csv; charset=utf-8")
+    return Response(output.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{event_id}-scores.csv"'})
 
 
 @router.get("/events/{event_id}/exports/{kind}.csv")

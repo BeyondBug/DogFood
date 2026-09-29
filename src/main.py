@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from .auth import current_principal, require_event_role, require_login
+from .auth import current_principal, has_event_role, require_event_role, require_login
 from .core import csv_safe, reconcile_submitted_duplicates, require_web_url, router as core_router
 from .judging import router as judging_router
 from .public import router as public_router
@@ -95,8 +95,25 @@ def home(request: Request):
     })
 
 
+def _gallery_filters(event_id: str, query: str, track: str, tag: str) -> tuple[list[str], list[str]]:
+    where = ["p.event_id=?", "p.status='submitted'"]
+    args = [event_id]
+    if query:
+        where.append("(p.title LIKE ? OR p.summary LIKE ? OR p.description LIKE ?"
+                     " OR p.tech_tags LIKE ? OR t.name LIKE ? OR m.name LIKE ?)")
+        args.extend([f"%{query}%"] * 6)
+    if track:
+        where.append("p.track_id=?")
+        args.append(track)
+    if tag:
+        where.append("(',' || lower(replace(p.tech_tags,' ','')) || ',') LIKE ?")
+        args.append(f"%,{tag.casefold().replace(' ', '')},%")
+    return where, args
+
+
 @app.get("/projects", response_class=HTMLResponse)
-def gallery(request: Request, q: str = "", track: str = "", event: str = "", page: int = Query(default=1, ge=1)):
+def gallery(request: Request, q: str = "", track: str = "", tag: str = "", event: str = "",
+            page: int = Query(default=1, ge=1)):
     query = q.strip()[:120]
     with closing(connect()) as db:
         selected = (db.execute("SELECT * FROM events WHERE id=?", (event,)).fetchone() if event
@@ -104,15 +121,12 @@ def gallery(request: Request, q: str = "", track: str = "", event: str = "", pag
         if selected is None:
             raise HTTPException(status_code=404, detail="Event not found")
         tracks = db.execute("SELECT id,name FROM tracks WHERE event_id=? ORDER BY name", (selected["id"],)).fetchall()
-        where = ["p.event_id=?", "p.status='submitted'"]
-        args: list[str] = [selected["id"]]
-        if query:
-            where.append("(p.title LIKE ? OR p.summary LIKE ? OR t.name LIKE ?)")
-            pattern = f"%{query}%"
-            args.extend([pattern, pattern, pattern])
-        if track:
-            where.append("p.track_id=?")
-            args.append(track)
+        tags = sorted({value.strip() for row in db.execute(
+            "SELECT tech_tags FROM projects WHERE event_id=? AND status='submitted' AND tech_tags<>''",
+            (selected["id"],),
+        ) for value in row["tech_tags"].split(",") if value.strip()}, key=str.casefold)
+        selected_tag = tag.strip()[:80]
+        where, args = _gallery_filters(selected["id"], query, track, selected_tag)
         filtered_total = db.execute(
             "SELECT COUNT(*) FROM projects p JOIN tracks t ON t.id=p.track_id"
             " JOIN teams m ON m.id=p.team_id WHERE " + " AND ".join(where),
@@ -134,12 +148,52 @@ def gallery(request: Request, q: str = "", track: str = "", event: str = "", pag
         ).fetchone()[0]
     return templates.TemplateResponse(request, "gallery.html", {
         "event": dict(selected), "projects": [dict(row) for row in projects],
-        "tracks": [dict(row) for row in tracks], "total": total, "q": query, "track": track,
+        "tracks": [dict(row) for row in tracks], "tags": tags,
+        "total": total, "q": query, "track": track, "tag": selected_tag,
         "event_param": event, "principal": current_principal(request),
         "filtered_total": filtered_total, "page": current_page, "last_page": last_page,
         "first_result": (current_page - 1) * page_size + 1 if filtered_total else 0,
         "last_result": min(current_page * page_size, filtered_total),
     })
+
+
+@app.get("/api/events/{event_id}/projects")
+def public_project_list(event_id: str, q: str = "", track: str = "", tag: str = "",
+                        page: int = Query(default=1, ge=1), page_size: int = Query(default=48, ge=1, le=100)):
+    """List submitted projects without exposing drafts."""
+    query, selected_tag = q.strip()[:120], tag.strip()[:80]
+    with closing(connect()) as db:
+        if db.execute("SELECT 1 FROM events WHERE id=?", (event_id,)).fetchone() is None:
+            raise HTTPException(status_code=404, detail="Event not found")
+        where, args = _gallery_filters(event_id, query, track, selected_tag)
+        joins = " FROM projects p JOIN tracks t ON t.id=p.track_id JOIN teams m ON m.id=p.team_id"
+        total = db.execute("SELECT COUNT(*)" + joins + " WHERE " + " AND ".join(where), args).fetchone()[0]
+        rows = db.execute(
+            "SELECT p.id,p.title,p.summary,p.description,p.repo_url,p.demo_url,p.thumbnail_url,"
+            "p.image_urls,p.video_url,p.live_url,p.tech_tags,p.submitted_at,p.duplicate_of,"
+            "t.id AS track_id,t.name AS track_name,m.id AS team_id,m.name AS team_name" + joins
+            + " WHERE " + " AND ".join(where)
+            + " ORDER BY p.submitted_at DESC,p.id DESC LIMIT ? OFFSET ?",
+            [*args, page_size, (page - 1) * page_size],
+        ).fetchall()
+    return {"event_id": event_id, "page": page, "page_size": page_size, "total": total,
+            "projects": [dict(row) for row in rows]}
+
+
+@app.get("/api/projects/{project_id}")
+def public_project(project_id: str):
+    """Return public detail for a submitted project."""
+    with closing(connect()) as db:
+        row = db.execute(
+            "SELECT p.id,p.event_id,p.title,p.summary,p.description,p.repo_url,p.demo_url,p.thumbnail_url,"
+            "p.image_urls,p.video_url,p.live_url,p.tech_tags,p.submitted_at,p.duplicate_of,"
+            "t.id AS track_id,t.name AS track_name,m.id AS team_id,m.name AS team_name "
+            "FROM projects p JOIN tracks t ON t.id=p.track_id JOIN teams m ON m.id=p.team_id "
+            "WHERE p.id=? AND p.status='submitted'", (project_id,),
+        ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Submitted project not found")
+    return dict(row)
 
 
 @app.post("/api/events/{event_id}/projects", status_code=201)
@@ -206,6 +260,10 @@ def create_project(event_id: str, payload: ProjectInput, request: Request):
 def judge_scores(request: Request, judge: str | None = Query(default=None)):
     principal = require_login(request)
     with closing(connect()) as db:
+        if judge is not None:
+            target = db.execute("SELECT id,event_id FROM judge_profiles WHERE id=?", (judge,)).fetchone()
+            if target is not None and has_event_role(db, principal, target["event_id"], "organizer"):
+                return {"judge_id": judge, "scores": _judge_score_rows(db, judge)}
         profiles = db.execute(
             "SELECT j.id,j.event_id FROM judge_profiles j JOIN event_roles r"
             " ON r.event_id=j.event_id AND r.user_id=j.user_id AND r.role='judge'"
@@ -217,25 +275,45 @@ def judge_scores(request: Request, judge: str | None = Query(default=None)):
         if judge is not None and judge not in {row["id"] for row in profiles}:
             raise HTTPException(status_code=403, detail="You cannot read another judge's scores")
         profile = next((row for row in profiles if row["id"] == judge), profiles[0])
-        rows = db.execute(
-            "SELECT a.id AS assignment_id,p.id AS project_id,p.title,"
-            " s.id AS scorecard_id,s.status,s.comment,s.submitted_at"
-            " FROM judge_assignments a JOIN projects p ON p.id=a.project_id"
-            " LEFT JOIN scorecards s ON s.assignment_id=a.id"
-            " WHERE a.judge_id=? ORDER BY p.title,p.id",
-            (profile["id"],),
-        ).fetchall()
-        scores = []
-        for row in rows:
-            item = dict(row)
-            criteria = db.execute(
-                "SELECT c.slug,cs.score FROM criterion_scores cs"
-                " JOIN rubric_criteria c ON c.id=cs.criterion_id WHERE cs.scorecard_id=?",
-                (row["scorecard_id"],),
-            ).fetchall() if row["scorecard_id"] else []
-            item["criteria"] = {entry["slug"]: entry["score"] for entry in criteria}
-            scores.append(item)
+        scores = _judge_score_rows(db, profile["id"])
     return {"judge_id": profile["id"], "scores": scores}
+
+
+def _judge_score_rows(db, judge_id: str) -> list[dict]:
+    rows = db.execute(
+        "SELECT a.id AS assignment_id,p.id AS project_id,p.title,"
+        " s.id AS scorecard_id,s.status,s.comment,s.submitted_at"
+        " FROM judge_assignments a JOIN projects p ON p.id=a.project_id"
+        " LEFT JOIN scorecards s ON s.assignment_id=a.id"
+        " WHERE a.judge_id=? ORDER BY p.title,p.id",
+        (judge_id,),
+    ).fetchall()
+    scores = []
+    for row in rows:
+        item = dict(row)
+        criteria = db.execute(
+            "SELECT c.slug,cs.score FROM criterion_scores cs"
+            " JOIN rubric_criteria c ON c.id=cs.criterion_id WHERE cs.scorecard_id=?",
+            (row["scorecard_id"],),
+        ).fetchall() if row["scorecard_id"] else []
+        item["criteria"] = {entry["slug"]: entry["score"] for entry in criteria}
+        scores.append(item)
+    return scores
+
+
+@app.get("/api/events/{event_id}/judges/{judge_id}/scores")
+def organizer_judge_scores(event_id: str, judge_id: str, request: Request):
+    """Event-scoped organizer view of a judge's submitted and draft scorecards."""
+    principal = require_login(request)
+    with closing(connect()) as db:
+        require_event_role(db, principal, event_id, "organizer")
+        target = db.execute(
+            "SELECT 1 FROM judge_profiles WHERE id=? AND event_id=?", (judge_id, event_id)
+        ).fetchone()
+        if target is None:
+            raise HTTPException(status_code=404, detail="Judge not found")
+        scores = _judge_score_rows(db, judge_id)
+    return {"event_id": event_id, "judge_id": judge_id, "scores": scores}
 
 
 @app.get("/api/events/{event_id}/exports/projects.csv")

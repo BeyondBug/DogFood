@@ -30,6 +30,7 @@ async function api(method, path, body) {
   if (!response.ok) {
     const detail = value.detail;
     if (Array.isArray(detail)) throw new Error(detail.map(item => item.msg).join('; '));
+    if (detail && typeof detail === 'object' && detail.message) throw new Error(detail.message);
     throw new Error(typeof detail === 'string' ? detail : `Request failed (${response.status})`);
   }
   return value;
@@ -379,7 +380,15 @@ document.addEventListener('submit', async event => {
         await api('PUT', `/api/events/${form.dataset.event}/judges/${form.dataset.judge}/conflicts/${form.dataset.project}`, data);
         refresh(); return;
       case 'publish':
-        await api('POST', `/api/events/${form.dataset.event}/results/publish`, {});
+        await api('POST', `/api/events/${form.dataset.event}/results/publish`, {
+          acknowledge_limited_evidence: Boolean(form.querySelector('[name="acknowledge_limited_evidence"]')?.checked),
+        });
+        refresh(); return;
+      case 'duplicate-decision':
+        await api('PUT', `/api/events/${form.dataset.event}/projects/${form.dataset.project}/duplicate-decision`, {
+          decision: data.decision,
+          reason: data.reason,
+        });
         refresh(); return;
       case 'award-winner':
         await api('PUT', `/api/events/${form.dataset.event}/prizes/${form.dataset.prize}/winner`, {

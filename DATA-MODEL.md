@@ -17,6 +17,7 @@ the event ID as well as the acting user's role.
 | `teams`, `team_members` | Event, captain/creator, member role | Membership and team-size checks are transactional |
 | `team_invites` | Hashed token, team, creator, expiry, use count, revocation time | Default one use; at most four members enforced in service |
 | `projects` | Event, team, track, title, summary, description, repository/demo/live/video/thumbnail URLs, gallery URLs, technology tags, draft/submitted status, timestamps, `duplicate_of` | Team edits stop at the server deadline |
+| `duplicate_decisions` | Project, canonical project, organizer decision and reason, actor and timestamp | Preserves human confirmation or clearance of an automatic repository match |
 | `judge_profiles`, `judge_tracks` | Judge user, event, accepted status, eligible tracks | One judge profile per user and event |
 | `judge_invites` | Hashed token, event, invited email, creator, expiry, acceptance time | Acceptance requires matching account email |
 | `judge_conflicts` | Judge, project, reason, creation time | Assignment excludes declared conflicts |
@@ -59,6 +60,12 @@ For newly created events, duplicate flags compare only **submitted** projects
 with a nonempty, identical repository URL. The earliest submitted record is
 the canonical one. Drafts never make another project a duplicate; editing a
 repository URL before the deadline recalculates the event's flags.
+
+Automatic matches are review signals. Before publication, an organizer must
+record whether each active signal is confirmed or cleared and give a reason.
+Cleared projects return to judging and ranking; confirmed duplicates remain
+visible but ineligible. Reconciliation preserves the decision, and the audit
+log records the actor and evidence.
 
 Fixture import is a first-boot operation. It does not overwrite edits when
 the container restarts. Demo mode adds four known local sessions and passwords
