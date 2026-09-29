@@ -25,6 +25,8 @@ shared networks and rotating networks can produce false positives or evade a
 limit. Use a curated invite list for high-stakes public awards. The full
 [threat model](THREAT-MODEL.md) records these residual risks.
 
-Reproduce this evidence with `docker compose up` and
-`python3 -m unittest discover -s tests -v`. The unmodified organizer checker
-remains in [acceptance-report.txt](acceptance-report.txt).
+Reproduce this evidence with `python3 scripts/test_fresh.py`; it starts an
+isolated Compose project and removes its volume afterward. Direct unittest
+runs intentionally require an explicit `DOGFOOD_TEST_URL` so they cannot
+mutate the normal demo portal. The unmodified organizer checker remains in
+[acceptance-report.txt](acceptance-report.txt).

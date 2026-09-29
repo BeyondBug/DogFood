@@ -161,7 +161,11 @@ is meant to run future events too.
   behind a compact disclosure.
 - Team identity and member count, with invite action and the four-member limit.
 - Submission stepper: project details, links/media, track, review and submit.
+- Rich project fields for repository, interactive demo, live project, hosted
+  video, thumbnail, gallery images, and comma-separated technology tags.
 - Visible `Draft`, `Submitted`, and `Closed` states; save/submit confirmation.
+- After publication, anonymized criterion scores and written judge comments
+  for the participant's own submitted project.
 - Deadline displayed with timezone, plus clear server rejection after close.
 - Errors next to fields and a persistent summary rather than a generic toast.
 

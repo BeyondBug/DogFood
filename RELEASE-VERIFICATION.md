@@ -1,13 +1,13 @@
 # Release verification
 
-## Current status — 28 September 2026
+## Current status — 29 September 2026
 
 | Check | Result |
 | --- | --- |
 | Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
 | Independent unit and HTTP integration suite | **27/27 PASS** |
 | Disposable fresh-volume test runner | **27/27 PASS:** new Compose project and volume; removed after run |
-| Fresh Compose volume on port 18080 | **PASS at the earlier schema 5 release:** 1 fixture event, 41 projects, 30 judges; current disposable suite upgrades to schema 7 |
+| Fresh disposable Compose volume | **PASS on schema 7:** fixture seed, migrations, lifecycle, permissions, scoring, voting, certificates, backup, OpenAPI, and portable ML checks run before the volume is removed |
 | Fresh portal checked by official `run.py` | **7/7 PASS** |
 | Restart persistence | **PASS:** same event, project, judge, and local secret counts |
 | Runtime with container network disabled | **PASS on current schema 7 image:** isolated in Docker, local `/health` returned HTTP 200 without external access |

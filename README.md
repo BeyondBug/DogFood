@@ -14,6 +14,48 @@ Public visitors can browse and search events at `/events`; each event has its
 own page and event-scoped gallery links. Galleries paginate beyond 48 projects,
 so large events remain browsable.
 
+**DEV Community Write Up Quest post:** `DEV_POST_URL_PENDING`
+
+Replace this placeholder with the public article URL immediately after publishing.
+
+## System at a glance
+
+```mermaid
+flowchart LR
+    V[Visitor] --> PUB[Public gallery and published results]
+    P[Participant] --> SESSION[Session authentication]
+    J[Judge] --> SESSION
+    O[Organizer] --> SESSION
+    A[Administrator] --> SESSION
+    SESSION --> ROLE{Backend role and ownership checks}
+    ROLE -->|participant and own team| PART[Team, submission, ballot, feedback]
+    ROLE -->|assigned judge only| JUDGE[Own assignments and scorecards]
+    ROLE -->|event organizer| ORG[Rubric, progress, audit, ranking, publication]
+    ROLE -->|global administrator| ADMIN[Events, accounts, health, backups, designs]
+    ROLE -->|scope mismatch| DENY[401 or 403]
+    PUB --> API[FastAPI routes]
+    PART --> API
+    JUDGE --> API
+    ORG --> API
+    ADMIN --> API
+    API --> TX[SQLite transaction]
+    TX --> DATA[(Domain records)]
+    TX --> AUDIT[(Audit entry)]
+
+    classDef actor fill:#dbeafe,stroke:#2563eb,color:#172554,stroke-width:2px;
+    classDef public fill:#ccfbf1,stroke:#0f766e,color:#134e4a,stroke-width:2px;
+    classDef gate fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:3px;
+    classDef permitted fill:#ede9fe,stroke:#7c3aed,color:#2e1065,stroke-width:2px;
+    classDef denied fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:3px;
+    classDef system fill:#e2e8f0,stroke:#475569,color:#0f172a,stroke-width:2px;
+    class V,P,J,O,A actor;
+    class PUB public;
+    class SESSION,ROLE gate;
+    class PART,JUDGE,ORG,ADMIN permitted;
+    class DENY denied;
+    class API,TX,DATA,AUDIT system;
+```
+
 Watch the [five-minute browser walkthrough](media/beyondbug-demo.mp4),
 recorded from a fresh local event. The silent, captioned video shows real form
 actions for event creation, team formation, draft and final submission, judge
@@ -31,8 +73,20 @@ Open [http://localhost:8080](http://localhost:8080). On first boot the app
 creates its SQLite database and loads the official `fixtures.json`: one closed
 event, 8 tracks, 30 judges, 40 teams, 41 project records, and 126 historical
 scorecards. The fixture event's original submission deadline is retained, so
-late submissions are rejected. To demonstrate a live submission, sign in and
-create a new event with a future deadline.
+late submissions are rejected. To demonstrate a live submission, sign in as
+the site administrator and create a new event with a future deadline.
+
+Administrator features require a local bootstrap account. On a fresh volume,
+start the same Compose service with operator-chosen credentials:
+
+```sh
+DOGFOOD_BOOTSTRAP_EMAIL=admin@example.org \
+DOGFOOD_BOOTSTRAP_PASSWORD='replace-with-12-or-more-characters' \
+docker compose up
+```
+
+These values stay local and are not a hosted dependency. Do not reuse the
+example password in a shared deployment.
 
 The image installs pinned Python wheels from `vendor/wheels` for Linux x86-64
 and ARM64; fonts, scripts, templates, and fixture data are also local. The
@@ -120,6 +174,81 @@ database too.
    Team members can open
    `/my/certificates`, download vector artwork, or print from a public
    verification page after issuance.
+
+## Judging and normalization pipeline
+
+```mermaid
+flowchart LR
+    RUBRIC[Weighted rubric] --> CARD[Submitted scorecards]
+    CARD --> RAW[Raw 0-5 review scores]
+    RAW --> GRAPH[Judge-project overlap graph]
+    GRAPH --> CHECK{Connected review pool?}
+    CHECK -->|No| WARN[Show comparison warning]
+    CHECK -->|Yes| FIT[Fit regularized judge severity]
+    FIT --> ADJUST[Clamp adjusted reviews to 0-5]
+    ADJUST --> RANK[Adjusted project ranking]
+    RAW --> PRESERVE[(Original scores preserved)]
+    PRESERVE --> EXPLAIN[Raw vs adjusted explanation]
+    RANK --> EXPLAIN
+    WARN --> REVIEW[Organizer review]
+    EXPLAIN --> REVIEW
+    REVIEW --> PUBLISH{Publish results?}
+    PUBLISH -->|Not ready| PRIVATE[Keep rankings private]
+    PUBLISH -->|Approved after close| PUBLIC[Lock data and publish]
+
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#172554,stroke-width:2px;
+    classDef compute fill:#ede9fe,stroke:#7c3aed,color:#2e1065,stroke-width:2px;
+    classDef evidence fill:#ccfbf1,stroke:#0f766e,color:#134e4a,stroke-width:2px;
+    classDef decision fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:3px;
+    classDef warning fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px;
+    classDef outcome fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:3px;
+    class RUBRIC,CARD,RAW input;
+    class GRAPH,FIT,ADJUST,RANK compute;
+    class PRESERVE,EXPLAIN,REVIEW evidence;
+    class CHECK,PUBLISH decision;
+    class WARN,PRIVATE warning;
+    class PUBLIC outcome;
+```
+
+## ML integration boundary
+
+```mermaid
+flowchart LR
+    CONTRIB[Teammate model contribution] --> GATE{Integration gate}
+    GATE --> SCALE[Matches 0-5 scale]
+    GATE --> FEATURES[Uses recorded features]
+    GATE --> LEAK[No target or future leakage]
+    GATE --> SPLIT[Event-level evaluation split]
+    GATE --> OFFLINE[Offline reviewed runtime]
+    GATE --> AUTH[Organizer-only access]
+    SCALE --> PASS{All checks pass?}
+    FEATURES --> PASS
+    LEAK --> PASS
+    SPLIT --> PASS
+    OFFLINE --> PASS
+    AUTH --> PASS
+    PASS -->|v1: no| RESEARCH[Keep as research history]
+    PASS -->|v2: yes| JSON[Export 300 trees to compressed JSON]
+    JSON --> SIGNAL[Advisory review signals]
+    SIGNAL --> HUMAN[Organizer inspects evidence and scorecard]
+    HUMAN --> DECISION[Human decision outside the model]
+    SIGNAL -. never writes .-> PROTECTED[Scores, rankings, assignments, awards]
+
+    classDef source fill:#dbeafe,stroke:#2563eb,color:#172554,stroke-width:2px;
+    classDef gate fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:3px;
+    classDef check fill:#ede9fe,stroke:#7c3aed,color:#2e1065,stroke-width:2px;
+    classDef rejected fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px;
+    classDef accepted fill:#ccfbf1,stroke:#0f766e,color:#134e4a,stroke-width:2px;
+    classDef human fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:3px;
+    classDef protected fill:#f1f5f9,stroke:#475569,color:#0f172a,stroke-width:2px,stroke-dasharray:5 5;
+    class CONTRIB source;
+    class GATE,PASS gate;
+    class SCALE,FEATURES,LEAK,SPLIT,OFFLINE,AUTH check;
+    class RESEARCH rejected;
+    class JSON,SIGNAL accepted;
+    class HUMAN,DECISION human;
+    class PROTECTED protected;
+```
 
 The API driving these actions is documented at `/docs`, `/openapi.json`, and
 the committed [OpenAPI specification](openapi.json).
@@ -219,16 +348,21 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Project documents
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): deployment, trust boundaries, and choices
+- [API-CONTRACT.md](API-CONTRACT.md): route groups and authorization boundaries
 - [DATA-MODEL.md](DATA-MODEL.md): schema, seed import, exports, and migrations
 - [WRITE-UP-QUEST.md](WRITE-UP-QUEST.md): publication-ready engineering write-up
+- [Write-up cover](media/beyondbug-writeup-cover.jpg): 1000×420 DEV Community cover
 - [JUDGING.md](JUDGING.md): assignment, score math, normalization, fixture proof
 - [ML integration review](ml/reports/INTEGRATION-REVIEW.md): contributed model and deployment gate
+- [ML v2 model card](ml/reports/MODEL-CARD-JUDGE-ANOMALY-v2.md): training contract, metrics, thresholds, and limits
 - [THREAT-MODEL.md](THREAT-MODEL.md): abuse cases, controls, and residual risks
 - [UI-DESIGN.md](UI-DESIGN.md): visual direction and screen inventory
 - [T3-EVIDENCE.md](T3-EVIDENCE.md): independently tested public-voting features
 - [DEMO-SCRIPT.md](DEMO-SCRIPT.md): five-minute lifecycle recording plan
 - [RELEASE-VERIFICATION.md](RELEASE-VERIFICATION.md): fresh-start and offline evidence
 - [CAPACITY.md](CAPACITY.md): reproducible local read probe and scaling boundary
+- [CONTRIBUTING.md](CONTRIBUTING.md): Features → Develop → main promotion workflow
+- [DELIVERY-BOARD.md](DELIVERY-BOARD.md): implementation gates and final delivery state
 
 Licensed under [MIT](LICENSE). The bundled IBM Plex Sans files have their
 own [SIL Open Font License](src/static/fonts/OFL.txt).
