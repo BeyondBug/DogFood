@@ -367,6 +367,7 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 - [THREAT-MODEL.md](THREAT-MODEL.md): abuse cases, controls, and residual risks
 - [UI-DESIGN.md](UI-DESIGN.md): visual direction and screen inventory
 - [T3-EVIDENCE.md](T3-EVIDENCE.md): independently tested public-voting features
+- [BONUS-EVIDENCE.md](BONUS-EVIDENCE.md): bonus-by-bonus claim and reproduction index
 - [DEMO-SCRIPT.md](DEMO-SCRIPT.md): five-minute lifecycle recording plan
 - [RELEASE-VERIFICATION.md](RELEASE-VERIFICATION.md): fresh-start and offline evidence
 - [CAPACITY.md](CAPACITY.md): reproducible local read probe and scaling boundary
