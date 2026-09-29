@@ -24,10 +24,10 @@ distinct humans. Keyed IP digests and rate limits deter bulk retries, but
 shared networks and rotating networks can produce false positives or evade a
 limit. There is no anonymous open-link ballot; the two active modes require
 a local account. Use a curated invite list for high-stakes public awards. The full
-[threat model](THREAT-MODEL.md) records these residual risks.
+[threat model](../THREAT-MODEL.md) records these residual risks.
 
 Reproduce this evidence with `python3 scripts/test_fresh.py`; it starts an
 isolated Compose project and removes its volume afterward. Direct unittest
 runs intentionally require an explicit `DOGFOOD_TEST_URL` so they cannot
 mutate the normal demo portal. The unmodified organizer checker remains in
-[acceptance-report.txt](acceptance-report.txt).
+[acceptance-report.txt](../acceptance-report.txt).

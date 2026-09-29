@@ -2,8 +2,8 @@
 
 Coding began after the revised 2026-09-26 18:00 UTC kickoff. This board tracks
 the [challenge](https://dogfoodhack.com/) and the published checker alongside
-the implementation. [README.md](README.md), tests, and the committed
-[acceptance report](acceptance-report.txt) are the release evidence.
+the implementation. [README.md](../README.md), tests, and the committed
+[acceptance report](../acceptance-report.txt) are the release evidence.
 
 ## Shared definition of done
 
@@ -49,7 +49,7 @@ them a bounded package with an explicit API/schema contract.
 | Progress dashboard and CSV | P0 | Active pair | Assignments, scores | Counts match DB; organizer export has stable headers |
 | Normalization and result publication | P1 | Active pair | Scorecards | Raw/adjusted comparison; sparse/constant judge tests |
 | Audit trail | P1 | Active pair | Service actions | Organizer sees who changed assignment/score/publication |
-| Threat model and OpenAPI coverage | P1 | Active pair | Final routes | Docs match the shipped behavior; see [SECURITY-PLAN.md](SECURITY-PLAN.md) |
+| Threat model and OpenAPI coverage | P1 | Active pair | Final routes | Docs match the shipped behavior; see [SECURITY-PLAN.md](../SECURITY-PLAN.md) |
 | Professional event and role UI | P1 | Active pair | T1/T2 paths | Responsive, accessible flows; see [UI-DESIGN.md](UI-DESIGN.md) |
 | T3 voting/comments | P2 | Active pair | Stable T2 | Implemented and integration tested; not claimed because checker has no T3 assertions |
 | Pairwise mode and remaining T4 work | P3 | Unassigned | Stable T2/T3 | Certificates implemented; pairwise, webhooks, and signed judge records not implemented or claimed |

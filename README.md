@@ -60,7 +60,7 @@ Watch the [five-minute browser walkthrough](media/beyondbug-demo.mp4),
 recorded from a fresh local event. The silent, captioned video shows real form
 actions for event creation, team formation, draft and final submission, judge
 assignment, weighted scoring, a direct 403 peer-score denial, result
-publication, judging insight, and CSV export. [DEMO-SCRIPT.md](DEMO-SCRIPT.md)
+publication, judging insight, and CSV export. [DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md)
 lists the actions so the lifecycle can be repeated.
 
 ## Run it
@@ -93,7 +93,7 @@ and ARM64; fonts, scripts, templates, and fixture data are also local. The
 container makes no external runtime requests. A first offline *build* needs
 the matching `python:3.12-slim` base image already present in Docker's local
 image store. No cloud account, hosted database, authentication provider, or
-external API is used. [Release verification](RELEASE-VERIFICATION.md) records
+external API is used. [Release verification](docs/RELEASE-VERIFICATION.md) records
 the clean-build, fresh-volume, restart, and network-disabled checks.
 
 ## Demo access
@@ -293,7 +293,7 @@ normalization edge cases, and voting abuse controls. The official checker has
 no T3 assertions. Community voting and comments are implemented and covered
 by our integration tests, but we leave T3 unclaimed because the checker cannot
 verify it. The code and demo remain part of the evidence.
-See [T3-EVIDENCE.md](T3-EVIDENCE.md) for the requirement-by-requirement test
+See [T3-EVIDENCE.md](docs/T3-EVIDENCE.md) for the requirement-by-requirement test
 map.
 
 ## Operate and extend
@@ -309,7 +309,7 @@ map.
   certificates. Open them from the organizer desk or use the API.
 - The default service binds only to `127.0.0.1:8080`. Put a TLS reverse proxy
   in front of it for a shared deployment; disable demo mode first.
-- [CAPACITY.md](CAPACITY.md) gives measured local gallery throughput and the
+- [CAPACITY.md](docs/CAPACITY.md) gives measured local gallery throughput and the
   limits of the single-host SQLite design; this release does not claim a
   multi-instance load balancer.
 - A locally bootstrapped global admin can open `/admin` to inspect event totals,
@@ -361,24 +361,25 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Project documents
 
+- [Documentation index](docs/README.md): supporting evidence, design, and presentation material
 - [ARCHITECTURE.md](ARCHITECTURE.md): deployment, trust boundaries, and choices
-- [API-CONTRACT.md](API-CONTRACT.md): route groups and authorization boundaries
+- [API-CONTRACT.md](docs/API-CONTRACT.md): route groups and authorization boundaries
 - [DATA-MODEL.md](DATA-MODEL.md): schema, seed import, exports, and migrations
-- [WRITE-UP-QUEST.md](WRITE-UP-QUEST.md): publication-ready engineering write-up
+- [WRITE-UP-QUEST.md](docs/WRITE-UP-QUEST.md): publication-ready engineering write-up
 - [Write-up cover](media/beyondbug-writeup-cover.jpg): 1000×420 DEV Community cover
 - [JUDGING.md](JUDGING.md): assignment, score math, normalization, fixture proof
 - [ML integration review](ml/reports/INTEGRATION-REVIEW.md): contributed model and deployment gate
 - [ML v2 model card](ml/reports/MODEL-CARD-JUDGE-ANOMALY-v2.md): training contract, metrics, thresholds, and limits
 - [THREAT-MODEL.md](THREAT-MODEL.md): abuse cases, controls, and residual risks
-- [UI-DESIGN.md](UI-DESIGN.md): visual direction and screen inventory
-- [T3-EVIDENCE.md](T3-EVIDENCE.md): independently tested public-voting features
-- [BONUS-EVIDENCE.md](BONUS-EVIDENCE.md): bonus-by-bonus claim and reproduction index
-- [T4-EVIDENCE.md](T4-EVIDENCE.md): independently tested stretch workflows
-- [DEMO-SCRIPT.md](DEMO-SCRIPT.md): five-minute lifecycle recording plan
-- [RELEASE-VERIFICATION.md](RELEASE-VERIFICATION.md): fresh-start and offline evidence
-- [CAPACITY.md](CAPACITY.md): reproducible local read probe and scaling boundary
+- [UI-DESIGN.md](docs/UI-DESIGN.md): visual direction and screen inventory
+- [T3-EVIDENCE.md](docs/T3-EVIDENCE.md): independently tested public-voting features
+- [BONUS-EVIDENCE.md](docs/BONUS-EVIDENCE.md): bonus-by-bonus claim and reproduction index
+- [T4-EVIDENCE.md](docs/T4-EVIDENCE.md): independently tested stretch workflows
+- [DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md): five-minute lifecycle recording plan
+- [RELEASE-VERIFICATION.md](docs/RELEASE-VERIFICATION.md): fresh-start and offline evidence
+- [CAPACITY.md](docs/CAPACITY.md): reproducible local read probe and scaling boundary
 - [CONTRIBUTING.md](CONTRIBUTING.md): Features → Develop → main promotion workflow
-- [DELIVERY-BOARD.md](DELIVERY-BOARD.md): implementation gates and final delivery state
+- [DELIVERY-BOARD.md](docs/DELIVERY-BOARD.md): implementation gates and final delivery state
 
 Licensed under [MIT](LICENSE). The bundled IBM Plex Sans files have their
 own [SIL Open Font License](src/static/fonts/OFL.txt).
