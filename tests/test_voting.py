@@ -235,7 +235,8 @@ class VotingTests(unittest.TestCase):
         remaining = (now + timedelta(seconds=8) - datetime.now(timezone.utc)).total_seconds()
         if remaining > 0:
             time.sleep(remaining + 0.2)
-        status, published, _ = call("POST", f"/api/events/{event_id}/results/publish", {}, organizer)
+        status, published, _ = call("POST", f"/api/events/{event_id}/results/publish",
+                                    {"acknowledge_limited_evidence": True}, organizer)
         self.assertEqual(status, 200, published)
         status, tally, _ = call("GET", f"/api/events/{event_id}/votes/results")
         self.assertEqual(status, 200, tally)

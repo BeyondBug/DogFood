@@ -75,7 +75,9 @@ The shipped API uses `max_score(c)=5`, so this is the weighted average on the
 five-point scale. Missing or incomplete scorecards do not enter rankings.
 The raw project score is the arithmetic mean of its completed reviews.
 Review count remains visible; projects without reviews are unranked. A
-suspected duplicate is shown to organizers but excluded from the ranking.
+suspected duplicate is shown to organizers and excluded from the ranking until
+an organizer records a confirmed or cleared decision with a reason. Results
+cannot be published while an automatic duplicate signal remains unresolved.
 
 ## Cross-judge normalization
 

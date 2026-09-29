@@ -379,10 +379,12 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
             judge_items.append(item)
         invite_rows = db.execute("SELECT email,expires_at,accepted_at FROM judge_invites"
                                  " WHERE event_id=? ORDER BY expires_at DESC", (event_id,)).fetchall()
-        coverage = db.execute("SELECT p.id,p.title,p.duplicate_of,COUNT(a.id) AS assigned,"
+        coverage = db.execute("SELECT p.id,p.title,p.duplicate_of,d.decision AS duplicate_decision,"
+                              "d.reason AS duplicate_reason,COUNT(a.id) AS assigned,"
                               " SUM(CASE WHEN s.status='submitted' THEN 1 ELSE 0 END) AS submitted"
                               " FROM projects p LEFT JOIN judge_assignments a ON a.project_id=p.id"
                               " LEFT JOIN scorecards s ON s.assignment_id=a.id"
+                              " LEFT JOIN duplicate_decisions d ON d.project_id=p.id"
                               " WHERE p.event_id=? AND p.status='submitted' GROUP BY p.id ORDER BY p.title", (event_id,)).fetchall()
         rubric = db.execute("SELECT id,name,version FROM rubrics WHERE event_id=? AND is_active=1", (event_id,)).fetchone()
         criteria = db.execute("SELECT slug,name,weight FROM rubric_criteria WHERE rubric_id=? ORDER BY sort_order", (rubric["id"],)).fetchall() if rubric else []
@@ -413,6 +415,8 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
     unique_coverage = [row for row in coverage if row["duplicate_of"] is None]
     coverage_gaps = sum(row["assigned"] == 0 for row in unique_coverage)
     incomplete_reviews = sum(max(0, row["assigned"] - row["submitted"]) for row in unique_coverage)
+    thin_evidence = sum(0 < row["submitted"] < 2 for row in unique_coverage)
+    unresolved_duplicates = sum(bool(row["duplicate_of"]) and not row["duplicate_decision"] for row in coverage)
     setup_checks = [
         {"label": "Event description", "ok": bool(event["description"].strip()), "href": "#event-settings"},
         {"label": "Submission deadline", "ok": bool(event["submissions_close"]), "href": "#event-settings"},
@@ -453,6 +457,7 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
         "setup_checks": setup_checks, "next_action": next_action,
         "pending_invites": pending_invites, "coverage_gaps": coverage_gaps,
         "incomplete_reviews": incomplete_reviews,
+        "thin_evidence": thin_evidence, "unresolved_duplicates": unresolved_duplicates,
         "judge_invites": judge_invites[:30], "judge_invite_total": len(judge_invites),
     })
 

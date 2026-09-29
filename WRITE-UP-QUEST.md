@@ -549,7 +549,7 @@ removes only that test environment. It covers deadlines, role denials, team
 limits, conflicts, publication locks, normalization edge cases, stable ballot
 randomization, rate limits, duplicate handling, certificate behavior, backups,
 OpenAPI synchronization and portable ML inference. The release result is
-27/27.
+30/30.
 
 We also tested the current schema-7 image with its Docker network disconnected;
 its local health endpoint returned HTTP 200. The five-minute lifecycle video

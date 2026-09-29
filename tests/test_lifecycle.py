@@ -467,7 +467,11 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(status, 403)
         status, _, _ = call("GET", f"/api/events/{event_id}/rankings", cookie=judge_cookie)
         self.assertEqual(status, 403)
-        status, published, _ = call("POST", f"/api/events/{event_id}/results/publish", {}, organizer_cookie)
+        status, warning, _ = call("POST", f"/api/events/{event_id}/results/publish", {}, organizer_cookie)
+        self.assertEqual(status, 409, warning)
+        self.assertIn("Limited judging evidence", warning["detail"]["message"])
+        status, published, _ = call("POST", f"/api/events/{event_id}/results/publish",
+                                    {"acknowledge_limited_evidence": True}, organizer_cookie)
         self.assertEqual(status, 200, published)
         status, feedback, _ = call("GET", f"/api/events/{event_id}/my-feedback", cookie=organizer_cookie)
         self.assertEqual(status, 200, feedback)
@@ -696,6 +700,17 @@ class LifecycleTests(unittest.TestCase):
         rows = ranked_projects()
         self.assertEqual(rows[draft["id"]]["duplicate_of"], submitted["id"])
         self.assertIsNone(rows[submitted["id"]]["duplicate_of"])
+        status, decision, _ = call(
+            "PUT", f"/api/events/{event_id}/projects/{draft['id']}/duplicate-decision",
+            {"decision": "cleared", "reason": "The teams documented independent implementations."},
+            creator_cookie(),
+        )
+        self.assertEqual(status, 200, decision)
+        self.assertIsNone(ranked_projects()[draft["id"]]["duplicate_of"])
+        self.assertEqual(call(
+            "PUT", f"/api/events/{event_id}/projects/{submitted['id']}/duplicate-decision",
+            {"decision": "cleared", "reason": "No duplicate signal exists."}, second,
+        )[0], 403)
         status, _, _ = call("PUT", f"/api/projects/{submitted['id']}", {
             "title": "Submitted candidate", "track_id": track_id,
             "repo_url": "https://example.org/independent-repository", "status": "submitted",
@@ -717,6 +732,13 @@ class LifecycleTests(unittest.TestCase):
         self.assertIn('data-style-choice="studio"', landing)
         self.assertIn('data-style-choice="pulse"', landing)
         self.assertIn('href="/projects?event=evt_01', landing)
+        status, project_list, _ = call("GET", "/api/events/evt_01/projects?page_size=5")
+        self.assertEqual(status, 200, project_list)
+        self.assertEqual(project_list["total"], 41)
+        self.assertEqual(len(project_list["projects"]), 5)
+        status, project_detail, _ = call("GET", f"/api/projects/{project_list['projects'][0]['id']}")
+        self.assertEqual(status, 200, project_detail)
+        self.assertEqual(project_detail["event_id"], "evt_01")
         status, landing, _ = call("GET", "/", cookie=participant)
         self.assertEqual(status, 200)
         self.assertIn('href="/dashboard">Dashboard', landing)

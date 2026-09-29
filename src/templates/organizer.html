@@ -111,10 +111,10 @@
   <section class="table-section" id="review-coverage">
     <div class="table-heading"><div><h2>Review coverage</h2><p>Find projects that still need reviews.</p></div><a class="text-link" href="/api/events/{{ event.id }}/exports/projects.csv">Export projects CSV</a></div>
     <div class="table-scroll"><table>
-      <thead><tr><th>Project</th><th>Assigned</th><th>Submitted</th><th>Flag</th></tr></thead>
+      <thead><tr><th>Project</th><th>Assigned</th><th>Submitted</th><th>Status and action</th></tr></thead>
       <tbody>{% for row in coverage %}<tr>
         <td><a href="/projects/{{ row.id }}">{{ row.title }}</a></td><td>{{ row.assigned }}</td><td>{{ row.submitted }}</td>
-        <td>{% if row.duplicate_of %}<span class="flag">Possible duplicate</span>{% elif row.submitted == 0 %}<span class="flag">Needs review</span>{% else %}<span class="fine">Reviewed</span>{% endif %}</td>
+        <td>{% if row.duplicate_of %}<span class="flag">{{ 'Confirmed duplicate' if row.duplicate_decision == 'confirmed' else 'Possible duplicate' }}</span>{% if not event.results_published_at %}<details><summary>Resolve</summary><form data-action="duplicate-decision" data-event="{{ event.id }}" data-project="{{ row.id }}"><label>Decision<select name="decision"><option value="cleared">Clear the flag</option><option value="confirmed">Confirm duplicate</option></select></label><label>Reason<input name="reason" minlength="3" maxlength="500" required placeholder="Record the evidence"></label><button class="button button-secondary" type="submit">Save decision</button></form></details>{% endif %}{% elif row.duplicate_decision == 'cleared' %}<span class="fine">Duplicate flag cleared</span>{% if not event.results_published_at %}<details><summary>Review decision</summary><form data-action="duplicate-decision" data-event="{{ event.id }}" data-project="{{ row.id }}"><label>Decision<select name="decision"><option value="cleared">Keep flag cleared</option><option value="confirmed">Confirm duplicate</option></select></label><label>Reason<input name="reason" minlength="3" maxlength="500" required value="{{ row.duplicate_reason }}"></label><button class="button button-secondary" type="submit">Save decision</button></form></details>{% endif %}{% elif row.submitted == 0 %}<span class="flag">Needs review</span>{% else %}<span class="fine">Reviewed</span>{% endif %}</td>
       </tr>{% endfor %}</tbody>
     </table></div>
   </section>
@@ -130,7 +130,7 @@
     </table></div>
     <div class="publish-row">
       <span>{{ 'Published ' ~ event.results_published_at[:16].replace('T', ' ') ~ ' UTC' if event.results_published_at else 'The public cannot see these results yet.' }}</span>
-      {% if not event.results_published_at %}<form data-action="publish" data-event="{{ event.id }}"><button class="button button-primary" type="submit">Publish results</button></form>{% endif %}
+      {% if not event.results_published_at %}<form data-action="publish" data-event="{{ event.id }}">{% if thin_evidence or insight.overlap_components|length > 1 %}<label class="acknowledge-check"><input type="checkbox" name="acknowledge_limited_evidence"> I reviewed the limited evidence: {{ thin_evidence }} projects have one review and there are {{ insight.overlap_components|length }} overlap groups.</label>{% endif %}{% if unresolved_duplicates %}<p class="insight-warning">Resolve {{ unresolved_duplicates }} possible duplicate{{ '' if unresolved_duplicates == 1 else 's' }} before publication.</p>{% endif %}<button class="button button-primary" type="submit">Publish results</button></form>{% endif %}
     </div>
   </section>
 
