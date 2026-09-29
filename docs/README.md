@@ -23,6 +23,7 @@ verification, bonus, and operational material.
 ## Presentation
 
 - [Five-minute demo script](DEMO-SCRIPT.md)
-- [Write Up Quest article](WRITE-UP-QUEST.md)
+- [Published Write Up Quest article](https://dev.to/joker53/beyondbug-the-score-that-moved-the-boundary-that-held-3kk)
+- [Repository copy of the write-up](WRITE-UP-QUEST.md)
 
 Return to the [project README](../README.md).
