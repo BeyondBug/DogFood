@@ -181,6 +181,28 @@ of misconduct and makes no scoring decision.
 The `rankings.csv` export includes raw and adjusted values. The pure scoring
 tests cover constant, sparse, and disconnected cases.
 
+## Pairwise Mode
+
+Pairwise Mode is an optional, separate judging path. After submissions close,
+an organizer chooses a target number of comparisons per project. The backend
+forms unique pairs and assigns them only to accepted judges eligible for both
+tracks, excluding the judge's own team and declared conflicts. A judge can
+submit only their assigned pair, and publication locks later edits.
+
+For positive project strengths `s_i`, the Bradley–Terry model uses:
+
+```text
+P(i beats j) = s_i / (s_i + s_j)
+```
+
+Minorization-maximization updates use a 0.5 pseudo-win prior so sparse and
+undefeated projects remain finite. Strengths are rescaled to mean one after
+each iteration; fitting stops when the maximum change is below `1e-10` or at
+500 iterations. Pairwise wins, coverage, fitted strength, and rank remain
+separate from rubric scores. The integration test recovers a known three
+project order from every possible pair. Pairwise mode still cannot correct
+collusion, inadequate pair coverage, or undisclosed conflicts.
+
 ## Integrity and limits
 
 Judges can query only their own scorecards and assigned project queue. A
@@ -201,5 +223,4 @@ An additive model only corrects a consistent leniency or strictness effect.
 It cannot fix collusion, a poor rubric, biased assignment, unequal project
 mix, or a disconnected judging pool. Low review counts leave uncertainty
 that a single rank number cannot show; organizers should inspect counts and
-comments before awards. This release does not implement pairwise scoring or
-post-publication result versioning.
+comments before awards. This release does not implement post-publication result versioning.
