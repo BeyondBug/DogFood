@@ -22,7 +22,7 @@
 | Event creation authorization | **PASS:** participant, judge, and organizer accounts see no creation form and receive HTTP 403; only administrators may create events |
 | Participant and judge onboarding | **PASS:** per-event team and draft progress, published anonymized feedback, admin-only judge and organizer provisioning, judge sign-in, password change, and organizer-only ML signals |
 
-The canonical [acceptance-report.txt](acceptance-report.txt) is the unedited
+The canonical [acceptance-report.txt](../acceptance-report.txt) is the unedited
 checker output against localhost:8080. `.dogfood.toml` claims only T1/T2.
 [T3-EVIDENCE.md](T3-EVIDENCE.md) records separately tested capabilities that
 the supplied checker does not test. All checks above ran after the current
@@ -75,10 +75,10 @@ python3 scripts/test_fresh.py
 python3 run.py .dogfood.toml > acceptance-report.txt
 ```
 
-The canonical [acceptance report](acceptance-report.txt) uses localhost:8080.
+The canonical [acceptance report](../acceptance-report.txt) uses localhost:8080.
 The official checker exercises seven HTTP behaviors; it does not verify all
 UI paths, T3 voting, or the full ranking methodology. The independent suite
-and [JUDGING.md](JUDGING.md) provide additional evidence. A fresh offline
+and [JUDGING.md](../JUDGING.md) provide additional evidence. A fresh offline
 *build* still requires the platform-specific Python base image in Docker's
 local store; the repository does not include a Docker base-image tarball.
 

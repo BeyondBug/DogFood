@@ -161,4 +161,4 @@ an explicit result correction/versioning workflow. Audit entries help an
 organizer understand actions, but a database administrator can alter them;
 they are not tamper-evident records.
 The short read-only gallery probe and its measured limits are recorded in
-[CAPACITY.md](CAPACITY.md). It is not evidence for concurrent write capacity.
+[CAPACITY.md](docs/CAPACITY.md). It is not evidence for concurrent write capacity.

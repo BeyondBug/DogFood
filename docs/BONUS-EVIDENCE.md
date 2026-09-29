@@ -7,7 +7,7 @@ the weighted 0–5 score.
 ## Normalization Proof — implemented
 
 - Method: regularized two-way additive project-quality and judge-severity
-  model, documented with equations and limits in [JUDGING.md](JUDGING.md).
+  model, documented with equations and limits in [JUDGING.md](../JUDGING.md).
 - Fixture effect: Iron Switch moves from raw rank 2 to adjusted rank 1; Salt
   Ledger moves from 1 to 2. Thirty-three of 40 eligible fixture projects move.
 - Edge cases: automated tests cover sparse judges, a constant-scoring judge,
@@ -20,7 +20,7 @@ the weighted 0–5 score.
 
 ## Threat Model — implemented
 
-- Document: [THREAT-MODEL.md](THREAT-MODEL.md).
+- Document: [THREAT-MODEL.md](../THREAT-MODEL.md).
 - Covered attacks include Sybil voting, ballot stuffing, submission scraping,
   judge collusion, deadline gaming, peer-score access, stolen invites, CSV
   injection, password guessing, comment abuse, host tampering, and misleading
@@ -38,11 +38,11 @@ the weighted 0–5 score.
   submitted project detail. Private APIs cover participant, judge, organizer,
   voting, certificate, audit, export, backup, and administrator workflows.
 - FastAPI serves live documentation at `/docs` and `/openapi.json`.
-- The committed [openapi.json](openapi.json) is checked byte-for-structure
+- The committed [openapi.json](../openapi.json) is checked byte-for-structure
   against the running application's generated schema by
   `tests/test_openapi.py`.
 - The contract and role boundaries are summarized in
-  [API-CONTRACT.md](API-CONTRACT.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
+  [API-CONTRACT.md](API-CONTRACT.md) and [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 ## Pairwise Mode — implemented
 

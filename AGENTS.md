@@ -13,7 +13,7 @@ committing during pre-kickoff planning.
 
 For browser UI work, read and apply the installed frontend-design skill at
 `/home/joker53/.codex/skills/frontend-design/SKILL.md`, then use
-`UI-DESIGN.md` as the project brief. Plan the visual direction before coding,
+`docs/UI-DESIGN.md` as the project brief. Plan the visual direction before coding,
 keep assets local for offline runtime, and critique screenshots at desktop and
 mobile sizes. Build working role-specific flows; visual polish must reflect
 real data and backend permissions.
