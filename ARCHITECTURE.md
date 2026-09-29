@@ -104,8 +104,10 @@ are organizer-only until publication; public vote results then become visible.
   transaction records the conflict, removes that assignment and any draft,
   and audits the report. The next batch excludes that judge/project pair.
 - Public pages query rankings only after publication. Publishing results
-  requires closed submissions and at least one completed review per
-  nonduplicate project, then records an audit entry. Published events reject
+  requires closed submissions, adjudication of automatic duplicate signals,
+  and at least one completed review per nonduplicate project. One-review
+  projects or disconnected review groups require explicit organizer
+  acknowledgement, which is recorded in the audit entry. Published events reject
   later project creation and edits so the public ranking cannot drift.
 - A ballot belongs to exactly one account and event by database constraint.
   Eligible choices exclude the voter's team and flagged duplicates. A secret

@@ -252,6 +252,10 @@ flowchart LR
 
 The API driving these actions is documented at `/docs`, `/openapi.json`, and
 the committed [OpenAPI specification](openapi.json).
+Public consumers can list submitted work through
+`GET /api/events/{event_id}/projects` with search, track, technology, and
+pagination parameters, then read one submitted project at
+`GET /api/projects/{project_id}`. Drafts are never returned by these routes.
 The server enforces event roles, team membership, assignment ownership, and
 deadlines for direct API requests as well as browser actions. Team membership
 freezes at submission close, and published events reject project changes.
@@ -334,10 +338,15 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
   verification remain operator workflows, not built-in features.
 - Published scores are locked. Correcting a submitted review after publication
   requires an explicit future workflow; this release does not provide one.
-- Matching repository URLs among submitted projects are flagged and excluded
-  from rankings. Drafts do not trigger the flag, and edits recalculate it.
-  The heuristic can flag legitimate forks or miss copied work under a
-  different URL; there is no organizer override in this release.
+- Matching repository URLs among submitted projects are flagged. Drafts do
+  not trigger the flag, and edits recalculate it. Before publication, an
+  organizer must confirm or clear every active signal with a recorded reason.
+  Confirmed duplicates remain visible but are excluded from rankings; cleared
+  projects return to judging. The heuristic can still miss copied work under
+  a different URL.
+- Publication requires an explicit organizer acknowledgement when an eligible
+  project has only one review or judge overlap is disconnected. The audit
+  entry preserves that evidence state.
 - The organizer's optional Isolation Forest is trained on synthetic 0–5 event
   data and is live as an advisory inspection queue. Its held-out synthetic
   precision and recall are not real-event accuracy claims; strict and generous

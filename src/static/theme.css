@@ -140,9 +140,12 @@ html[data-style=studio] .site-footer{border-top:4px solid var(--coral)}
 .judge-account-result p{margin:6px 0;font-size:.85rem}
 .judge-account-result code{font-size:1rem;font-weight:700;color:var(--ink)}
 .judge-account-result a{color:var(--blue);font-weight:700}
-.gallery-filters .button{align-self:flex-end}
+.gallery-filters{flex-wrap:wrap}
+.gallery-filters .search-field{min-width:280px}
+.gallery-filters .select-field{width:200px}
+.gallery-filters .button{align-self:flex-end;margin-left:auto}
 html[data-style=pulse] .gallery-filters .button-primary{box-shadow:none}
-@media(max-width:760px){.gallery-filters{flex-direction:column;align-items:stretch}.gallery-filters .search-field,.gallery-filters .select-field,.gallery-filters .button{width:100%;align-self:stretch}}
+@media(max-width:760px){.gallery-filters{flex-direction:column;align-items:stretch}.gallery-filters .search-field,.gallery-filters .select-field,.gallery-filters .button{width:100%;min-width:0;align-self:stretch;margin-left:0}}
 @media(max-width:620px){.site-header nav{flex-wrap:wrap;justify-content:flex-start;column-gap:14px;row-gap:6px}.account-menu-panel{left:0;right:auto;width:min(230px,calc(100vw - 24px))}}
 .studio-event-select{display:flex;align-items:end;gap:12px;margin-bottom:26px;max-width:650px}
 .studio-event-select label{flex:1}
