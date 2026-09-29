@@ -323,6 +323,8 @@ by our integration tests, but we leave T3 unclaimed because the checker cannot
 verify it. The code and demo remain part of the evidence.
 See [T3-EVIDENCE.md](T3-EVIDENCE.md) for the requirement-by-requirement test
 map.
+The complete ladder and honest partial items are mapped in
+[TIER-COVERAGE.md](TIER-COVERAGE.md).
 
 ## Operate and extend
 

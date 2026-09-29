@@ -5,9 +5,9 @@
 | Check | Result |
 | --- | --- |
 | Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
-| Independent unit and HTTP integration suite | **39/39 PASS** |
-| Disposable fresh-volume test runner | **39/39 PASS:** new Compose project and volume; removed after run; tests execute inside the offline portal image |
-| Fresh disposable Compose volume | **PASS on schema 11:** fixture seed, migrations, lifecycle, permissions, scoring, voting, certificates, duplicate adjudication, backup and restore, signed judge records, webhook delivery, submission questions, portable event exchange, OpenAPI, and portable ML checks run before the volume is removed |
+| Independent unit and HTTP integration suite | **40/40 PASS** |
+| Disposable fresh-volume test runner | **40/40 PASS:** new Compose project and volume; removed after run; tests execute inside the offline portal image |
+| Fresh disposable Compose volume | **PASS on schema 11:** fixture seed, migrations, lifecycle, track and peer isolation, permissions, scoring, voting, certificates, duplicate adjudication, backup and restore, signed judge records, webhook delivery, submission questions, portable event exchange, OpenAPI, and portable ML checks run before the volume is removed |
 | Fresh portal checked by official `run.py` | **7/7 PASS** on separate disposable port 18080 |
 | Restart persistence | **PASS:** same event, project, judge, and local secret counts |
 | Runtime with container network disabled | **PASS on schema 11:** isolated in Docker, seeded 41 projects and migrated to version 11; local `/health` returned HTTP 200 without external access |
@@ -26,7 +26,7 @@
 The canonical [acceptance-report.txt](acceptance-report.txt) is the unedited
 checker output against a disposable fresh portal on port 18080. `.dogfood.toml` claims only T1/T2.
 [T3-EVIDENCE.md](T3-EVIDENCE.md) records separately tested capabilities that
-the supplied checker does not test. The current 39-test run covers schema 11
+the supplied checker does not test. The current 40-test run covers schema 11
 and the new Addons work; older capacity, network-disabled, demo, and visual
 checks below remain historical evidence rather than a claim of re-running
 them against this exact source revision.

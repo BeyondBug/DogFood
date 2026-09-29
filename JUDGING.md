@@ -181,6 +181,21 @@ of misconduct and makes no scoring decision.
 The `rankings.csv` export includes raw and adjusted values. The pure scoring
 tests cover constant, sparse, and disconnected cases.
 
+## Judge participation record verification
+
+After results publication, an organizer can issue one immutable Ed25519 record
+per judge with a submitted review. The public
+`/api/judge-records/{record_id}/verify` response contains the exact signed
+`payload_json`, the base64 signature, and the PEM public key. A third party
+can decode the signature and verify those bytes with
+`openssl pkeyutl -verify -rawin -pubin`; changing the review count or judge
+name breaks verification.
+The private key lives beside the SQLite database with mode `0600` and needs a
+separate backup. For an independently trusted issuer identity, publish the
+public-key fingerprint through a channel outside this database and ask
+verifiers to pin it. The endpoint's `verified` flag alone proves consistency
+with its returned key, not who operated the server.
+
 ## Integrity and limits
 
 Judges can query only their own scorecards and assigned project queue. A
