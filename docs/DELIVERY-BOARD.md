@@ -52,7 +52,7 @@ them a bounded package with an explicit API/schema contract.
 | Threat model and OpenAPI coverage | P1 | Active pair | Final routes | Docs match the shipped behavior; see [SECURITY-PLAN.md](../SECURITY-PLAN.md) |
 | Professional event and role UI | P1 | Active pair | T1/T2 paths | Responsive, accessible flows; see [UI-DESIGN.md](UI-DESIGN.md) |
 | T3 voting/comments | P2 | Active pair | Stable T2 | Implemented and integration tested; not claimed because checker has no T3 assertions |
-| Pairwise mode and remaining T4 work | P3 | Unassigned | Stable T2/T3 | Certificates implemented; pairwise, webhooks, and signed judge records not implemented or claimed |
+| Pairwise mode and T4 evidence | P3 | Active pair | Stable T2/T3 | Pairwise judging, signed webhook outbox, certificates, signed judge records, gallery widget, and portable archives are implemented and integration tested; T4 remains outside the supplied checker claim |
 
 ## Integration order
 
