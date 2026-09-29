@@ -11,7 +11,7 @@ the event ID as well as the acting user's role.
 | --- | --- | --- |
 | `users` | ID, case-insensitive unique email, name, password hash, global admin flag | Passwords are salted PBKDF2 hashes |
 | `sessions` | SHA-256 token digest, user ID, expiry | Raw token appears only in cookie or bearer header |
-| `events` | Name, description, registration/submission/judging/voting dates, voting mode, ballot seed, publication time, creator | All stored timestamps include UTC offset |
+| `events` | Name, description, registration/submission/judging/voting dates, voting mode, ballot seed, open-link token, publication time, creator | All stored timestamps include UTC offset; open-link tokens have 256 bits of random entropy |
 | `event_roles` | Event ID, user ID, participant/judge/organizer role | Composite primary key permits distinct roles per event |
 | `tracks`, `prizes` | Event ID and name | Track names are unique within an event |
 | `teams`, `team_members` | Event, captain/creator, member role | Membership and team-size checks are transactional |
@@ -30,6 +30,7 @@ the event ID as well as the acting user's role.
 | `audit_entries` | Event, actor, action, entity, JSON details, UTC time | Organizer-readable history of consequential writes |
 | `voter_invites` | Hashed token, event, invited email, creator, expiry, acceptance and voter account | One accepted invitation per event and email |
 | `ballots` | Event, voter account, project, cast time | Unique event and voter pair; one final vote per account |
+| `open_voters`, `open_ballots`, `open_vote_attempts` | Event-scoped browser identity digest, keyed network/user-agent digests, chosen project, outcome and risk signal | One final vote per browser identity; raw IP and user-agent values are not stored |
 | `vote_attempts` | Event, voter account, keyed IP digest, outcome, time | Countable signals for throttling and organizer review |
 | `comments` | Event, project, author, body, creation and moderation fields | Hidden comments stay in the database for audit |
 | `event_awards` | Configured prize, event, submitted winning project, assigning organizer and time | One selected project per prize; selection locks after winner certificates issue |
@@ -86,6 +87,8 @@ account from local environment variables.
 | `fixtures.json` → `src/seed.py` | Published JSON | Startup only |
 | `/api/events/{id}/exports/projects.csv` | Project and team rows, including `answers_json` for event questions | Organizer |
 | `/api/events/{id}/exports/portable.json` | Portable pre-judging event bundle with tracks, prizes, prompts, people, teams, projects and judge profiles | Organizer |
+| `/api/events/{id}/exports/archive.json` | Complete event archive with judging, voting, certificates, pairwise records, audit, and integration history | Organizer; contains private event data and must be protected |
+| `/api/admin/imports/archive.json` | Restore a complete event archive into an installation where its event ID is absent | Administrator; generated passwords and replacement open-ballot URL return once |
 | `/api/events/{id}/imports/portable.json?dry_run=true` | Validate a bundle without writing | Organizer, open target event |
 | `/api/events/{id}/imports/portable.json` | Atomic import of a validated bundle; new account passwords returned once | Organizer, empty open target event |
 | `/api/events/{id}/exports/teams.csv` | One row per team member | Organizer |
@@ -109,13 +112,13 @@ account from local environment variables.
 | `/certificates/{id}.svg` | Vector certificate for print or download | Public |
 
 CSV columns have stable headers, use Python's CSV quoting, and prefix text
-that would otherwise open as a spreadsheet formula. The portable JSON bundle
-uses names and email addresses as mapping keys and generates new local IDs on
-import. It is a pre-judging data exchange, not a complete historical archive;
-scores, ballots, certificates, and audit history remain in their CSV exports
-and whole-installation SQLite snapshots. Imports require an empty target event
-and run inside one transaction. A dry run validates its shape and references
-without writing.
+that would otherwise open as a spreadsheet formula. The setup bundle uses
+names and email addresses as mapping keys and generates new local IDs on
+import. The complete archive preserves historical records and stable event
+object IDs for cross-install restoration. Password hashes are never exported;
+new accounts receive generated passwords. Open-ballot tokens and webhook
+secrets rotate, and imported webhooks remain disabled. Both import paths run
+inside one transaction; the setup-bundle dry run validates without writing.
 
 ## Migration and retention
 
@@ -127,7 +130,8 @@ per-event certificate designs and issuance-time design snapshots. Version 7
 added project media links and technology tags. Version 8 added duplicate
 adjudication. Version 9 added pairwise assignments, signed judge records,
 webhooks, and delivery history. Version 10 added event submission questions
-and project answers. Migrations run before fixture
+and project answers. Version 11 added open-link browser identities, ballots,
+keyed abuse signals, and complete event archives. Migrations run before fixture
 seeding.
 `rubrics.version` and each
 scorecard's `rubric_id` preserve scoring context, but changing a rubric is

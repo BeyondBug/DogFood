@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import os
 import secrets
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from .auth import require_event_role, require_login
@@ -17,12 +18,17 @@ from .db import connect, utc_now
 
 
 router = APIRouter(prefix="/api")
+OPEN_VOTER_COOKIE = "bb_open_voter"
 
 
 class VotingConfig(BaseModel):
     mode: str
     opens_at: str
     closes_at: str
+
+
+class VoteInput(BaseModel):
+    project_id: str
 
 
 def _voting_event(db, event_id: str):
@@ -40,6 +46,8 @@ def _window_open(event) -> bool:
 
 
 def _eligible(db, event, user_id: str) -> bool:
+    if event["open_link_enabled"]:
+        return False
     if event["voting_mode"] == "invite_only":
         return db.execute("SELECT 1 FROM voter_invites WHERE event_id=? AND voter_user_id=? AND accepted_at IS NOT NULL",
                           (event["id"], user_id)).fetchone() is not None
@@ -62,8 +70,8 @@ def order_ballot(projects: list[dict], seed: str, user_id: str) -> list[dict]:
 @router.put("/events/{event_id}/voting")
 def configure_voting(event_id: str, payload: VotingConfig, request: Request):
     principal = require_login(request)
-    if payload.mode not in ("disabled", "invite_only", "participants"):
-        raise HTTPException(status_code=422, detail="Mode must be disabled, invite_only, or participants")
+    if payload.mode not in ("disabled", "invite_only", "participants", "open_link"):
+        raise HTTPException(status_code=422, detail="Mode must be disabled, invite_only, participants, or open_link")
     opening = time_value(payload.opens_at)
     closing_time = time_value(payload.closes_at)
     if opening is None or closing_time is None or closing_time <= opening:
@@ -72,25 +80,151 @@ def configure_voting(event_id: str, payload: VotingConfig, request: Request):
         db.execute("BEGIN IMMEDIATE")
         event = _voting_event(db, event_id)
         require_event_role(db, principal, event_id, "organizer")
-        if event["results_published_at"] or db.execute("SELECT 1 FROM ballots WHERE event_id=? LIMIT 1", (event_id,)).fetchone():
+        if (event["results_published_at"]
+                or db.execute("SELECT 1 FROM ballots WHERE event_id=? LIMIT 1", (event_id,)).fetchone()
+                or db.execute("SELECT 1 FROM open_ballots WHERE event_id=? LIMIT 1", (event_id,)).fetchone()):
             raise HTTPException(status_code=409, detail="Voting cannot be changed after ballots or published results")
         if opening < time_value(event["submissions_close"]):
             raise HTTPException(status_code=422, detail="Voting must open after submissions close")
         seed = event["ballot_seed"] or secrets.token_hex(32)
-        db.execute("UPDATE events SET voting_mode=?,voting_open=?,voting_close=?,ballot_seed=? WHERE id=?",
-                   (payload.mode, opening.isoformat(), closing_time.isoformat(), seed, event_id))
+        open_token = event["open_vote_token"]
+        if payload.mode == "open_link" and not open_token:
+            open_token = secrets.token_urlsafe(32)
+        stored_mode = "participants" if payload.mode == "open_link" else payload.mode
+        db.execute("UPDATE events SET voting_mode=?,voting_open=?,voting_close=?,ballot_seed=?,"
+                   "open_link_enabled=?,open_vote_token=? WHERE id=?",
+                   (stored_mode, opening.isoformat(), closing_time.isoformat(), seed,
+                    int(payload.mode == "open_link"), open_token, event_id))
         audit(db, event_id, principal.user_id, "voting.configured", "event", event_id,
               {"mode": payload.mode, "opens_at": opening.isoformat(), "closes_at": closing_time.isoformat()})
         db.commit()
-    return {"mode": payload.mode, "opens_at": opening.isoformat(), "closes_at": closing_time.isoformat()}
+    result = {"mode": payload.mode, "opens_at": opening.isoformat(), "closes_at": closing_time.isoformat()}
+    if payload.mode == "open_link":
+        result["open_vote_url"] = f"/open-vote/{open_token}"
+    return result
 
 
 @router.get("/events/{event_id}/voting")
 def voting_status(event_id: str):
     with closing(connect()) as db:
         event = _voting_event(db, event_id)
-    return {"mode": event["voting_mode"], "opens_at": event["voting_open"],
-            "closes_at": event["voting_close"], "open_now": _window_open(event)}
+    mode = "open_link" if event["open_link_enabled"] else event["voting_mode"]
+    result = {"mode": mode, "opens_at": event["voting_open"],
+              "closes_at": event["voting_close"], "open_now": _window_open(event)}
+    return result
+
+
+def _open_event(db, token: str):
+    event = db.execute("SELECT * FROM events WHERE open_link_enabled=1 AND open_vote_token=?", (token,)).fetchone()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Open ballot link is invalid")
+    return event
+
+
+def _request_digests(event, request: Request) -> tuple[str, str]:
+    key = bytes.fromhex(event["ballot_seed"] or "00")
+    ip = request.client.host if request.client else "unknown"
+    agent = request.headers.get("user-agent", "unknown")[:500]
+    return (hmac.new(key, ip.encode(), hashlib.sha256).hexdigest(),
+            hmac.new(key, agent.encode(), hashlib.sha256).hexdigest())
+
+
+def ensure_open_voter(db, event, request: Request) -> tuple[str, str]:
+    raw = request.cookies.get(OPEN_VOTER_COOKIE)
+    if not raw or len(raw) < 32:
+        raw = secrets.token_urlsafe(32)
+    digest = hmac.new(bytes.fromhex(event["ballot_seed"]), raw.encode(), hashlib.sha256).hexdigest()
+    ip_digest, agent_digest = _request_digests(event, request)
+    row = db.execute("SELECT id FROM open_voters WHERE event_id=? AND browser_digest=?",
+                     (event["id"], digest)).fetchone()
+    if row:
+        voter_id = row["id"]
+        db.execute("UPDATE open_voters SET last_seen_at=? WHERE id=?", (utc_now(), voter_id))
+    else:
+        voter_id = identifier("ovr")
+        now = utc_now()
+        db.execute("INSERT INTO open_voters(id,event_id,browser_digest,first_ip_digest,user_agent_digest,created_at,last_seen_at)"
+                   " VALUES(?,?,?,?,?,?,?)", (voter_id, event["id"], digest, ip_digest, agent_digest, now, now))
+    return voter_id, raw
+
+
+def open_ballot_data(db, event, voter_id: str) -> dict:
+    existing = db.execute("SELECT 1 FROM open_ballots WHERE event_id=? AND open_voter_id=?",
+                          (event["id"], voter_id)).fetchone()
+    projects = [dict(row) for row in db.execute(
+        "SELECT p.id,p.title,p.summary,t.name AS track,tm.name AS team FROM projects p"
+        " JOIN tracks t ON t.id=p.track_id JOIN teams tm ON tm.id=p.team_id"
+        " WHERE p.event_id=? AND p.status='submitted' AND p.duplicate_of IS NULL",
+        (event["id"],))]
+    return {"event_id": event["id"], "closes_at": event["voting_close"],
+            "has_voted": existing is not None,
+            "projects": order_ballot(projects, event["ballot_seed"], voter_id)}
+
+
+@router.get("/open-vote/{token}/ballot")
+def open_ballot(token: str, request: Request, response: Response):
+    with closing(connect()) as db:
+        db.execute("BEGIN IMMEDIATE")
+        event = _open_event(db, token)
+        if not _window_open(event):
+            raise HTTPException(status_code=409, detail="Voting is not open")
+        voter_id, raw = ensure_open_voter(db, event, request)
+        result = open_ballot_data(db, event, voter_id)
+        db.commit()
+    response.set_cookie(OPEN_VOTER_COOKIE, raw, httponly=True, samesite="lax",
+                        secure=os.getenv("DOGFOOD_COOKIE_SECURE", "0") == "1", max_age=60 * 60 * 24 * 30)
+    return result
+
+
+@router.post("/open-vote/{token}/votes", status_code=201)
+def cast_open_vote(token: str, payload: VoteInput, request: Request):
+    with closing(connect()) as db:
+        db.execute("BEGIN IMMEDIATE")
+        event = _open_event(db, token)
+        if not _window_open(event):
+            raise HTTPException(status_code=409, detail="Voting is not open")
+        raw = request.cookies.get(OPEN_VOTER_COOKIE)
+        if not raw or len(raw) < 32:
+            raise HTTPException(status_code=403, detail="Open the ballot link before voting")
+        voter_id, _ = ensure_open_voter(db, event, request)
+        ip_digest, agent_digest = _request_digests(event, request)
+        now = utc_now()
+
+        def deny(status: int, detail: str, outcome: str):
+            db.execute("INSERT INTO open_vote_attempts(event_id,open_voter_id,ip_digest,user_agent_digest,outcome,created_at)"
+                       " VALUES(?,?,?,?,?,?)", (event["id"], voter_id, ip_digest, agent_digest, outcome, now))
+            db.commit()
+            raise HTTPException(status_code=status, detail=detail)
+
+        ten_minutes = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat(timespec="seconds")
+        day_ago = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat(timespec="seconds")
+        voter_attempts = db.execute("SELECT COUNT(*) FROM open_vote_attempts WHERE event_id=? AND open_voter_id=? AND created_at>=?",
+                                    (event["id"], voter_id, ten_minutes)).fetchone()[0]
+        ip_attempts = db.execute("SELECT COUNT(*) FROM open_vote_attempts WHERE event_id=? AND ip_digest=? AND created_at>=?",
+                                (event["id"], ip_digest, ten_minutes)).fetchone()[0]
+        accepted_ip = db.execute("SELECT COUNT(*) FROM open_vote_attempts WHERE event_id=? AND ip_digest=?"
+                                 " AND outcome IN ('accepted','accepted_flagged') AND created_at>=?",
+                                 (event["id"], ip_digest, day_ago)).fetchone()[0]
+        if voter_attempts >= 5 or ip_attempts >= 30 or accepted_ip >= 10:
+            deny(429, "This network has reached the open-ballot limit; try later or ask the organizer", "rate_limited")
+        if db.execute("SELECT 1 FROM open_ballots WHERE event_id=? AND open_voter_id=?",
+                      (event["id"], voter_id)).fetchone():
+            deny(409, "This browser's vote is already recorded", "duplicate")
+        project = db.execute("SELECT id FROM projects WHERE id=? AND event_id=? AND status='submitted'"
+                             " AND duplicate_of IS NULL", (payload.project_id, event["id"])).fetchone()
+        if project is None:
+            deny(422, "Choose a submitted project on this ballot", "invalid_project")
+        risk = "shared_network" if accepted_ip >= 3 else ""
+        ballot_id = identifier("obal")
+        db.execute("INSERT INTO open_ballots(id,event_id,open_voter_id,project_id,cast_at,risk_signal)"
+                   " VALUES(?,?,?,?,?,?)", (ballot_id, event["id"], voter_id, project["id"], now, risk))
+        db.execute("INSERT INTO open_vote_attempts(event_id,open_voter_id,ip_digest,user_agent_digest,outcome,created_at)"
+                   " VALUES(?,?,?,?,?,?)", (event["id"], voter_id, ip_digest, agent_digest,
+                                             "accepted_flagged" if risk else "accepted", now))
+        audit(db, event["id"], None, "open_vote.cast", "open_voter", voter_id,
+              {"risk_signal": risk or None})
+        db.commit()
+    return {"recorded": True, "ballot_id": ballot_id, "review_flag": risk or None}
 
 
 class VoterInviteInput(BaseModel):
@@ -168,10 +302,6 @@ def ballot(event_id: str, request: Request):
             "has_voted": existing is not None, "projects": choices}
 
 
-class VoteInput(BaseModel):
-    project_id: str
-
-
 @router.post("/events/{event_id}/votes", status_code=201)
 def cast_vote(event_id: str, payload: VoteInput, request: Request):
     principal = require_login(request)
@@ -219,15 +349,23 @@ def cast_vote(event_id: str, payload: VoteInput, request: Request):
 
 
 def _vote_summary(db, event_id: str) -> dict:
-    totals = db.execute("SELECT p.id,p.title,COUNT(b.id) AS votes FROM projects p"
+    totals = db.execute("SELECT p.id,p.title,COUNT(DISTINCT b.id)+COUNT(DISTINCT ob.id) AS votes FROM projects p"
                         " LEFT JOIN ballots b ON b.project_id=p.id"
+                        " LEFT JOIN open_ballots ob ON ob.project_id=p.id"
                         " WHERE p.event_id=? AND p.status='submitted' AND p.duplicate_of IS NULL"
                         " GROUP BY p.id ORDER BY votes DESC,p.title", (event_id,)).fetchall()
     attempts = db.execute("SELECT outcome,COUNT(*) AS count FROM vote_attempts WHERE event_id=? GROUP BY outcome",
                           (event_id,)).fetchall()
+    open_attempts = db.execute("SELECT outcome,COUNT(*) AS count FROM open_vote_attempts WHERE event_id=? GROUP BY outcome",
+                               (event_id,)).fetchall()
+    attempt_counts = {row["outcome"]: row["count"] for row in attempts}
+    for row in open_attempts:
+        attempt_counts[row["outcome"]] = attempt_counts.get(row["outcome"], 0) + row["count"]
     return {"total_votes": sum(row["votes"] for row in totals),
             "projects": [dict(row) for row in totals],
-            "attempts": {row["outcome"]: row["count"] for row in attempts}}
+            "attempts": attempt_counts,
+            "open_vote_flags": db.execute("SELECT COUNT(*) FROM open_ballots WHERE event_id=? AND risk_signal<>''",
+                                           (event_id,)).fetchone()[0]}
 
 
 @router.get("/events/{event_id}/votes/summary")

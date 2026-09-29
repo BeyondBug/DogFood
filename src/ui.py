@@ -24,7 +24,8 @@ from .judging import participant_feedback
 from .ml_insight import organizer_ml_insight
 from .stretch import _pairwise_ranking
 from .audit_view import event_activity
-from .public import _eligible, _vote_summary, _window_open, ballot as load_ballot
+from .public import (OPEN_VOTER_COOKIE, _eligible, _open_event, _vote_summary, _window_open,
+                     ballot as load_ballot, ensure_open_voter, open_ballot_data)
 
 
 router = APIRouter()
@@ -473,8 +474,12 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
     else:
         next_action = {"label": "Issue certificates", "href": "#certificates",
                        "reason": "Results are public. Record winners and issue certificates."}
+    event_view = dict(event)
+    if event_view.get("open_link_enabled"):
+        event_view["voting_mode"] = "open_link"
+        event_view["open_vote_url"] = f"/open-vote/{event_view['open_vote_token']}"
     return templates.TemplateResponse(request, "organizer.html", {
-        "principal": principal, "event": dict(event), "tracks": [dict(row) for row in tracks],
+        "principal": principal, "event": event_view, "tracks": [dict(row) for row in tracks],
         "questions": [dict(row) for row in questions], "questions_locked": has_projects,
         "judges": judge_items, "coverage": [dict(row) for row in coverage],
         "rubric": dict(rubric) if rubric else None, "criteria": [dict(row) for row in criteria],
@@ -533,6 +538,26 @@ def ballot_page(event_id: str, request: Request):
     return templates.TemplateResponse(request, "ballot.html", {
         "principal": principal, "event": dict(event), "ballot": ballot_data,
     })
+
+
+@router.get("/open-vote/{token}", response_class=HTMLResponse)
+def open_ballot_page(token: str, request: Request):
+    with closing(connect()) as db:
+        db.execute("BEGIN IMMEDIATE")
+        event = _open_event(db, token)
+        if not _window_open(event):
+            raise HTTPException(status_code=409, detail="Voting is not open")
+        voter_id, raw = ensure_open_voter(db, event, request)
+        ballot_data = open_ballot_data(db, event, voter_id)
+        event_view = dict(event)
+        db.commit()
+    response = templates.TemplateResponse(request, "ballot.html", {
+        "principal": current_principal(request), "event": event_view, "ballot": ballot_data,
+        "open_token": token,
+    })
+    response.set_cookie(OPEN_VOTER_COOKIE, raw, httponly=True, samesite="lax",
+                        secure=os.getenv("DOGFOOD_COOKIE_SECURE", "0") == "1", max_age=60 * 60 * 24 * 30)
+    return response
 
 
 @router.get("/join/{token}", response_class=HTMLResponse)

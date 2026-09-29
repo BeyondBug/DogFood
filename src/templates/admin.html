@@ -15,6 +15,11 @@
     {% if backups %}<div class="backup-list">{% for backup in backups %}<div><span><strong>{{ backup.created_at }}</strong><small>{{ '%.1f'|format(backup.bytes / 1048576) }} MiB · SQLite snapshot</small></span><a class="button button-secondary" href="/api/admin/backups/{{ backup.name }}">Download backup</a></div>{% endfor %}</div>{% else %}<div class="empty-state compact"><h3>No backups created here yet</h3><p>Create one before changing the server or upgrading the app.</p></div>{% endif %}
     <p class="muted">Backups remain on this server until an administrator copies or removes them. Downloads contain accounts and event data; store them securely.</p>
   </section>
+  <section class="table-section" id="event-archive">
+    <div class="table-heading"><div><h2>Import a complete event archive</h2><p>Restore an event exported from another BeyondBug installation, including judging, voting, certificates, and audit history.</p></div></div>
+    <form data-action="archive-import"><label>BeyondBug event archive<input type="file" name="bundle" accept=".json,application/json" required></label><p class="muted">The event ID must not already exist. New local account passwords and any replacement open-ballot link appear once after import. Imported webhook endpoints remain disabled with rotated secrets.</p><button class="button button-secondary" type="submit">Import complete archive</button></form>
+    <div class="panel" data-archive-result hidden><strong>Archive imported — copy these details now</strong><pre data-archive-result-text></pre></div>
+  </section>
   <section class="table-section"><div class="table-heading"><div><h2>All events</h2><p>Open an event desk to manage judges, submissions, and results.</p></div></div><div class="table-scroll"><table><thead><tr><th>Event</th><th>Projects</th><th>Judges</th><th>Created</th><th>Action</th></tr></thead><tbody>{% for event in events %}<tr><td><a href="/organizer/{{ event.id }}">{{ event.name }}</a></td><td>{{ event.projects }}</td><td>{{ event.judges }}</td><td>{{ event.created_at[:16].replace('T', ' ') }} UTC</td><td><a href="/organizer/{{ event.id }}#judges">Create judge account</a></td></tr>{% endfor %}</tbody></table></div></section>
 </main>
 {% endblock %}

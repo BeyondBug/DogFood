@@ -141,7 +141,7 @@ def require_before(value: str | None, message: str) -> None:
         raise HTTPException(status_code=409, detail=message)
 
 
-def audit(db, event_id: str | None, actor: str, action: str, entity: str, entity_id: str, details: dict | None = None) -> None:
+def audit(db, event_id: str | None, actor: str | None, action: str, entity: str, entity_id: str, details: dict | None = None) -> None:
     """Append an audit row and, in the same transaction, queue webhook deliveries.
 
     Every state-changing API route already writes exactly one audit entry, so
@@ -447,9 +447,11 @@ def update_event(event_id: str, payload: EventPatch, request: Request):
         require_event_role(db, principal, event_id, "organizer")
         if event["results_published_at"]:
             raise HTTPException(status_code=409, detail="Published events are locked")
-        if date_fields & updates.keys() and db.execute(
+        if date_fields & updates.keys() and (db.execute(
             "SELECT 1 FROM ballots WHERE event_id=? LIMIT 1", (event_id,)
-        ).fetchone():
+        ).fetchone() or db.execute(
+            "SELECT 1 FROM open_ballots WHERE event_id=? LIMIT 1", (event_id,)
+        ).fetchone()):
             raise HTTPException(status_code=409, detail="Event dates cannot change after voting begins")
         merged = dict(event) | updates
         if (merged["voting_mode"] != "disabled" and merged["voting_open"]

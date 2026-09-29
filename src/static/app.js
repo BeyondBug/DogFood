@@ -329,6 +329,21 @@ document.addEventListener('submit', async event => {
         credentials.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
+      case 'archive-import': {
+        const file = form.querySelector('[name=bundle]')?.files?.[0];
+        if (!file || file.size > 30_000_000) throw new Error('Choose a BeyondBug archive smaller than 30 MB.');
+        const bundle = JSON.parse(await file.text());
+        if (!window.confirm('Import this complete event and its historical records?')) return;
+        result = await api('POST', '/api/admin/imports/archive.json', bundle);
+        const output = form.parentElement.querySelector('[data-archive-result]');
+        const lines = [`Event: ${result.event_id}`, `Historical records: ${result.records}`];
+        if (result.open_vote_url) lines.push(`Replacement open ballot: ${window.location.origin}${result.open_vote_url}`);
+        for (const item of result.new_account_credentials) lines.push(`${item.email}  ${item.temporary_password}`);
+        output.querySelector('[data-archive-result-text]').textContent = lines.join('\n');
+        output.hidden = false;
+        notice('Complete event archive imported. Copy the generated access details below.');
+        return;
+      }
       case 'join-event':
         await api('POST', `/api/events/${form.dataset.event}/registration`, {});
         window.location.assign(`/workspace/${form.dataset.event}`);
@@ -469,6 +484,10 @@ document.addEventListener('submit', async event => {
       case 'vote':
         if (!data.project_id) throw new Error('Choose a project first.');
         await api('POST', `/api/events/${form.dataset.event}/votes`, { project_id: data.project_id });
+        refresh(); return;
+      case 'open-vote':
+        if (!data.project_id) throw new Error('Choose a project first.');
+        await api('POST', `/api/open-vote/${form.dataset.token}/votes`, { project_id: data.project_id });
         refresh(); return;
       case 'comment':
         await api('POST', `/api/projects/${form.dataset.project}/comments`, { body: data.body });

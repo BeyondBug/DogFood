@@ -14,10 +14,60 @@ from src.auth import Principal
 from src.auth import verify_password
 from src.db import connect, initialize
 from src.portable_bundle import Bundle, export_portable, import_portable
+from src.event_archive import export_event_archive, import_event_archive
 from src.seed import seed
 
 
 class PortableBundleTests(unittest.TestCase):
+    def test_complete_archive_round_trip_preserves_historical_records(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(__file__).resolve().parents[1]
+            source = Path(directory) / "source.sqlite3"
+            target = Path(directory) / "target.sqlite3"
+            request = Request({"type": "http", "method": "POST", "path": "/api/archive", "headers": []})
+            organizer = Principal("org_demo", "organizer@beyondbug.local", "Organizer", False)
+            with patch.dict(os.environ, {"DOGFOOD_DB_PATH": str(source),
+                                         "DOGFOOD_FIXTURES_PATH": str(root / "fixtures.json"),
+                                         "DOGFOOD_DEMO_MODE": "0"}):
+                initialize()
+                seed()
+                with closing(connect()) as db:
+                    voter = db.execute("SELECT user_id FROM event_roles WHERE event_id='evt_01'"
+                                       " AND role='participant' LIMIT 1").fetchone()[0]
+                    project = db.execute("SELECT id FROM projects WHERE event_id='evt_01'"
+                                         " AND duplicate_of IS NULL LIMIT 1").fetchone()[0]
+                    db.execute("INSERT INTO ballots(id,event_id,voter_user_id,project_id,cast_at)"
+                               " VALUES('ballot_archive','evt_01',?,?,'2026-09-29T01:00:00Z')", (voter, project))
+                    db.execute("INSERT INTO prizes(id,event_id,name,description)"
+                               " VALUES('prize_archive','evt_01','Archive prize','Round-trip evidence')")
+                    db.execute("INSERT INTO event_awards(prize_id,event_id,project_id,assigned_by,assigned_at)"
+                               " VALUES('prize_archive','evt_01',?,'org_demo','2026-09-29T01:01:00Z')", (project,))
+                    db.execute("INSERT INTO certificates(id,event_id,user_id,project_id,kind,prize_id,issued_at,design_json)"
+                               " VALUES('cert_archive','evt_01',?,?,'winner','prize_archive','2026-09-29T01:02:00Z','{}')",
+                               (voter, project))
+                    db.execute("INSERT INTO audit_entries(event_id,actor_user_id,action,entity_type,entity_id,details_json,created_at)"
+                               " VALUES('evt_01','org_demo','archive.test','event','evt_01','{}','2026-09-29T01:03:00Z')")
+                    db.commit()
+                with patch("src.event_archive.require_login", return_value=organizer):
+                    archive = export_event_archive("evt_01", request)
+                self.assertEqual(len(archive["tables"]["scorecards"]), 126)
+                self.assertEqual(len(archive["tables"]["ballots"]), 1)
+                self.assertEqual(len(archive["tables"]["certificates"]), 1)
+            admin = Principal("install-admin", "admin@example.org", "Admin", True)
+            with patch.dict(os.environ, {"DOGFOOD_DB_PATH": str(target), "DOGFOOD_DEMO_MODE": "0"}):
+                initialize()
+                with patch("src.event_archive.require_login", return_value=admin):
+                    restored = import_event_archive(archive, request)
+                self.assertEqual(restored["event_id"], "evt_01")
+                with closing(connect()) as db:
+                    self.assertEqual(db.execute("SELECT COUNT(*) FROM projects WHERE event_id='evt_01'").fetchone()[0], 41)
+                    self.assertEqual(db.execute("SELECT COUNT(*) FROM scorecards s JOIN judge_assignments a"
+                                                " ON a.id=s.assignment_id WHERE a.event_id='evt_01'").fetchone()[0], 126)
+                    self.assertEqual(db.execute("SELECT COUNT(*) FROM ballots WHERE event_id='evt_01'").fetchone()[0], 1)
+                    self.assertEqual(db.execute("SELECT COUNT(*) FROM certificates WHERE event_id='evt_01'").fetchone()[0], 1)
+                    self.assertEqual(db.execute("SELECT COUNT(*) FROM audit_entries WHERE event_id='evt_01'").fetchone()[0],
+                                     len(archive["tables"]["audit_entries"]))
+
     def test_fixture_bundle_keeps_all_forty_one_projects(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(__file__).resolve().parents[1]

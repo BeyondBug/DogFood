@@ -544,7 +544,7 @@ The image supports x86-64 and ARM64 wheels and installs them with `--no-index`.
 docker compose up
 ```
 
-On first boot, migrations run through schema version 10, the official fixture
+On first boot, migrations run through schema version 11, the official fixture
 is imported once, and demo authorization headers are printed. The sign-in page
 also exposes five demo role shortcuts. Restarts preserve changes. Demo mode can
 be disabled for a real deployment, with the global administrator bootstrapped
@@ -558,13 +558,13 @@ snapshots from the system page. A stopped installation can validate and
 atomically restore a full SQLite snapshot while preserving the previous
 database as a safety copy.
 
-For migration between installations, an organizer can export a pre-judging
-portable JSON bundle containing tracks, prizes, custom questions, participants,
-teams, projects, answers, and judge profiles. Import first performs a dry run,
-requires an empty open target event, validates every reference, and commits in
-one transaction. Newly created local passwords are shown once. Historical
-reviews, ballots, certificates, and audit rows stay outside this portable
-format; a complete move uses the SQLite snapshot.
+For migration between installations, an organizer can export either an
+editable setup bundle or a complete event archive. The setup path performs a
+dry run into an empty open event. The complete archive restores stable event
+object IDs plus judging, voting, certificates, pairwise records, audit, and
+integration history in one transaction. Password hashes never leave the source:
+new local passwords appear once. Open-ballot tokens and webhook secrets rotate,
+and restored webhooks stay disabled until an operator reviews them.
 
 We did not add a decorative load balancer. One Uvicorn worker and one SQLite
 database form the supported deployment. On a development laptop, a warm local
@@ -604,7 +604,7 @@ randomization, rate limits, duplicate handling, certificate behavior, backups,
 OpenAPI synchronization, portable ML inference, Pairwise Mode, webhooks,
 custom questions, portable bundle round trips, safe restore, bulk import,
 embeds, Ed25519 judge records, and all five demo role tours. The combined
-release result is 41/41. One test reruns a planted-truth study on the fixture's
+release result is 43/43. One test reruns a planted-truth study on the fixture's
 real review graph and fails if the shipped calibration stops outperforming raw
 averages; another proves committed audited writes enter the webhook outbox while
 rejected writes do not.
@@ -624,10 +624,10 @@ scope is more valuable than a larger label.
 We isolated Bradley–Terry pairwise judging from the primary rubric ranking so
 an experimental comparison mode cannot silently change official results. We
 also added signed webhooks, an embeddable gallery, Ed25519 judge participation
-records, bulk CSV account import, portable pre-judging exchange, and validated
-command-line restore. The remaining cuts are account recovery, email delivery,
-anonymous open-link voting, automatic webhook retries, and browser-based
-restore.
+records, bulk CSV account import, editable setup exchange, complete event
+archives, open-link ballots, and validated command-line restore. The remaining
+cuts are account recovery, email delivery, quadratic voting, automatic webhook
+retries, and browser-based whole-installation restore.
 
 Certificates are publicly verifiable against the local database, but they are
 not cryptographically signed. Backups are local snapshots, not scheduled
