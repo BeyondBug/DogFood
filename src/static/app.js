@@ -62,6 +62,16 @@ document.addEventListener('change', event => {
   const form = event.target.closest('form[data-design-preview]');
   if (form) updateCertificatePreview(form);
 });
+document.addEventListener('click', async event => {
+  const button = event.target.closest('[data-webhook-test]');
+  if (!button) return;
+  button.disabled = true;
+  try {
+    await api('POST', `/api/events/${button.dataset.event}/webhooks/${button.dataset.webhook}/test`, {});
+    notice('Webhook test attempted. Open delivery history for the response.');
+  } catch (error) { notice(error.message || 'Webhook test failed.', true); }
+  finally { button.disabled = false; }
+});
 
 const setupKey = 'beyondbug-event-setup-draft';
 function showSetupStep(form, index) {
@@ -390,6 +400,23 @@ document.addEventListener('submit', async event => {
           reason: data.reason,
         });
         refresh(); return;
+      case 'pairwise-batch':
+        result = await api('POST', `/api/events/${form.dataset.event}/pairwise/assignments/batch`, {
+          comparisons_per_project: Number(data.comparisons_per_project),
+        });
+        notice(`${result.created.length} pairwise assignments created.`); setTimeout(refresh, 1200); return;
+      case 'pairwise-vote':
+        await api('PUT', `/api/pairwise/assignments/${form.dataset.assignment}`, { winner_id: data.winner_id });
+        notice('Comparison submitted.'); setTimeout(refresh, 900); return;
+      case 'webhook-create':
+        result = await api('POST', `/api/events/${form.dataset.event}/webhooks`, { url: data.url });
+        notice(`Webhook created. Save this signing secret now: ${result.secret}`); return;
+      case 'bulk-import':
+        result = await api('POST', `/api/admin/events/${form.dataset.event}/bulk/${data.kind}`, { csv_text: data.csv_text });
+        notice(`${result.created} accounts imported; ${result.errors.length} rows rejected.`); return;
+      case 'judge-records':
+        result = await api('POST', `/api/events/${form.dataset.event}/judge-records/issue`, {});
+        notice(`${result.created.length} signed judge records issued.`); return;
       case 'award-winner':
         await api('PUT', `/api/events/${form.dataset.event}/prizes/${form.dataset.prize}/winner`, {
           project_id: data.project_id,

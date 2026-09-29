@@ -544,14 +544,14 @@ T2  csv export works .................. PASS
 ```
 
 Our separate test runner starts a disposable Compose project on a random port,
-creates a fresh named volume, runs 27 unit and HTTP integration tests, and
+creates a fresh named volume, runs 31 unit and HTTP integration tests, and
 removes only that test environment. It covers deadlines, role denials, team
 limits, conflicts, publication locks, normalization edge cases, stable ballot
 randomization, rate limits, duplicate handling, certificate behavior, backups,
-OpenAPI synchronization and portable ML inference. The release result is
-30/30.
+OpenAPI synchronization, portable ML inference, Pairwise Mode, webhooks,
+bulk import, embeds, and Ed25519 judge records. The release result is 31/31.
 
-We also tested the current schema-7 image with its Docker network disconnected;
+We also tested the current schema-9 image with its Docker network disconnected;
 its local health endpoint returned HTTP 200. The five-minute lifecycle video
 shows real browser actions from event creation to publication, including the
 direct peer-score 403 and a CSV export.
@@ -563,11 +563,11 @@ scope is more valuable than a larger label.
 
 ## What we cut
 
-We did not implement Bradley–Terry pairwise judging. Adding a second ranking
-system late would have increased risk in the most sensitive part of the
-product. We also left webhooks, an embeddable gallery widget,
-cryptographically signed judge participation records, bulk CSV import, account
-recovery and browser-based restore out of this release.
+We isolated Bradley–Terry pairwise judging from the primary rubric ranking so
+an experimental comparison mode cannot silently change official results. We
+also added signed webhooks, an embeddable gallery, Ed25519 judge participation
+records, and bulk CSV account import. The remaining cuts are account recovery,
+email delivery, and browser-based restore.
 
 Certificates are publicly verifiable against the local database, but they are
 not cryptographically signed. Backups are local snapshots, not scheduled

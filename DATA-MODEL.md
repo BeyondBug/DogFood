@@ -18,6 +18,9 @@ the event ID as well as the acting user's role.
 | `team_invites` | Hashed token, team, creator, expiry, use count, revocation time | Default one use; at most four members enforced in service |
 | `projects` | Event, team, track, title, summary, description, repository/demo/live/video/thumbnail URLs, gallery URLs, technology tags, draft/submitted status, timestamps, `duplicate_of` | Team edits stop at the server deadline |
 | `duplicate_decisions` | Project, canonical project, organizer decision and reason, actor and timestamp | Preserves human confirmation or clearance of an automatic repository match |
+| `pairwise_assignments` | Event, judge, ordered project pair, winner and timestamps | Unique judge/pair; submitted choices feed only the pairwise ranking |
+| `judge_participation_records` | Canonical JSON payload, Ed25519 signature, public key and issue time | Public verification does not require the portal's private key |
+| `webhooks`, `webhook_deliveries` | Event endpoint and secret; signed delivery payload, status and response | Delivery history is organizer-only |
 | `judge_profiles`, `judge_tracks` | Judge user, event, accepted status, eligible tracks | One judge profile per user and event |
 | `judge_invites` | Hashed token, event, invited email, creator, expiry, acceptance time | Acceptance requires matching account email |
 | `judge_conflicts` | Judge, project, reason, creation time | Assignment excludes declared conflicts |

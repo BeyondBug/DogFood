@@ -176,6 +176,17 @@
     {% else %}<div class="empty-state compact"><h3>No completed reviews yet</h3><p>Assign eligible judges after submissions close. This view will explain the ranking once reviews arrive.</p></div>{% endif %}
   </section>
 
+  <section class="table-section" id="pairwise-mode">
+    <div class="table-heading"><div><h2>Pairwise mode</h2><p>A separate Bradley–Terry experiment. It never changes weighted rubric rankings.</p></div><a class="text-link" href="/api/events/{{ event.id }}/pairwise/rankings">View pairwise data</a></div>
+    {% if not event.results_published_at %}<form data-action="pairwise-batch" data-event="{{ event.id }}" class="form-inline"><label>Comparisons per project<input type="number" name="comparisons_per_project" value="3" min="1" max="20"></label><button class="button button-secondary" type="submit">Generate pairwise assignments</button></form>{% endif %}
+    <div class="table-scroll"><table><thead><tr><th>Rank</th><th>Project</th><th>Wins</th><th>Comparisons</th><th>Strength</th></tr></thead><tbody>{% for row in pairwise.projects %}<tr><td>{{ row.rank or '—' }}</td><td>{{ row.title }}</td><td>{{ row.wins|int }}</td><td>{{ row.comparisons }}</td><td>{{ '%.3f'|format(row.strength) if row.comparisons else '—' }}</td></tr>{% endfor %}</tbody></table></div>
+  </section>
+
+  <section class="table-section" id="integrations">
+    <div class="table-heading"><div><h2>Integrations and portable records</h2><p>Configure signed webhooks, bulk setup, embeds, and judge participation records.</p></div><a class="text-link" href="/embed/{{ event.id }}" target="_blank">Preview embed ↗</a></div>
+    <div class="organizer-grid"><div class="panel"><h3>Webhooks</h3><form data-action="webhook-create" data-event="{{ event.id }}"><label>HTTPS endpoint<input type="url" name="url" placeholder="https://example.org/hooks/beyondbug" required></label><button class="button button-secondary" type="submit">Add webhook</button></form>{% for hook in webhooks %}<div><code>{{ hook.url }}</code> <button class="button button-secondary" type="button" data-webhook-test data-event="{{ event.id }}" data-webhook="{{ hook.id }}">Send test</button></div>{% else %}<p class="muted">No webhooks configured.</p>{% endfor %}</div><div class="panel"><h3>Bulk import</h3>{% if principal.is_admin %}<form data-action="bulk-import" data-event="{{ event.id }}"><label>Record type<select name="kind"><option value="participants">Participants</option><option value="judges">Judges</option></select></label><label>CSV<textarea name="csv_text" rows="6" placeholder="name,email,password,tracks"></textarea></label><button class="button button-secondary" type="submit">Import CSV</button></form>{% else %}<p class="muted">A global administrator can import accounts.</p>{% endif %}<p><code>&lt;iframe src="{{ request.base_url }}embed/{{ event.id }}"&gt;&lt;/iframe&gt;</code></p>{% if event.results_published_at %}<form data-action="judge-records" data-event="{{ event.id }}"><button class="button button-secondary" type="submit">Issue signed judge records</button></form>{% endif %}</div></div>
+  </section>
+
   <section class="table-section">
     <div class="table-heading"><div><h2>Community voting</h2><p>Choose who can vote. Totals stay private until results are published.</p></div></div>
     <div class="organizer-grid">

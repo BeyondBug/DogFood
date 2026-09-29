@@ -322,6 +322,54 @@ CREATE TABLE IF NOT EXISTS duplicate_decisions (
 CREATE INDEX IF NOT EXISTS ix_duplicate_decisions_event ON duplicate_decisions(event_id,decision);
 """
 
+SCHEMA_V9 = """
+CREATE TABLE pairwise_assignments (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    judge_id TEXT NOT NULL REFERENCES judge_profiles(id) ON DELETE CASCADE,
+    project_a_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_b_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    winner_id TEXT REFERENCES projects(id),
+    assigned_at TEXT NOT NULL,
+    submitted_at TEXT,
+    CHECK(project_a_id < project_b_id),
+    CHECK(winner_id IS NULL OR winner_id=project_a_id OR winner_id=project_b_id),
+    UNIQUE(event_id,judge_id,project_a_id,project_b_id)
+);
+CREATE INDEX ix_pairwise_event ON pairwise_assignments(event_id,submitted_at);
+CREATE TABLE judge_participation_records (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    judge_id TEXT NOT NULL REFERENCES judge_profiles(id) ON DELETE CASCADE,
+    payload_json TEXT NOT NULL,
+    signature_b64 TEXT NOT NULL,
+    public_key_pem TEXT NOT NULL,
+    issued_at TEXT NOT NULL,
+    UNIQUE(event_id,judge_id)
+);
+CREATE TABLE webhooks (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    secret TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_by TEXT NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL
+);
+CREATE TABLE webhook_deliveries (
+    id TEXT PRIMARY KEY,
+    webhook_id TEXT NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+    event_type TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('pending','delivered','failed')),
+    response_code INTEGER,
+    error TEXT,
+    created_at TEXT NOT NULL,
+    attempted_at TEXT
+);
+CREATE INDEX ix_webhook_deliveries_webhook ON webhook_deliveries(webhook_id,created_at);
+"""
+
 
 def initialize() -> None:
     path = database_path()
@@ -329,7 +377,7 @@ def initialize() -> None:
     with closing(connect()) as db:
         db.execute("PRAGMA journal_mode = WAL")
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        if version > 8:
+        if version > 9:
             raise RuntimeError(f"Database schema version {version} is newer than this app")
         if version == 0:
             db.executescript(SCHEMA_V1)
@@ -365,4 +413,8 @@ def initialize() -> None:
         if version == 7:
             db.executescript(SCHEMA_V8)
             db.execute("PRAGMA user_version = 8")
+            version = 8
+        if version == 8:
+            db.executescript(SCHEMA_V9)
+            db.execute("PRAGMA user_version = 9")
         db.commit()

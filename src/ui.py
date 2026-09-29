@@ -22,6 +22,7 @@ from .db import connect, database_path
 from .scoring import event_ranking, judging_insight, scorecard_detail
 from .judging import participant_feedback
 from .ml_insight import organizer_ml_insight
+from .stretch import _pairwise_ranking
 from .audit_view import event_activity
 from .public import _eligible, _vote_summary, _window_open, ballot as load_ballot
 
@@ -334,6 +335,12 @@ def judge_workspace(event_id: str, request: Request):
                                  " JOIN tracks t ON t.id=p.track_id LEFT JOIN scorecards s ON s.assignment_id=a.id"
                                  " WHERE a.judge_id=? ORDER BY CASE s.status WHEN 'submitted' THEN 2 WHEN 'draft' THEN 1 ELSE 0 END,p.title",
                                  (judge["id"],)).fetchall()
+        pairwise_rows = db.execute(
+            "SELECT a.id,a.winner_id,a.submitted_at,p1.id AS project_a_id,p1.title AS project_a,"
+            "p2.id AS project_b_id,p2.title AS project_b FROM pairwise_assignments a "
+            "JOIN projects p1 ON p1.id=a.project_a_id JOIN projects p2 ON p2.id=a.project_b_id "
+            "WHERE a.judge_id=? ORDER BY a.submitted_at,a.id", (judge["id"],),
+        ).fetchall()
         items = []
         for row in assignments:
             item = dict(row)
@@ -352,6 +359,7 @@ def judge_workspace(event_id: str, request: Request):
         "principal": principal, "event": dict(event), "rubric": dict(rubric) if rubric else None,
         "criteria": [dict(row) for row in criteria], "assignments": items, "judge_id": judge["id"],
         "submitted_count": sum(item["status"] == "submitted" for item in items),
+        "pairwise_assignments": [dict(row) for row in pairwise_rows],
         "judging_editable": judging_editable,
     })
 
@@ -391,6 +399,8 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
         ranking = event_ranking(db, event_id)
         insight = judging_insight(db, event_id, ranking)
         ml_insight = organizer_ml_insight(db, event_id)
+        pairwise = _pairwise_ranking(db, event_id)
+        webhooks = db.execute("SELECT id,url,active,created_at FROM webhooks WHERE event_id=? ORDER BY created_at", (event_id,)).fetchall()
         activity_filter = activity if activity in ("All", "Judging", "Voting", "Certificates", "Event and submissions") else "All"
         audit = event_activity(db, event_id, activity_filter)
         vote_summary = _vote_summary(db, event_id)
@@ -449,7 +459,8 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
         "principal": principal, "event": dict(event), "tracks": [dict(row) for row in tracks],
         "judges": judge_items, "coverage": [dict(row) for row in coverage],
         "rubric": dict(rubric) if rubric else None, "criteria": [dict(row) for row in criteria],
-        "ranking": ranking, "insight": insight, "ml_insight": ml_insight, "audit": audit,
+        "ranking": ranking, "insight": insight, "ml_insight": ml_insight,
+        "pairwise": pairwise, "webhooks": [dict(row) for row in webhooks], "audit": audit,
         "activity_filter": activity_filter, "vote_summary": vote_summary,
         "submissions_closed": submissions_closed,
         "prizes": [dict(row) for row in prizes], "eligible_projects": [dict(row) for row in eligible_projects],

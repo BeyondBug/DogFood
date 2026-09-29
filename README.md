@@ -318,11 +318,11 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Known limits
 
-- T3 is not claimed in `.dogfood.toml`: its voting and comment features work,
-  but the supplied checker has no T3 checks. T4 is not claimed: certificates
-  are implemented, while webhooks, signed judge records, widgets, and bulk
-  import remain absent. Certificate verification depends on the local
-  database, so it is not a cryptographic signature.
+- T3 and T4 are not claimed in `.dogfood.toml` because the supplied checker
+  contains no checks for either tier. Their features are implemented and
+  independently tested; evidence is kept separate from the official T1/T2
+  acceptance result. Certificate verification remains database-backed, while
+  judge participation records use independently verifiable Ed25519 signatures.
 - Community voting cannot establish one human per account. Invite acceptance
   matches an account email but does not verify inbox ownership; participant
   mode excludes accounts created after voting opens, but earlier fake accounts
@@ -368,6 +368,7 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 - [UI-DESIGN.md](UI-DESIGN.md): visual direction and screen inventory
 - [T3-EVIDENCE.md](T3-EVIDENCE.md): independently tested public-voting features
 - [BONUS-EVIDENCE.md](BONUS-EVIDENCE.md): bonus-by-bonus claim and reproduction index
+- [T4-EVIDENCE.md](T4-EVIDENCE.md): independently tested stretch workflows
 - [DEMO-SCRIPT.md](DEMO-SCRIPT.md): five-minute lifecycle recording plan
 - [RELEASE-VERIFICATION.md](RELEASE-VERIFICATION.md): fresh-start and offline evidence
 - [CAPACITY.md](CAPACITY.md): reproducible local read probe and scaling boundary
