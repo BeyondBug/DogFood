@@ -20,7 +20,7 @@ the event ID as well as the acting user's role.
 | `duplicate_decisions` | Project, canonical project, organizer decision and reason, actor and timestamp | Preserves human confirmation or clearance of an automatic repository match |
 | `pairwise_assignments` | Event, judge, ordered project pair, winner and timestamps | Unique judge/pair; submitted choices feed only the pairwise ranking |
 | `judge_participation_records` | Canonical JSON payload, Ed25519 signature, public key and issue time | Public verification does not require the portal's private key |
-| `webhooks`, `webhook_deliveries` | Event endpoint and secret; signed delivery payload, status and response | Delivery history is organizer-only |
+| `webhooks`, `webhook_deliveries` | Event endpoint, secret and active flag; queued payload (audit action), status, response code, error and attempt time | Delivery rows are inserted by `audit()` in the same transaction as the audited write (transactional outbox); a rolled-back action queues nothing; receiver secrets stay server-side; delivery history is organizer-only |
 | `judge_profiles`, `judge_tracks` | Judge user, event, accepted status, eligible tracks | One judge profile per user and event |
 | `judge_invites` | Hashed token, event, invited email, creator, expiry, acceptance time | Acceptance requires matching account email |
 | `judge_conflicts` | Judge, project, reason, creation time | Assignment excludes declared conflicts |
@@ -35,8 +35,6 @@ the event ID as well as the acting user's role.
 | `event_awards` | Configured prize, event, submitted winning project, assigning organizer and time | One selected project per prize; selection locks after winner certificates issue |
 | `certificate_designs` | Event and participant/winner kind, layout, palette, issuer line, updater and time | Only a site administrator may change a design; one setting per event and kind |
 | `certificates` | Opaque ID, event, recipient, project, participant/winner kind, optional prize, issuance time, design JSON snapshot | Unique participant record per event/recipient and unique winner record per event/recipient/prize; later design edits do not change issued artwork |
-| `judge_records` | Event, judge, exact JSON payload, Ed25519 signature, public key, issuance time | One immutable participation record per judge and event; public verification checks the signature |
-| `webhook_subscriptions`, `webhook_deliveries` | Event URL, secret, active flag; audit event, payload, status, retry timing | Delivery rows commit with audited writes; receiver secrets stay server-side; failures do not block the event action |
 | `submission_questions`, `project_answers` | Event prompt, required flag and order; project answer | Question set locks after the first draft; required answers are enforced on final submission; answers stay private to the team, assigned judges and organizers |
 | `app_keys`, `login_attempts` | Local HMAC secret; account and IP digests, outcome, timestamp | Failed logins and lockouts persist across process restarts without storing raw IPs |
 
