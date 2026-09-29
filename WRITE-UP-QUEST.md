@@ -77,7 +77,13 @@ the same API used by the acceptance checker; none of the important boundaries
 depend on a hidden button.
 
 Projects support a repository, interactive demo, live URL, hosted video,
-thumbnail, gallery images and technology tags. Organizers can export projects,
+thumbnail, gallery images and technology tags. Organizers can also define up
+to ten event-specific questions and require selected answers on final
+submission. Drafts may remain incomplete; the server validates required
+answers when a team submits. Assigned judges see those answers with the
+project, while unrelated accounts cannot read them.
+
+Organizers can export projects,
 participants, teams, judges, assignments, criterion-level scores, raw and
 adjusted rankings, audit history, votes, and certificates as CSV. Text fields
 are escaped against spreadsheet-formula injection.
@@ -88,6 +94,13 @@ organizer can assign configured prizes and issue separate participation and
 winner certificates. Each issued certificate stores a snapshot of its design,
 has a public database-backed verification page, and remains visually stable if
 an administrator later changes the template.
+
+The default local evaluation build also offers a demo-only role launcher. A
+reviewer can open the Administrator, Organizer, Judge A, Judge B, or
+Participant dashboard with one click. These are real expiring sessions using
+the same authorization checks, rather than frontend previews. Setting
+`DOGFOOD_DEMO_MODE=0` removes the controls, makes the endpoint return 404, and
+revokes the fixed demo credentials on the existing volume.
 
 ## We designed the denial paths first
 
@@ -430,6 +443,25 @@ flowchart LR
 The dashed edge is intentionally a non-effect: the signal can point an
 organizer toward evidence, but it has no write path into judging outcomes.
 
+## Pairwise mode stayed separate from the official ranking
+
+The primary result remains the weighted rubric with transparent judge-severity
+calibration. Pairwise Mode is a separate experiment: the organizer generates
+project pairs, assigned judges choose one project from each pair, and a
+regularized Bradley–Terry estimator recovers latent strengths. Stable ordering
+and assignment ownership keep the flow reproducible and isolated.
+
+A pairwise vote never edits a criterion score, normalized ranking, prize, or
+certificate. Organizers can compare both views and explain disagreement
+without silently replacing the published method. Sparse comparisons remain
+visible as limited evidence rather than being presented as certainty.
+
+The same isolated module provides CSV account import, a public gallery embed,
+a sanitized event archive, Ed25519-signed judge participation records, and
+HMAC-signed webhook deliveries with visible status. A signed judge record
+proves its payload matches the issuer's signature; an external verifier still
+needs to pin or otherwise trust that issuer key.
+
 ## Shipping ML without shipping an ML runtime
 
 The one-command offline rule made model packaging as important as training.
@@ -502,16 +534,27 @@ The image supports x86-64 and ARM64 wheels and installs them with `--no-index`.
 docker compose up
 ```
 
-On first boot, migrations run through schema version 7, the official fixture
-is imported once, and demo authorization headers are printed. Restarts preserve
-changes. Demo mode can be disabled for a real deployment, with the global
-administrator bootstrapped from local environment variables.
+On first boot, migrations run through schema version 10, the official fixture
+is imported once, and demo authorization headers are printed. The sign-in page
+also exposes five demo role shortcuts. Restarts preserve changes. Demo mode can
+be disabled for a real deployment, with the global administrator bootstrapped
+from local environment variables.
 
 SQLite runs with WAL, foreign keys and a ten-second busy timeout. Immediate
 write transactions protect team limits, deadlines, assignments and ballots.
 The online backup command creates a consistent snapshot while the portal is
 running. An administrator can also run an integrity check and download local
-snapshots from the system page.
+snapshots from the system page. A stopped installation can validate and
+atomically restore a full SQLite snapshot while preserving the previous
+database as a safety copy.
+
+For migration between installations, an organizer can export a pre-judging
+portable JSON bundle containing tracks, prizes, custom questions, participants,
+teams, projects, answers, and judge profiles. Import first performs a dry run,
+requires an empty open target event, validates every reference, and commits in
+one transaction. Newly created local passwords are shown once. Historical
+reviews, ballots, certificates, and audit rows stay outside this portable
+format; a complete move uses the SQLite snapshot.
 
 We did not add a decorative load balancer. One Uvicorn worker and one SQLite
 database form the supported deployment. On a development laptop, a warm local
@@ -544,14 +587,16 @@ T2  csv export works .................. PASS
 ```
 
 Our separate test runner starts a disposable Compose project on a random port,
-creates a fresh named volume, runs 31 unit and HTTP integration tests, and
+creates a fresh named volume, runs 39 unit and HTTP integration tests, and
 removes only that test environment. It covers deadlines, role denials, team
 limits, conflicts, publication locks, normalization edge cases, stable ballot
 randomization, rate limits, duplicate handling, certificate behavior, backups,
 OpenAPI synchronization, portable ML inference, Pairwise Mode, webhooks,
-bulk import, embeds, Ed25519 judge records, and demo-only role tours. The combined release result is 39/39.
+custom questions, portable bundle round trips, safe restore, bulk import,
+embeds, Ed25519 judge records, and all five demo role tours. The combined
+release result is 39/39.
 
-We also tested the current schema-9 image with its Docker network disconnected;
+We also tested the current image with its Docker network disconnected;
 its local health endpoint returned HTTP 200. The five-minute lifecycle video
 shows real browser actions from event creation to publication, including the
 direct peer-score 403 and a CSV export.
@@ -566,8 +611,10 @@ scope is more valuable than a larger label.
 We isolated Bradley–Terry pairwise judging from the primary rubric ranking so
 an experimental comparison mode cannot silently change official results. We
 also added signed webhooks, an embeddable gallery, Ed25519 judge participation
-records, and bulk CSV account import. The remaining cuts are account recovery,
-email delivery, and browser-based restore.
+records, bulk CSV account import, portable pre-judging exchange, and validated
+command-line restore. The remaining cuts are account recovery, email delivery,
+anonymous open-link voting, exhaustive webhook coverage, and browser-based
+restore.
 
 Certificates are publicly verifiable against the local database, but they are
 not cryptographically signed. Backups are local snapshots, not scheduled
@@ -615,7 +662,10 @@ docker compose up
 Then open `http://localhost:8080`. The repository includes the fixture,
 acceptance checker, unedited acceptance report, OpenAPI document, architecture,
 data model, judging proof, threat model, ML model card, integration review,
-capacity probe, test runner and five-minute demo.
+capacity probe, test runner and five-minute demo. In the default demo build,
+choose a role directly on the sign-in page. Production operators disable that
+launcher with `DOGFOOD_DEMO_MODE=0` and provide bootstrap administrator
+credentials through local environment variables.
 
 BeyondBug is available under the MIT license. Built by team BeyondBug for
 #DogfoodHackathon.
