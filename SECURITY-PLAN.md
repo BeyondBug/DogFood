@@ -1,5 +1,8 @@
 # Security and abuse plan — pre-kickoff draft
 
+> **Historical document:** this is the pre-kickoff security plan. It is not a
+> statement of current controls.
+
 This historical design draft does not claim that a mitigation has been
 implemented. See [THREAT-MODEL.md](THREAT-MODEL.md) for the shipped controls,
 tests, and remaining risks.

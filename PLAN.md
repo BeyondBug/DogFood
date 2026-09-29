@@ -1,5 +1,9 @@
 # Dogfood 2026 pre-kickoff plan
 
+> **Historical document:** this is the pre-kickoff plan, retained to show how
+> the implementation evolved. For shipped behavior use [README.md](README.md),
+> [ARCHITECTURE.md](ARCHITECTURE.md), and [RELEASE-VERIFICATION.md](RELEASE-VERIFICATION.md).
+
 Planning document only. No project code is written here. The coding window is
 2026-09-26 18:00 UTC through 2026-09-29 18:00 UTC after the organizer's
 September 26 Discord postponement. The full DOGFOOD context

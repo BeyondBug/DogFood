@@ -70,6 +70,7 @@ are organizer-only until publication; public vote results then become visible.
 | `src/core.py` | Accounts, events, registration, teams, invites, project edits |
 | `src/judging.py` | Judge invitation, rubric, assignments, scorecards, progress, exports, publication |
 | `src/scoring.py` | Weighted averages, cross-judge calibration, ranking |
+| `src/ml_insight.py` | Standard-library inference over the reviewed compressed v2 tree export |
 | `src/audit_view.py` | Plain-language actor, action, target and category presentation for organizers |
 | `src/public.py` | Voting configuration, eligibility, ballots, attempts, comments, moderation |
 | `src/certificates.py` | Prize assignment, certificate issuance and public verification |
@@ -125,8 +126,9 @@ are organizer-only until publication; public vote results then become visible.
 The DB file is the operational state. `src.backup` uses SQLite's online backup
 API to produce a consistent copy while the portal is running. Migrations run
 forward at startup; take a backup before upgrading. CSV exports provide paths
-out for teams, projects, assignments, scorecards, and rankings. Fixture JSON
-is an initial import format, not a general bulk import facility.
+out for projects, participants, teams, judges, assignments, scorecards,
+rankings, audit history, votes, and certificates. Fixture JSON is an initial
+import format, not a general bulk import facility.
 The admin overview reads disk and database size, offers an on-demand
 `PRAGMA quick_check`, and writes/downloads SQLite snapshots through
 administrator-only routes. Snapshots live under the data volume, outside

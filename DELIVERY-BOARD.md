@@ -40,7 +40,7 @@ them a bounded package with an explicit API/schema contract.
 | --- | --- | --- | --- | --- |
 | Compose, migration, fixture seed, health | P0 | Active pair | None | Fresh boot; restart unchanged; fixture projects visible |
 | Auth, sessions, role middleware | P0 | Active pair | Users schema | Login/logout; expired session denied; participant/judge/organizer distinct |
-| Event, track, prize configuration | P0 | Active pair | Auth | Organizer can create and edit own event; other organizers denied |
+| Event, track, prize configuration | P0 | Active pair | Auth | Administrator creates events; assigned event organizers can edit only their event |
 | Teams and invite links | P0 | Active pair | Auth, event | Invite accepted once; max four; cross-event join denied |
 | Draft and submission | P0 | Active pair | Teams, event | Edit before close; POST at/after close denied by server |
 | Public searchable gallery | P0 | Active pair | Projects, seed | Anonymous 200; fixture title on first page; search/filter work |
@@ -99,8 +99,9 @@ tested promotions.
 ## Release artifacts
 
 `README.md`, `ARCHITECTURE.md`, `DATA-MODEL.md`, `JUDGING.md`, `LICENSE`,
-`docker-compose.yml`, `.dogfood.toml`, `acceptance-report.txt`, tests, and a
-five-minute demo link. Update draft documents to describe actual behavior.
+`docker-compose.yml`, `.dogfood.toml`, `acceptance-report.txt`, tests, and the
+five-minute `media/beyondbug-demo.mp4` recording. Update draft documents to
+describe actual behavior.
 Use the official checker output verbatim. If its current seven checks remain
 unchanged, it only verifies T1/T2; do not claim T3/T4 without organizer
 clarification.
