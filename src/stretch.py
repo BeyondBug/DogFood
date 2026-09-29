@@ -309,12 +309,15 @@ def event_archive(event_id: str, request: Request):
                            "FROM scorecards s JOIN judge_assignments a ON a.id=s.assignment_id WHERE a.event_id=? ORDER BY s.id",),
             "pairwise_assignments": ("SELECT id,judge_id,project_a_id,project_b_id,winner_id,assigned_at,submitted_at "
                                      "FROM pairwise_assignments WHERE event_id=? ORDER BY id",),
-            "votes": ("SELECT id,voter_user_id,project_id,cast_at FROM ballots WHERE event_id=? ORDER BY id",),
+            "votes": ("SELECT id,'account' AS voter_type,voter_user_id AS voter_reference,project_id,cast_at,"
+                      "'' AS risk_signal FROM ballots WHERE event_id=? UNION ALL SELECT id,'open_link',open_voter_id,"
+                      "project_id,cast_at,risk_signal FROM open_ballots WHERE event_id=? ORDER BY id",),
             "comments": ("SELECT id,project_id,user_id,body,created_at,hidden_at,hidden_by FROM comments WHERE event_id=? ORDER BY id",),
             "audit": ("SELECT id,actor_user_id,action,entity_type,entity_id,details_json,created_at "
                       "FROM audit_entries WHERE event_id=? ORDER BY id",),
         }
-        archive = {name: [dict(row) for row in db.execute(parts[0], (event_id,)).fetchall()]
+        archive = {name: [dict(row) for row in db.execute(parts[0],
+                   (event_id, event_id) if name == "votes" else (event_id,)).fetchall()]
                    for name, parts in queries.items()}
     result = {"format": "beyondbug-event-archive-v1", "exported_at": utc_now(), "event": dict(event), **archive}
     return Response(json.dumps(result, ensure_ascii=False, indent=2), media_type="application/json",

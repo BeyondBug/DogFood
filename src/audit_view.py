@@ -21,7 +21,8 @@ LABELS = {
     "voting.configured": "Configured voting",
     "voter.invited": "Invited voter",
     "voter.invite_accepted": "Accepted voter invite",
-    "vote.cast": "Cast vote", "comment.created": "Added comment",
+    "vote.cast": "Cast vote", "open_vote.cast": "Cast open-link vote",
+    "comment.created": "Added comment",
     "comment.hidden": "Hid comment",
     "prize.winner_selected": "Selected prize winner",
     "certificates.issued": "Issued certificates",
@@ -31,7 +32,7 @@ LABELS = {
 def _category(action: str) -> str:
     if action.startswith(("judge.", "rubric.", "assignments.", "scorecard.", "results.")):
         return "Judging"
-    if action.startswith(("voting.", "voter.", "vote.", "comment.")):
+    if action.startswith(("voting.", "voter.", "vote.", "open_vote.", "comment.")):
         return "Voting"
     if action.startswith(("prize.", "certificates.")):
         return "Certificates"
@@ -58,7 +59,7 @@ def event_activity(db, event_id: str, category: str = "All", limit: int = 100) -
                 for row in db.execute("SELECT id,project_id FROM comments WHERE event_id=?", (event_id,))}
     rows = db.execute(
         "SELECT a.action,a.entity_type,a.entity_id,a.details_json,a.created_at,"
-        "u.name AS actor FROM audit_entries a JOIN users u ON u.id=a.actor_user_id"
+        "u.name AS actor FROM audit_entries a LEFT JOIN users u ON u.id=a.actor_user_id"
         " WHERE a.event_id=? ORDER BY a.id DESC LIMIT 500", (event_id,),
     ).fetchall()
     activity = []
@@ -86,7 +87,7 @@ def event_activity(db, event_id: str, category: str = "All", limit: int = 100) -
         elif action == "prize.winner_selected":
             project_title = projects.get(details.get("project_id"), details.get("project_id", ""))
             target = f"{target}: {project_title}"
-        activity.append({"actor": row["actor"], "label": LABELS.get(action, action.replace(".", " ").replace("_", " ").capitalize()),
+        activity.append({"actor": row["actor"] or "Open-link voter", "label": LABELS.get(action, action.replace(".", " ").replace("_", " ").capitalize()),
                          "target": target, "category": item_category, "created_at": row["created_at"]})
         if len(activity) >= limit:
             break

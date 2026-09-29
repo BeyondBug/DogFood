@@ -198,7 +198,7 @@
     <div class="table-heading"><div><h2>Integrations and portable records</h2><p>Configure signed webhooks, bulk setup, embeds, and judge participation records.</p></div><a class="text-link" href="/embed/{{ event.id }}" target="_blank">Preview embed ↗</a></div>
     <div class="organizer-grid"><div class="panel"><h3>Webhooks</h3><form data-action="webhook-create" data-event="{{ event.id }}"><label>HTTPS endpoint<input type="url" name="url" placeholder="https://example.org/hooks/beyondbug" required></label><button class="button button-secondary" type="submit">Add webhook</button></form>{% for hook in webhooks %}<div><code>{{ hook.url }}</code> <button class="button button-secondary" type="button" data-webhook-test data-event="{{ event.id }}" data-webhook="{{ hook.id }}">Send test</button></div>{% else %}<p class="muted">No webhooks configured.</p>{% endfor %}</div><div class="panel"><h3>Bulk import</h3>{% if principal.is_admin %}<form data-action="bulk-import" data-event="{{ event.id }}"><label>Record type<select name="kind"><option value="participants">Participants</option><option value="judges">Judges</option></select></label><label>CSV<textarea name="csv_text" rows="6" placeholder="name,email,password,tracks"></textarea></label><button class="button button-secondary" type="submit">Import CSV</button></form>{% else %}<p class="muted">A global administrator can import accounts.</p>{% endif %}<p><code>&lt;iframe src="{{ request.base_url }}embed/{{ event.id }}"&gt;&lt;/iframe&gt;</code></p>{% if event.results_published_at %}<form data-action="judge-records" data-event="{{ event.id }}"><button class="button button-secondary" type="submit">Issue signed judge records</button></form>{% endif %}</div></div>
   <section class="table-section" id="portable-exchange">
-    <div class="table-heading"><div><h2>Portable event data</h2><p>Move participants, teams, projects, tracks, questions, and judge profiles between installations.</p></div><a class="text-link" href="/api/events/{{ event.id }}/exports/portable.json" download="{{ event.id }}-portable.json">Download JSON bundle</a></div>
+    <div class="table-heading"><div><h2>Portable event data</h2><p>Move setup data into an open event, or archive the complete event history for another installation.</p></div><div><a class="text-link" href="/api/events/{{ event.id }}/exports/portable.json" download="{{ event.id }}-portable.json">Download setup bundle</a> · <a class="text-link" href="/api/events/{{ event.id }}/exports/archive.json" download="{{ event.id }}-archive.json">Download full archive</a></div></div>
     {% if not questions_locked and not event.results_published_at and not submissions_closed %}<form data-action="portable-import" data-event="{{ event.id }}"><label>Import into this empty event<input type="file" name="bundle" accept=".json,application/json" required></label><p class="muted">The file is checked before import. New local account passwords appear once afterward. Reviews and ballots are exported separately as CSV; use a SQLite snapshot for a complete BeyondBug restore.</p><button class="button button-secondary" type="submit">Check and import bundle</button></form><div class="panel" data-import-credentials hidden><strong>Imported account credentials — copy now</strong><p>These passwords are shown only once. Share them privately and ask each account to change its password.</p><pre data-import-credentials-text></pre></div>{% else %}<p class="muted">Import is available only before submissions close and before this event has any teams or projects.</p>{% endif %}
   </section>
 
@@ -211,6 +211,7 @@
             <option value="disabled" {% if event.voting_mode == 'disabled' %}selected{% endif %}>Disabled</option>
             <option value="invite_only" {% if event.voting_mode == 'invite_only' %}selected{% endif %}>Invited voters</option>
             <option value="participants" {% if event.voting_mode == 'participants' %}selected{% endif %}>Registered participants</option>
+            <option value="open_link" {% if event.voting_mode == 'open_link' %}selected{% endif %}>Anyone with the link</option>
           </select></label>
           <div class="form-two">
             <label>Opens, UTC<input type="datetime-local" name="opens_at" value="{{ event.voting_open[:16] if event.voting_open else '' }}" required></label>
@@ -219,6 +220,7 @@
           <small>Voting must start after submissions close. Results cannot be published until voting closes.</small>
           <button class="button button-secondary" type="submit">Save voting window</button>
         </form>
+        {% if event.voting_mode == 'open_link' %}<div class="panel-note"><strong>Open ballot link</strong><p><a class="text-link" href="{{ event.open_vote_url }}" target="_blank">{{ request.base_url|string|trim('/') }}{{ event.open_vote_url }}</a></p><small>One vote per browser identity. Network and user-agent digests are rate-limited and suspicious shared-network activity is flagged for review.</small></div>{% endif %}
         {% if event.voting_mode == 'invite_only' %}
         <form data-action="voter-invite" data-event="{{ event.id }}" class="voter-invite-form">
           <label>Invite voter by email<input type="email" name="email" required></label>
@@ -235,6 +237,7 @@
         <h3 class="subheading">Attempt signals</h3>
         {% if vote_summary.attempts %}<div class="vote-signals">{% for outcome, count in vote_summary.attempts.items() %}<div><strong>{{ outcome.replace('_',' ') }}</strong><span>{{ count }}</span></div>{% endfor %}</div>
         {% else %}<p class="muted">No attempts recorded.</p>{% endif %}
+        {% if vote_summary.open_vote_flags %}<p class="status-warning"><strong>{{ vote_summary.open_vote_flags }}</strong> open-link ballots share a network with at least three earlier accepted votes. Review the audit trail before awarding a community prize.</p>{% endif %}
       </div>
     </div>
   </section>

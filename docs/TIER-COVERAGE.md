@@ -21,16 +21,16 @@ The exact checker output is in [acceptance-report.txt](../acceptance-report.txt)
 | T2 | Live organizer progress | `/api/events/{id}/progress` and organizer desk show assigned/submitted counts and gaps | Implemented |
 | T2 | Cross-judge normalization | Calibrated ranking in `src/scoring.py`, fixture demonstration and planted-truth simulation study in `JUDGING.md` (`scripts/normalization_study.py`), edge-case tests in `tests/test_scoring.py` and `tests/test_normalization_study.py` | Implemented |
 | T2 | CSV exports throughout workflow | Organizer exports for participants, teams, projects, judges, assignments, scores, rankings, votes, audit and certificates | Implemented |
-| T3 | Configurable community voting | Invite-only and registered-participant modes in `src/public.py`; no anonymous open-link mode or verified email delivery | Partial |
+| T3 | Configurable community voting | Open-link, email-gated invitation, and registered-participant modes in `src/public.py`; email delivery remains operator-managed | Implemented |
 | T3 | Comments | Window-limited, rate-limited comments with organizer moderation in `src/public.py` | Implemented |
 | T3 | Hidden results during voting | Public results require publication; publication waits for voting to close | Implemented |
 | T3 | Random ballot ordering | Per-voter HMAC order in `src/public.py`, tested in `tests/test_voting.py` | Implemented |
-| T3 | Rate limits, duplicate checks, readable audit | Vote/comment limits, duplicate vote constraint, duplicate-project adjudication and organizer activity desk | Implemented; Sybil resistance is limited |
+| T3 | Rate limits, duplicate checks, readable audit | Account/browser uniqueness, keyed IP and user-agent signals, short-window and daily network limits, duplicate-project adjudication, and organizer activity desk | Implemented; no anonymous scheme can prove one human per vote |
 | T4 | REST API and webhooks covering UI actions | UI domain writes use the documented REST API; every audited event-scoped write queues a signed webhook through the `audit()` transactional outbox (`tests/test_webhook_outbox.py`) | Implemented for event-scoped actions; account-level actions (register, login, password change) and browser-only theme changes do not emit webhooks; one delivery attempt, no automatic retry |
 | T4 | Certificates and records | `src/certificates.py` issues participation/winner certificates; `src/stretch.py` issues signed judge records | Implemented |
 | T4 | Signed publicly verifiable judge records | Ed25519 signature and public verification endpoint; tests detect tampering | Implemented; external issuer trust requires pinning the public key |
 | T4 | Embeddable gallery | Public iframe routes `/widgets/events/{id}/gallery` and `/embed/{id}`, organizer embed snippet and widget test | Implemented |
-| T4 | Bulk import and export | CSV exports, portable pre-judging JSON bundle, full SQLite backup/restore; fixture test preserves 41 projects | Partial: portable JSON does not import historical reviews, ballots, certificates or audit entries |
+| T4 | Bulk import and export | CSV exports, editable setup bundle, complete event archive, and full SQLite backup/restore; round-trip test preserves 41 projects, 126 scorecards, ballots, certificates, and audit history | Implemented |
 
 `docker compose up` seeds the published fixture. The fresh-volume suite, exact
 official checker and network-disabled startup are recorded in

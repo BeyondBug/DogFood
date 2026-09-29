@@ -19,6 +19,53 @@ class VotingTests(unittest.TestCase):
         self.assertEqual(second, ["prj_d", "prj_c", "prj_e", "prj_b", "prj_a"])
         self.assertEqual(first, [row["id"] for row in order_ballot(list(reversed(projects)), seed, "voter-a")])
 
+    def test_open_link_ballot_uses_browser_identity_and_abuse_signals(self):
+        suffix = uuid.uuid4().hex[:10]
+        organizer = creator_cookie()
+        status, event, _ = call("POST", "/api/events", {
+            "name": f"Open ballot {suffix}",
+            "submissions_close": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(),
+            "tracks": ["Open"],
+        }, organizer)
+        self.assertEqual(status, 201, event)
+        event_id = event["id"]
+        track_id = call("GET", f"/api/events/{event_id}")[1]["tracks"][0]["id"]
+        self.assertEqual(call("POST", f"/api/events/{event_id}/registration", {}, organizer)[0], 201)
+        status, team, _ = call("POST", f"/api/events/{event_id}/teams", {"name": "Open team"}, organizer)
+        self.assertEqual(status, 201, team)
+        status, project, _ = call("POST", f"/api/events/{event_id}/projects", {
+            "team_id": team["id"], "track_id": track_id, "title": "Open project", "status": "submitted",
+        }, organizer)
+        self.assertEqual(status, 201, project)
+        now = datetime.now(timezone.utc)
+        self.assertEqual(call("PATCH", f"/api/events/{event_id}", {
+            "submissions_close": (now - timedelta(minutes=2)).isoformat(),
+        }, organizer)[0], 200)
+        status, configured, _ = call("PUT", f"/api/events/{event_id}/voting", {
+            "mode": "open_link", "opens_at": (now - timedelta(minutes=1)).isoformat(),
+            "closes_at": (now + timedelta(hours=1)).isoformat(),
+        }, organizer)
+        self.assertEqual(status, 200, configured)
+        token = configured["open_vote_url"].split("/")[-1]
+        status, page, page_cookie = call("GET", f"/open-vote/{token}")
+        self.assertEqual(status, 200, page)
+        self.assertIn("Anyone with the link", call("GET", f"/organizer/{event_id}", cookie=organizer)[1])
+        status, ballot, cookie = call("GET", f"/api/open-vote/{token}/ballot")
+        self.assertEqual(status, 200, ballot)
+        self.assertEqual([row["id"] for row in ballot["projects"]], [project["id"]])
+        browser = (cookie or page_cookie).split(";", 1)[0]
+        status, recorded, _ = call("POST", f"/api/open-vote/{token}/votes",
+                                   {"project_id": project["id"]}, browser)
+        self.assertEqual(status, 201, recorded)
+        self.assertEqual(call("POST", f"/api/open-vote/{token}/votes",
+                              {"project_id": project["id"]}, browser)[0], 409)
+        summary = call("GET", f"/api/events/{event_id}/votes/summary", cookie=organizer)[1]
+        self.assertEqual(summary["total_votes"], 1)
+        self.assertEqual(summary["attempts"]["accepted"], 1)
+        self.assertEqual(summary["attempts"]["duplicate"], 1)
+        audit = call("GET", f"/api/events/{event_id}/audit", cookie=organizer)[1]
+        self.assertTrue(any(row["action"] == "open_vote.cast" for row in audit["entries"]))
+
     def test_participant_ballot_blocks_self_vote_sybil_and_retries(self):
         suffix = uuid.uuid4().hex[:10]
 

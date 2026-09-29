@@ -387,6 +387,41 @@ CREATE TABLE IF NOT EXISTS project_answers (
 );
 """
 
+SCHEMA_V11 = """
+ALTER TABLE events ADD COLUMN open_link_enabled INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE events ADD COLUMN open_vote_token TEXT;
+CREATE TABLE open_voters (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    browser_digest TEXT NOT NULL,
+    first_ip_digest TEXT NOT NULL,
+    user_agent_digest TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    UNIQUE(event_id,browser_digest)
+);
+CREATE TABLE open_ballots (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    open_voter_id TEXT NOT NULL REFERENCES open_voters(id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL REFERENCES projects(id),
+    cast_at TEXT NOT NULL,
+    risk_signal TEXT NOT NULL DEFAULT '',
+    UNIQUE(event_id,open_voter_id)
+);
+CREATE TABLE open_vote_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    open_voter_id TEXT REFERENCES open_voters(id) ON DELETE SET NULL,
+    ip_digest TEXT NOT NULL,
+    user_agent_digest TEXT NOT NULL,
+    outcome TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX ix_open_vote_attempts_voter_time ON open_vote_attempts(event_id,open_voter_id,created_at);
+CREATE INDEX ix_open_vote_attempts_ip_time ON open_vote_attempts(event_id,ip_digest,created_at);
+"""
+
 
 def initialize() -> None:
     path = database_path()
@@ -394,7 +429,7 @@ def initialize() -> None:
     with closing(connect()) as db:
         db.execute("PRAGMA journal_mode = WAL")
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        if version > 10:
+        if version > 11:
             raise RuntimeError(f"Database schema version {version} is newer than this app")
         if version == 0:
             db.executescript(SCHEMA_V1)
@@ -438,4 +473,8 @@ def initialize() -> None:
         if version == 9:
             db.executescript(SCHEMA_V10)
             db.execute("PRAGMA user_version = 10")
+            version = 10
+        if version == 10:
+            db.executescript(SCHEMA_V11)
+            db.execute("PRAGMA user_version = 11")
         db.commit()

@@ -26,6 +26,7 @@ from .certificates import router as certificate_router
 from .stretch import router as stretch_router
 from .submission_questions import router as submission_questions_router, validate_answers, save_answers
 from .portable_bundle import router as portable_bundle_router
+from .event_archive import router as event_archive_router
 from .ui import router as ui_router
 from .db import connect, initialize, utc_now
 from .seed import seed
@@ -66,6 +67,7 @@ app.include_router(core_router)
 app.include_router(ui_router)
 app.include_router(submission_questions_router)
 app.include_router(portable_bundle_router)
+app.include_router(event_archive_router)
 
 
 @app.middleware("http")
