@@ -14,10 +14,6 @@ Public visitors can browse and search events at `/events`; each event has its
 own page and event-scoped gallery links. Galleries paginate beyond 48 projects,
 so large events remain browsable.
 
-**DEV Community Write Up Quest post:** `DEV_POST_URL_PENDING`
-
-Replace this placeholder with the public article URL immediately after publishing.
-
 ## System at a glance
 
 ```mermaid
@@ -324,9 +320,13 @@ promotes reviewed releases to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Known limits
 
 - T3 and T4 are not claimed in `.dogfood.toml` because the supplied checker
-  contains no checks for either tier. Their features are implemented and
-  independently tested; evidence is kept separate from the official T1/T2
-  acceptance result. Certificate verification remains database-backed, while
+  contains no checks for either tier. Both are **partial**, and
+  [TIER-COVERAGE.md](docs/TIER-COVERAGE.md) lists each gap: there is no anonymous
+  open-link voting mode or quadratic ballot; webhooks cover event-scoped
+  audited actions with one delivery attempt and no automatic retry; the
+  portable JSON bundle does not carry historical reviews, ballots or audit
+  entries (a full SQLite restore does). Evidence is kept separate from the
+  official T1/T2 acceptance result. Certificate verification remains database-backed, while
   judge participation records use independently verifiable Ed25519 signatures.
 - Community voting cannot establish one human per account. Invite acceptance
   matches an account email but does not verify inbox ownership; participant

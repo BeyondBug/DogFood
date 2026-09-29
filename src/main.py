@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 import json
@@ -38,7 +39,25 @@ templates = Jinja2Templates(directory=str(ROOT / "templates"))
 async def lifespan(_: FastAPI):
     initialize()
     seed()
+    stop = asyncio.Event()
+    worker = asyncio.create_task(_webhook_worker(stop))
     yield
+    stop.set()
+    await worker
+
+
+async def _webhook_worker(stop: asyncio.Event) -> None:
+    """Drain the webhook outbox off the request path. No webhooks => no network."""
+    from .stretch import deliver_pending_webhooks
+    while not stop.is_set():
+        try:
+            await asyncio.to_thread(deliver_pending_webhooks)
+        except Exception:  # keep the worker alive; each outcome is stored per delivery
+            pass
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=2)
+        except asyncio.TimeoutError:
+            pass
 
 
 app = FastAPI(title="BeyondBug", version="0.1.0", lifespan=lifespan)

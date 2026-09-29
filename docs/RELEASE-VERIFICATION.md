@@ -5,13 +5,14 @@
 | Check | Result |
 | --- | --- |
 | Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
-| Independent unit and HTTP integration suite | **39/39 PASS** |
-| Disposable fresh-volume test runner | **39/39 PASS:** new Compose project and volume; removed after run |
+| Independent unit and HTTP integration suite | **41/41 PASS** |
+| Disposable fresh-volume test runner | **41/41 PASS:** new Compose project and volume; removed after run |
 | Fresh disposable Compose volume | **PASS on schema 10:** fixture seed, migrations, lifecycle, permissions, custom questions, scoring, voting, certificates, pairwise ranking, signed records, webhooks, bulk and portable import, embeds, backup/restore, OpenAPI, and portable ML checks run before the volume is removed |
 | Fresh portal checked by official `run.py` | **7/7 PASS** |
 | Restart persistence | **PASS:** same event, project, judge, and local secret counts |
 | Runtime with container network disabled | **PASS:** isolated in Docker, local `/health` returned HTTP 200; webhooks remain optional |
 | OpenAPI artifact synchronization | **PASS:** test compares committed JSON to FastAPI schema |
+| Signed judge-record runtime | **PASS:** final container provides OpenSSL 3.5.7 |
 | Desktop and mobile visual review | **PASS:** Event Desk, Pulse, and Studio at 1440 px and 390 px; Studio light/dark, no mobile overflow, theme and mode persisted after reload |
 | Portable ML inference | **PASS:** 300-tree JSON export matches trained scikit-learn decision score on a reference vector; organizer-only panel rendered on fixture in 0.13 s |
 | Local gallery read probe | **PASS:** 500/500 at 20 workers and 1,000/1,000 at 50 workers; see [CAPACITY.md](CAPACITY.md) |

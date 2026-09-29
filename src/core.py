@@ -142,11 +142,38 @@ def require_before(value: str | None, message: str) -> None:
 
 
 def audit(db, event_id: str | None, actor: str, action: str, entity: str, entity_id: str, details: dict | None = None) -> None:
+    """Append an audit row and, in the same transaction, queue webhook deliveries.
+
+    Every state-changing API route already writes exactly one audit entry, so
+    the audit log doubles as a transactional outbox: a webhook is queued only
+    if the action commits, and a rolled-back action never notifies anyone.
+    """
+    now = utc_now()
+    details_json = json.dumps(details or {}, sort_keys=True)
     db.execute(
         "INSERT INTO audit_entries(event_id,actor_user_id,action,entity_type,entity_id,details_json,created_at)"
         " VALUES(?,?,?,?,?,?,?)",
-        (event_id, actor, action, entity, entity_id, json.dumps(details or {}, sort_keys=True), utc_now()),
+        (event_id, actor, action, entity, entity_id, details_json, now),
     )
+    if event_id:
+        enqueue_webhooks(db, event_id, action, {
+            "actor_user_id": actor, "entity_type": entity, "entity_id": entity_id,
+            "details": details or {},
+        }, now)
+
+
+def enqueue_webhooks(db, event_id: str, event_type: str, data: dict, now: str | None = None) -> int:
+    """Queue one pending delivery per active webhook inside the caller's transaction."""
+    hooks = db.execute("SELECT id FROM webhooks WHERE event_id=? AND active=1", (event_id,)).fetchall()
+    if not hooks:
+        return 0
+    now = now or utc_now()
+    payload = json.dumps({"id": identifier("evtmsg"), "type": event_type, "event_id": event_id,
+                          "created_at": now, "data": data}, sort_keys=True, separators=(",", ":"))
+    for hook in hooks:
+        db.execute("INSERT INTO webhook_deliveries(id,webhook_id,event_type,payload_json,status,created_at)"
+                   " VALUES(?,?,?,?,'pending',?)", (identifier("whd"), hook["id"], event_type, payload, now))
+    return len(hooks)
 
 
 class RegisterInput(BaseModel):

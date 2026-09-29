@@ -6,7 +6,7 @@ official `.dogfood.toml` claim at T1/T2 and documents T4 separately.
 | T4 requirement | Implementation | Evidence |
 | --- | --- | --- |
 | REST API | Browser mutations and public/private reads use documented JSON APIs | Generated `openapi.json`; synchronization test |
-| Webhooks | Canonical JSON with a per-endpoint HMAC-SHA256 signature and retained delivery status | Stretch integration test exercises configuration and failure history |
+| Webhooks | Every audited event-scoped write queues canonical JSON (type = audit action) in the same transaction; a background task delivers it with a per-endpoint HMAC-SHA256 signature and retains status | `tests/test_webhook_outbox.py` proves a committed update is queued once and a rejected one is not; stretch test exercises failure history |
 | Certificates and records | Separate participant and winner certificates with public lookup | Lifecycle tests |
 | Signed judge participation records | Canonical JSON signed by an offline-generated Ed25519 installation key; payload, signature, and public key are public | Integration test verifies with OpenSSL |
 | Embeddable gallery widget | Responsive, dependency-free `/embed/{event_id}` page showing submitted projects only | Stretch integration test |
