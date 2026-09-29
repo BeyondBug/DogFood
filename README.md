@@ -13,6 +13,9 @@ The portal runs on one laptop with FastAPI, SQLite, and locally bundled assets.
 Public visitors can browse and search events at `/events`; each event has its
 own page and event-scoped gallery links. Galleries paginate beyond 48 projects,
 so large events remain browsable.
+Organizers can configure up to ten event-specific submission questions before
+the first draft. Required answers are checked on final submission and shown
+only to the team, assigned judges, and organizers.
 
 **DEV Community Write Up Quest post:** `DEV_POST_URL_PENDING`
 

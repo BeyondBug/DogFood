@@ -294,6 +294,11 @@ def participant_workspace(event_id: str, request: Request):
         members = db.execute("SELECT u.name,m.role FROM team_members m JOIN users u ON u.id=m.user_id WHERE m.team_id=? ORDER BY m.joined_at",
                              (team["id"],)).fetchall() if team else []
         project = db.execute("SELECT * FROM projects WHERE team_id=? ORDER BY updated_at DESC LIMIT 1", (team["id"],)).fetchone() if team else None
+        questions = db.execute("SELECT id,label,required FROM submission_questions WHERE event_id=? ORDER BY sort_order",
+                               (event_id,)).fetchall()
+        answers = {row["question_id"]: row["answer"] for row in db.execute(
+            "SELECT question_id,answer FROM project_answers WHERE project_id=?",
+            (project["id"] if project else "",))}
         certificates = db.execute(
             "SELECT c.id,c.kind,pr.name AS prize_name FROM certificates c"
             " LEFT JOIN prizes pr ON pr.id=c.prize_id WHERE c.event_id=? AND c.user_id=?"
@@ -309,6 +314,7 @@ def participant_workspace(event_id: str, request: Request):
         "principal": principal, "event": dict(event), "tracks": [dict(row) for row in tracks],
         "team": dict(team) if team else None, "members": [dict(row) for row in members],
         "project": dict(project) if project else None, "can_edit": not closed and not not_open,
+        "questions": [dict(row) for row in questions], "answers": answers,
         "team_editable": not closed,
         "closed": closed, "not_open": not_open,
         "certificates": [dict(row) for row in certificates],
@@ -343,6 +349,10 @@ def judge_workspace(event_id: str, request: Request):
                                 " JOIN rubric_criteria c ON c.id=cs.criterion_id"
                                 " JOIN scorecards s ON s.id=cs.scorecard_id WHERE s.assignment_id=?", (row["id"],)).fetchall()
             item["scores"] = {score["slug"]: score["score"] for score in scores}
+            item["answers"] = [dict(answer) for answer in db.execute(
+                "SELECT q.label,a.answer FROM project_answers a"
+                " JOIN submission_questions q ON q.id=a.question_id"
+                " WHERE a.project_id=? ORDER BY q.sort_order", (row["project_id"],))]
             items.append(item)
     now = datetime.now(timezone.utc)
     judging_editable = not event["results_published_at"] and now >= time_value(event["submissions_close"])
@@ -368,6 +378,9 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
         event = _event(db, event_id)
         require_event_role(db, principal, event_id, "organizer")
         tracks = db.execute("SELECT id,name FROM tracks WHERE event_id=? ORDER BY name", (event_id,)).fetchall()
+        questions = db.execute("SELECT id,label,required FROM submission_questions WHERE event_id=? ORDER BY sort_order",
+                               (event_id,)).fetchall()
+        has_projects = db.execute("SELECT 1 FROM projects WHERE event_id=? LIMIT 1", (event_id,)).fetchone() is not None
         judges = db.execute("SELECT j.id,u.name,u.email,COUNT(a.id) AS assigned,"
                             " SUM(CASE WHEN s.status='submitted' THEN 1 ELSE 0 END) AS submitted"
                             " FROM judge_profiles j JOIN users u ON u.id=j.user_id"
@@ -454,6 +467,7 @@ def organizer_workspace(event_id: str, request: Request, activity: str = "All"):
                        "reason": "Results are public. Record winners and issue certificates."}
     return templates.TemplateResponse(request, "organizer.html", {
         "principal": principal, "event": dict(event), "tracks": [dict(row) for row in tracks],
+        "questions": [dict(row) for row in questions], "questions_locked": has_projects,
         "judges": judge_items, "coverage": [dict(row) for row in coverage],
         "rubric": dict(rubric) if rubric else None, "criteria": [dict(row) for row in criteria],
         "ranking": ranking, "insight": insight, "ml_insight": ml_insight, "audit": audit,

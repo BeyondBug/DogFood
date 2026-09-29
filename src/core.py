@@ -539,6 +539,7 @@ class ProjectUpdate(BaseModel):
     tech_tags: str = Field(default="", max_length=500)
     track_id: str
     status: str = "draft"
+    answers: dict[str, str] | None = None
 
 
 @router.put("/projects/{project_id}")
@@ -570,6 +571,8 @@ def update_project(project_id: str, payload: ProjectUpdate, request: Request):
         track = db.execute("SELECT 1 FROM tracks WHERE id=? AND event_id=?", (payload.track_id, project["event_id"])).fetchone()
         if track is None:
             raise HTTPException(status_code=422, detail="Track does not belong to this event")
+        from .submission_questions import validate_answers, save_answers
+        answers = validate_answers(db, project["event_id"], project_id, payload.answers, payload.status)
         now = utc_now()
         if repo_url != project["repo_url"]:
             db.execute("DELETE FROM duplicate_decisions WHERE project_id=?", (project_id,))
@@ -581,6 +584,7 @@ def update_project(project_id: str, payload: ProjectUpdate, request: Request):
              project["submitted_at"] or now if payload.status == "submitted" else None, now,
              None, project_id),
         )
+        save_answers(db, project_id, answers)
         reconcile_submitted_duplicates(db, project["event_id"])
         audit(db, project["event_id"], principal.user_id, "project.updated", "project", project_id, {"status": payload.status})
         db.commit()

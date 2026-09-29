@@ -24,6 +24,7 @@ official acceptance routes are declared in `.dogfood.toml`.
 | Awards and certificates | `PUT /api/events/{id}/prizes/{prize}/winner`; `POST/GET /api/events/{id}/certificates`; `GET /api/me/certificates`, `/api/certificates/{id}/verify` | Organizer awards/issues; recipient reads own list; verification is public |
 | Judge participation records | `POST /api/events/{id}/judge-records/issue`; `GET /api/me/judge-records`, `/api/judge-records/{id}/verify` | Organizer issues after publication; judge reads own list; signed record and public key are public |
 | Webhooks | `POST/GET /api/events/{id}/webhooks`, `DELETE /api/events/{id}/webhooks/{hook}`, `GET /api/events/{id}/webhooks/deliveries` | Site administrator configures optional receivers; organizer reads delivery status; signed callbacks follow audited event writes |
+| Submission questions | `GET/PUT /api/events/{id}/submission-questions`, `GET /api/events/{id}/projects/{project}/answers` | Organizer sets questions before the first draft; team and assigned judges read private answers; project writes carry `answers` keyed by question ID |
 | Administration | `GET /api/admin/overview`; `POST /api/admin/events/{id}/organizers`, `/judges`, `/api/admin/backups`; `GET /api/admin/backups/{file}`; `PUT /api/admin/events/{id}/certificate-designs/{kind}` | Bootstrapped global admin |
 
 API errors use `401` for missing login, `403` for a known forbidden action,

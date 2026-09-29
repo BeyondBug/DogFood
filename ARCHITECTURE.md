@@ -8,7 +8,7 @@ The image installs pinned wheels from `vendor/wheels` with `--no-index` and
 serves Jinja templates, JavaScript, CSS, and IBM Plex Sans from its own
 filesystem. There are no outbound runtime calls or hosted services.
 
-Startup applies SQLite schema migrations (`PRAGMA user_version` 1 through 10),
+Startup applies SQLite schema migrations (`PRAGMA user_version` 1 through 11),
 loads `fixtures.json` if its event is absent, and prints the demo auth headers
 when demo mode is enabled. A restart leaves user changes intact. The health
 route checks database access. A one-worker process keeps SQLite write
@@ -76,6 +76,7 @@ are organizer-only until publication; public vote results then become visible.
 | `src/certificates.py` | Prize assignment, certificate issuance and public verification |
 | `src/judge_records.py` | Ed25519-signed judge participation records and public verification |
 | `src/webhooks.py` | Optional signed event callbacks, durable delivery queue, and retry worker |
+| `src/submission_questions.py` | Organizer-defined project questions, private answers, and required-answer enforcement |
 | `src/backup.py`, `src/restore.py` | Consistent SQLite snapshot and offline restore |
 | `src/ui.py` | Public and role workspaces from live records |
 | `src/main.py` | Application assembly, gallery, acceptance routes |

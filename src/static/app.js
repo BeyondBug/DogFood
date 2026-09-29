@@ -292,6 +292,12 @@ document.addEventListener('submit', async event => {
         }
         await api('PATCH', `/api/events/${form.dataset.event}`, data);
         refresh(); return;
+      case 'submission-questions':
+        data.questions = (data.questions || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => ({
+          label: line.replace(/^\*\s*/, '').trim(), required: line.startsWith('*')
+        }));
+        await api('PUT', `/api/events/${form.dataset.event}/submission-questions`, data);
+        refresh(); return;
       case 'join-event':
         await api('POST', `/api/events/${form.dataset.event}/registration`, {});
         window.location.assign(`/workspace/${form.dataset.event}`);
@@ -305,6 +311,10 @@ document.addEventListener('submit', async event => {
         return;
       case 'project':
         data.status = submitter?.value || 'draft';
+        data.answers = {};
+        for (const [key, value] of Object.entries(data)) {
+          if (key.startsWith('answer:')) { data.answers[key.slice(7)] = value; delete data[key]; }
+        }
         if (form.dataset.project) {
           await api('PUT', `/api/projects/${form.dataset.project}`, data);
         } else {

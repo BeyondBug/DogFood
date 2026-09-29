@@ -5,12 +5,12 @@
 | Check | Result |
 | --- | --- |
 | Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
-| Independent unit and HTTP integration suite | **36/36 PASS** |
-| Disposable fresh-volume test runner | **36/36 PASS:** new Compose project and volume; removed after run; tests execute inside the offline portal image |
-| Fresh disposable Compose volume | **PASS on schema 10:** fixture seed, migrations, lifecycle, permissions, scoring, voting, certificates, duplicate adjudication, backup and restore, signed judge records, webhook delivery, OpenAPI, and portable ML checks run before the volume is removed |
+| Independent unit and HTTP integration suite | **37/37 PASS** |
+| Disposable fresh-volume test runner | **37/37 PASS:** new Compose project and volume; removed after run; tests execute inside the offline portal image |
+| Fresh disposable Compose volume | **PASS on schema 11:** fixture seed, migrations, lifecycle, permissions, scoring, voting, certificates, duplicate adjudication, backup and restore, signed judge records, webhook delivery, submission questions, OpenAPI, and portable ML checks run before the volume is removed |
 | Fresh portal checked by official `run.py` | **7/7 PASS** on separate disposable port 18080 |
 | Restart persistence | **PASS:** same event, project, judge, and local secret counts |
-| Runtime with container network disabled | **PASS on earlier schema 8 image:** isolated in Docker, local `/health` returned HTTP 200 without external access; schema 10 has not been rechecked this way |
+| Runtime with container network disabled | **PASS on schema 11:** isolated in Docker, seeded 41 projects and migrated to version 11; local `/health` returned HTTP 200 without external access |
 | OpenAPI artifact synchronization | **PASS:** test compares committed JSON to FastAPI schema |
 | Desktop and mobile visual review | **PASS:** Event Desk, Pulse, and Studio at 1440 px and 390 px; Studio light/dark, no mobile overflow, theme and mode persisted after reload |
 | New gallery widget visual review | **Desktop PASS:** public fixture gallery rendered in a headless browser with 12 cards and page navigation. The headless mobile capture returned a blank/default-size frame, so this revision has no reliable mobile screenshot evidence for the widget. Its 560 px CSS breakpoint is present but remains visually unverified. |
@@ -26,7 +26,7 @@
 The canonical [acceptance-report.txt](acceptance-report.txt) is the unedited
 checker output against a disposable fresh portal on port 18080. `.dogfood.toml` claims only T1/T2.
 [T3-EVIDENCE.md](T3-EVIDENCE.md) records separately tested capabilities that
-the supplied checker does not test. The current 36-test run covers schema 10
+the supplied checker does not test. The current 37-test run covers schema 11
 and the new Addons work; older capacity, network-disabled, demo, and visual
 checks below remain historical evidence rather than a claim of re-running
 them against this exact source revision.

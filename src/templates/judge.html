@@ -18,6 +18,7 @@
         <h2>{{ item.title }}</h2>
         <p>{{ item.summary }}</p>
         {% if item.description %}<p class="review-description">{{ item.description }}</p>{% endif %}
+        {% if item.answers %}<dl class="custom-answers">{% for answer in item.answers %}<div><dt>{{ answer.label }}</dt><dd>{{ answer.answer }}</dd></div>{% endfor %}</dl>{% endif %}
         {% if item.repo_url %}<a href="{{ item.repo_url }}" target="_blank" rel="noopener noreferrer">View repository ↗</a>{% endif %}
         {% if item.demo_url %}<a href="{{ item.demo_url }}" target="_blank" rel="noopener noreferrer">View demo ↗</a>{% endif %}{% if item.live_url %}<a href="{{ item.live_url }}" target="_blank" rel="noopener noreferrer">Open live project ↗</a>{% endif %}{% if item.video_url %}<a href="{{ item.video_url }}" target="_blank" rel="noopener noreferrer">Watch video ↗</a>{% endif %}{% if item.tech_tags %}<p>Built with {{ item.tech_tags }}</p>{% endif %}
         <span class="status-pill">{{ item.status|capitalize if item.status else 'To review' }}</span>

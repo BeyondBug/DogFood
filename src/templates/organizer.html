@@ -63,6 +63,12 @@
   </details>
   {% endif %}
 
+  <details class="event-settings" id="submission-questions">
+    <summary><strong>Submission questions</strong><span>{{ questions|length }} event-specific prompts</span></summary>
+    {% if questions_locked or event.results_published_at %}<p class="muted">Questions lock after the first project draft. They stay attached to existing answers.</p><ol>{% for question in questions %}<li>{{ question.label }}{% if question.required %} · required{% endif %}</li>{% endfor %}</ol>
+    {% else %}<form data-action="submission-questions" data-event="{{ event.id }}"><label>Questions, one per line<textarea name="questions" rows="5" placeholder="* What problem does this solve?&#10;What would you build next?">{% for question in questions %}{{ '* ' if question.required else '' }}{{ question.label }}{% if not loop.last %}&#10;{% endif %}{% endfor %}</textarea><small>Prefix a required question with *. Up to ten questions. Save before the first team creates a draft.</small></label><button class="button button-secondary" type="submit">Save questions</button></form>{% endif %}
+  </details>
+
   <div class="organizer-grid">
     <section class="panel" id="judges">
       <h2>Judges</h2>

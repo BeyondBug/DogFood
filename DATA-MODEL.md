@@ -1,7 +1,7 @@
 # Data model
 
 SQLite is the source of truth. `src/db.py` contains the exact versioned SQL
-schema; `PRAGMA user_version` advances from 0 through 10 at startup. Every
+schema; `PRAGMA user_version` advances from 0 through 11 at startup. Every
 connection enables foreign keys and a busy timeout. Event-scoped APIs check
 the event ID as well as the acting user's role.
 
@@ -34,6 +34,7 @@ the event ID as well as the acting user's role.
 | `certificates` | Opaque ID, event, recipient, project, participant/winner kind, optional prize, issuance time, design JSON snapshot | Unique participant record per event/recipient and unique winner record per event/recipient/prize; later design edits do not change issued artwork |
 | `judge_records` | Event, judge, exact JSON payload, Ed25519 signature, public key, issuance time | One immutable participation record per judge and event; public verification checks the signature |
 | `webhook_subscriptions`, `webhook_deliveries` | Event URL, secret, active flag; audit event, payload, status, retry timing | Delivery rows commit with audited writes; receiver secrets stay server-side; failures do not block the event action |
+| `submission_questions`, `project_answers` | Event prompt, required flag and order; project answer | Question set locks after the first draft; required answers are enforced on final submission; answers stay private to the team, assigned judges and organizers |
 | `app_keys`, `login_attempts` | Local HMAC secret; account and IP digests, outcome, timestamp | Failed logins and lockouts persist across process restarts without storing raw IPs |
 
 Generated IDs are opaque strings with prefixes such as `evt_`, `tm_`, and
@@ -82,7 +83,7 @@ account from local environment variables.
 | Path | Format | Access |
 | --- | --- | --- |
 | `fixtures.json` → `src/seed.py` | Published JSON | Startup only |
-| `/api/events/{id}/exports/projects.csv` | Project and team rows | Organizer |
+| `/api/events/{id}/exports/projects.csv` | Project and team rows, including `answers_json` for event questions | Organizer |
 | `/api/events/{id}/exports/teams.csv` | One row per team member | Organizer |
 | `/api/events/{id}/exports/participants.csv` | Registered accounts and team membership | Organizer |
 | `/api/events/{id}/exports/judges.csv` | Judges, status, and eligible tracks | Organizer |
@@ -118,7 +119,8 @@ certificates. Version 5 added persistent login throttling. Version 6 added
 per-event certificate designs and issuance-time design snapshots. Version 7
 added project media links and technology tags. Version 8 added duplicate
 adjudication; version 9 added signed judge records; version 10 added webhook
-subscriptions and durable deliveries. Migrations run before fixture
+subscriptions and durable deliveries; version 11 added event submission
+questions and project answers. Migrations run before fixture
 seeding.
 `rubrics.version` and each
 scorecard's `rubric_id` preserve scoring context, but changing a rubric is

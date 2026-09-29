@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import asyncio
 import io
+import json
 import uuid
 from contextlib import asynccontextmanager, closing
 from datetime import datetime, timezone
@@ -24,6 +25,7 @@ from .public import router as public_router
 from .certificates import router as certificate_router
 from .judge_records import router as judge_records_router
 from .webhooks import delivery_loop, router as webhooks_router
+from .submission_questions import router as submission_questions_router, validate_answers, save_answers
 from .ui import router as ui_router
 from .db import connect, initialize, utc_now
 from .seed import seed
@@ -54,6 +56,7 @@ app.include_router(core_router)
 app.include_router(ui_router)
 app.include_router(judge_records_router)
 app.include_router(webhooks_router)
+app.include_router(submission_questions_router)
 
 
 @app.middleware("http")
@@ -80,6 +83,7 @@ class ProjectInput(BaseModel):
     live_url: str = Field(default="", max_length=1000)
     tech_tags: str = Field(default="", max_length=500)
     status: str = "draft"
+    answers: dict[str, str] | None = None
 
 
 def _deadline_passed(value: str) -> bool:
@@ -277,6 +281,7 @@ def create_project(event_id: str, payload: ProjectInput, request: Request):
         existing = db.execute("SELECT 1 FROM projects WHERE team_id=?", (payload.team_id,)).fetchone()
         if existing:
             raise HTTPException(status_code=409, detail="This team already has a project")
+        answers = validate_answers(db, event_id, None, payload.answers, payload.status)
         project_id = "prj_" + uuid.uuid4().hex[:16]
         now = utc_now()
         db.execute(
@@ -287,6 +292,7 @@ def create_project(event_id: str, payload: ProjectInput, request: Request):
              live_url, payload.tech_tags.strip(), payload.status,
              now if payload.status == "submitted" else None, now, None),
         )
+        save_answers(db, project_id, answers)
         reconcile_submitted_duplicates(db, event_id)
         audit(db, event_id, principal.user_id, "project.created", "project", project_id,
               {"status": payload.status})
@@ -370,9 +376,15 @@ def export_projects(event_id: str, request: Request):
     output = io.StringIO()
     writer = csv.writer(output)
     columns = ("id", "title", "status", "summary", "repo_url", "demo_url", "live_url", "video_url",
-               "thumbnail_url", "image_urls", "tech_tags", "submitted_at", "team", "track")
+               "thumbnail_url", "image_urls", "tech_tags", "submitted_at", "team", "track", "answers_json")
     writer.writerow(columns)
-    writer.writerows(tuple(csv_safe(row[column]) for column in columns) for row in rows)
+    with closing(connect()) as db:
+        for row in rows:
+            answers = {answer["label"]: answer["answer"] for answer in db.execute(
+                "SELECT q.label,a.answer FROM project_answers a JOIN submission_questions q ON q.id=a.question_id"
+                " WHERE a.project_id=? ORDER BY q.sort_order", (row["id"],))}
+            writer.writerow(tuple(csv_safe(row[column]) for column in columns[:-1]) +
+                            (csv_safe(json.dumps(answers, ensure_ascii=False)),))
     return Response(output.getvalue(), media_type="text/csv; charset=utf-8", headers={
         "Content-Disposition": f'attachment; filename="{event_id}-projects.csv"',
     })

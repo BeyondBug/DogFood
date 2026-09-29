@@ -41,6 +41,7 @@
         <label>Image gallery URLs<textarea name="image_urls" rows="3" placeholder="One HTTPS image URL per line, up to five">{{ project.image_urls if project else '' }}</textarea></label>
         <label>Technology tags<input name="tech_tags" value="{{ project.tech_tags if project else '' }}" placeholder="FastAPI, SQLite, Docker"><small>Separate tags with commas.</small></label>
         <label>Track<select name="track_id" required><option value="">Choose a track</option>{% for track in tracks %}<option value="{{ track.id }}" {% if project and project.track_id == track.id %}selected{% endif %}>{{ track.name }}</option>{% endfor %}</select></label>
+        {% if questions %}<div class="custom-questions"><h3>Event questions</h3><p class="muted">Required answers are checked when you submit. You can save an incomplete draft.</p>{% for question in questions %}<label>{{ question.label }}{% if question.required %} <span aria-label="Required">*</span>{% endif %}<textarea name="answer:{{ question.id }}" rows="3" maxlength="2000">{{ answers.get(question.id, '') }}</textarea></label>{% endfor %}</div>{% endif %}
         <div class="submission-readiness" aria-live="polite"><div><strong>Submission check</strong><span data-check-count></span></div><ul><li data-check="title" data-required="true"></li><li data-check="track_id" data-required="true"></li><li data-check="summary"></li><li data-check="description"></li><li data-check="repo_url"></li><li data-check="demo_url"></li><li data-check="thumbnail_url"></li><li data-check="video_url"></li><li data-check="live_url"></li><li data-check="tech_tags"></li></ul><p>Title and track are required. The other details help judges understand your work; this check does not test whether an external link opens.</p></div>
         <div class="form-actions"><button class="button button-secondary" type="submit" name="status" value="draft">Save draft</button><button class="button button-secondary" type="button" data-preview-submission>Preview judge view</button><button class="button button-primary" type="submit" name="status" value="submitted">{{ 'Save submission' if project and project.status == 'submitted' else 'Submit project' }}</button></div>
       </form>
@@ -50,6 +51,7 @@
         <h3>{{ project.title }}</h3>
         <p>{{ project.summary }}</p>
         {% if project.description %}<p>{{ project.description }}</p>{% endif %}
+        {% if questions %}<dl class="custom-answers">{% for question in questions %}{% if answers.get(question.id) %}<div><dt>{{ question.label }}</dt><dd>{{ answers[question.id] }}</dd></div>{% endif %}{% endfor %}</dl>{% endif %}
         <p class="muted">{% for track in tracks if track.id == project.track_id %}{{ track.name }}{% endfor %} · {{ 'Submitted' if project.status == 'submitted' else 'Draft only — never submitted' }}</p>
         {% if project.status == 'submitted' %}<a class="text-link" href="/projects/{{ project.id }}">View public project</a>{% endif %}
       </div>

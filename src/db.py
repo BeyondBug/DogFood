@@ -363,6 +363,23 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
 CREATE INDEX IF NOT EXISTS ix_webhook_deliveries_due ON webhook_deliveries(status,next_attempt_at);
 """
 
+SCHEMA_V11 = """
+CREATE TABLE IF NOT EXISTS submission_questions (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    label TEXT NOT NULL,
+    required INTEGER NOT NULL CHECK(required IN (0,1)),
+    sort_order INTEGER NOT NULL,
+    UNIQUE(event_id,sort_order)
+);
+CREATE TABLE IF NOT EXISTS project_answers (
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    question_id TEXT NOT NULL REFERENCES submission_questions(id) ON DELETE CASCADE,
+    answer TEXT NOT NULL,
+    PRIMARY KEY(project_id,question_id)
+);
+"""
+
 
 def initialize() -> None:
     path = database_path()
@@ -370,7 +387,7 @@ def initialize() -> None:
     with closing(connect()) as db:
         db.execute("PRAGMA journal_mode = WAL")
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        if version > 10:
+        if version > 11:
             raise RuntimeError(f"Database schema version {version} is newer than this app")
         if version == 0:
             db.executescript(SCHEMA_V1)
@@ -414,4 +431,8 @@ def initialize() -> None:
         if version == 9:
             db.executescript(SCHEMA_V10)
             db.execute("PRAGMA user_version = 10")
+            version = 10
+        if version == 10:
+            db.executescript(SCHEMA_V11)
+            db.execute("PRAGMA user_version = 11")
         db.commit()
