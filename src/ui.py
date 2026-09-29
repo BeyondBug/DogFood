@@ -88,12 +88,13 @@ def dashboard(request: Request):
                               "Submissions upcoming" if event["submissions_open"] and now < time_value(event["submissions_open"]) else
                               "Submissions open")
             if "participant" in event["roles"]:
-                team = db.execute("SELECT t.id,t.name FROM teams t JOIN team_members m ON m.team_id=t.id"
+                team = db.execute("SELECT t.id,t.name,m.role AS member_role FROM teams t JOIN team_members m ON m.team_id=t.id"
                                   " WHERE t.event_id=? AND m.user_id=?", (event_id, principal.user_id)).fetchone()
                 event["details"].append(f"Team: {team['name']}" if team else "Team: not formed")
                 if team:
                     member_count = db.execute("SELECT COUNT(*) FROM team_members WHERE team_id=?", (team["id"],)).fetchone()[0]
                     event["details"].append(f"Team members: {member_count}")
+                    event["manage_team"] = team["member_role"] == "captain" and now < time_value(event["submissions_close"])
                 project = db.execute("SELECT p.id,p.title,p.status,t.name AS track FROM projects p"
                                      " JOIN tracks t ON t.id=p.track_id WHERE p.team_id=?"
                                      " ORDER BY p.updated_at DESC LIMIT 1", (team["id"],)).fetchone() if team else None
@@ -290,7 +291,7 @@ def participant_workspace(event_id: str, request: Request):
         event = _event(db, event_id)
         require_event_role(db, principal, event_id, "participant")
         tracks = db.execute("SELECT id,name FROM tracks WHERE event_id=? ORDER BY name", (event_id,)).fetchall()
-        team = db.execute("SELECT t.id,t.name FROM teams t JOIN team_members m ON m.team_id=t.id"
+        team = db.execute("SELECT t.id,t.name,m.role AS member_role FROM teams t JOIN team_members m ON m.team_id=t.id"
                           " WHERE t.event_id=? AND m.user_id=?", (event_id, principal.user_id)).fetchone()
         members = db.execute("SELECT u.name,m.role FROM team_members m JOIN users u ON u.id=m.user_id WHERE m.team_id=? ORDER BY m.joined_at",
                              (team["id"],)).fetchall() if team else []

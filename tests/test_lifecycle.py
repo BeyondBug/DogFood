@@ -78,6 +78,10 @@ class LifecycleTests(unittest.TestCase):
         self.assertIn("Team: Progress team", dashboard)
         self.assertIn("Team members: 1", dashboard)
         self.assertIn("Start submission", dashboard)
+        self.assertIn(f'href="/workspace/{event_id}#team">Manage team</a>', dashboard)
+        workspace = call("GET", f"/workspace/{event_id}", cookie=cookie)[1]
+        self.assertIn('id="team"', workspace)
+        self.assertIn("Create invite link", workspace)
         status, project, _ = call("POST", f"/api/events/{event_id}/projects", {
             "team_id": team["id"], "track_id": track_id, "title": "Progress project", "status": "draft",
         }, cookie)
