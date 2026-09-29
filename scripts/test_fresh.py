@@ -11,7 +11,6 @@ import os
 import http.client
 import socket
 import subprocess
-import sys
 import time
 import urllib.request
 import uuid
@@ -49,7 +48,9 @@ def main() -> None:
                 time.sleep(1)
         else:
             raise RuntimeError("Fresh portal did not become healthy within 60 seconds")
-        subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
+        subprocess.run(command + ["run", "--rm", "--no-deps", "--volume", f"{ROOT}:/app:ro",
+                                  "--env", "DOGFOOD_TEST_URL=http://portal:8080",
+                                  "portal", "python", "-m", "unittest", "discover", "-s", "tests", "-v"],
                        cwd=ROOT, env=environment, check=True)
     finally:
         subprocess.run(command + ["down", "--volumes"], cwd=ROOT, env=environment,

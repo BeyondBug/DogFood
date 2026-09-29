@@ -8,7 +8,7 @@ The image installs pinned wheels from `vendor/wheels` with `--no-index` and
 serves Jinja templates, JavaScript, CSS, and IBM Plex Sans from its own
 filesystem. There are no outbound runtime calls or hosted services.
 
-Startup applies SQLite schema migrations (`PRAGMA user_version` 1 through 7),
+Startup applies SQLite schema migrations (`PRAGMA user_version` 1 through 11),
 loads `fixtures.json` if its event is absent, and prints the demo auth headers
 when demo mode is enabled. A restart leaves user changes intact. The health
 route checks database access. A one-worker process keeps SQLite write
@@ -74,6 +74,10 @@ are organizer-only until publication; public vote results then become visible.
 | `src/audit_view.py` | Plain-language actor, action, target and category presentation for organizers |
 | `src/public.py` | Voting configuration, eligibility, ballots, attempts, comments, moderation |
 | `src/certificates.py` | Prize assignment, certificate issuance and public verification |
+| `src/stretch.py` | Pairwise ranking, optional signed callbacks, bulk import, embeds, archives, and signed judge records |
+| `src/submission_questions.py` | Organizer-defined project questions, private answers, and required-answer enforcement |
+| `src/portable_bundle.py` | Bounded, transactional pre-judging event import and portable JSON export |
+| `src/backup.py`, `src/restore.py` | Consistent SQLite snapshot and offline restore |
 | `src/ui.py` | Public and role workspaces from live records |
 | `src/main.py` | Application assembly, gallery, acceptance routes |
 
@@ -126,16 +130,30 @@ are organizer-only until publication; public vote results then become visible.
 ## Operations and limits
 
 The DB file is the operational state. `src.backup` uses SQLite's online backup
-API to produce a consistent copy while the portal is running. Migrations run
-forward at startup; take a backup before upgrading. CSV exports provide paths
+API to produce a consistent copy while the portal is running. `src.restore`
+validates and restores a snapshot while the portal is stopped, retaining a
+safety copy of the previous database. Migrations run forward at startup; take
+a backup before upgrading. CSV exports provide paths
 out for projects, participants, teams, judges, assignments, scorecards,
 rankings, audit history, votes, and certificates. Fixture JSON is an initial
-import format, not a general bulk import facility.
+import format for initial fixture seeding. The portable JSON bundle moves
+pre-judging event data into an empty open event with new local IDs. A whole
+SQLite snapshot can restore a complete BeyondBug installation, including
+historical results and audit data.
 The admin overview reads disk and database size, offers an on-demand
 `PRAGMA quick_check`, and writes/downloads SQLite snapshots through
 administrator-only routes. Snapshots live under the data volume, outside
 public static assets. An operator must copy them off-host and arrange any
-retention or restore process.
+retention. Webhook delivery is optional: each audited event action writes a
+delivery row in the same database transaction; the single-process worker sends
+HMAC-signed callbacks with bounded retries. Receiver failure never rolls back
+the event action. The widget reads the public gallery without credentials.
+Judge records sign a fixed JSON payload with a locally stored Ed25519 key.
+Public verification checks the payload against its stored public key; an
+operator must publish or pin that key independently for third parties to
+authenticate the issuer. The private key must be backed up separately from
+the SQLite snapshot if the installation will continue issuing records after
+a restore.
 
 The event is served by a single process on one host. A larger deployment would
 need shared database, job queue, dedicated rate limiting, observability, and

@@ -6,7 +6,7 @@ services:
     environment:
       DOGFOOD_DB_PATH: /data/portal.sqlite3
       DOGFOOD_FIXTURES_PATH: /app/fixtures.json
-      DOGFOOD_DEMO_MODE: "1"
+      DOGFOOD_DEMO_MODE: ${DOGFOOD_DEMO_MODE:-1}
       DOGFOOD_BOOTSTRAP_EMAIL: ${DOGFOOD_BOOTSTRAP_EMAIL:-}
       DOGFOOD_BOOTSTRAP_PASSWORD: ${DOGFOOD_BOOTSTRAP_PASSWORD:-}
     volumes:

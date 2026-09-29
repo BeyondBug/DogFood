@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ event.name }} projects</title>
+  <link rel="stylesheet" href="/static/fonts.css">
+  <link rel="stylesheet" href="/static/gallery-widget.css">
+</head>
+<body>
+  <main class="widget">
+    <header>
+      <div><p class="eyebrow">BeyondBug gallery</p><h1>{{ event.name }}</h1><p>{{ total }} submitted project{{ '' if total == 1 else 's' }}</p></div>
+      <a class="all-projects" href="/projects?event={{ event.id|urlencode }}" target="_blank" rel="noopener noreferrer">Open gallery <span aria-hidden="true">↗</span></a>
+    </header>
+    <div class="grid">
+      {% for project in projects %}
+      <a class="project" href="/projects/{{ project.id|urlencode }}" target="_blank" rel="noopener noreferrer">
+        <span class="track">{{ project.track_name }}</span>
+        <h2>{{ project.title }}</h2>
+        <p class="summary">{{ project.summary or 'Explore this project in the full gallery.' }}</p>
+        <span class="team">By {{ project.team_name }} <span aria-hidden="true">↗</span></span>
+      </a>
+      {% else %}<p class="empty">No projects have been submitted yet.</p>{% endfor %}
+    </div>
+    {% if last_page > 1 %}<nav aria-label="Gallery pages">
+      {% if page > 1 %}<a href="?page={{ page - 1 }}">← Previous</a>{% endif %}
+      <span>Page {{ page }} of {{ last_page }}</span>
+      {% if page < last_page %}<a href="?page={{ page + 1 }}">Next →</a>{% endif %}
+    </nav>{% endif %}
+  </main>
+</body>
+</html>
