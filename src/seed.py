@@ -19,6 +19,8 @@ DEMO_TOKENS = {
     "judge_b": "bb_demo_judge_b_2026_local_only",
     "participant": "bb_demo_participant_2026_local_only",
 }
+DEMO_ADMIN_ID = "usr_demo_admin"
+DEMO_ADMIN_EMAIL = "demo-admin@beyondbug.local"
 
 
 def user_id(email: str) -> str:
@@ -72,6 +74,16 @@ def _ensure_demo_access(fixture: dict) -> None:
     }
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
+        # The imported fixture is closed. A distinct demo administrator lets
+        # the one-command walkthrough create an event without broadening the
+        # fixture organizer's event-scoped role.
+        db.execute("INSERT OR IGNORE INTO users(id,email,name,created_at) VALUES(?,?,?,?)",
+                   (DEMO_ADMIN_ID, DEMO_ADMIN_EMAIL, "Demo administrator", utc_now()))
+        db.execute("UPDATE users SET is_admin=1 WHERE id=?", (DEMO_ADMIN_ID,))
+        admin = db.execute("SELECT password_hash FROM users WHERE id=?", (DEMO_ADMIN_ID,)).fetchone()
+        if admin["password_hash"] is None:
+            db.execute("UPDATE users SET password_hash=? WHERE id=?",
+                       (hash_password("BeyondBugDemo2026!"), DEMO_ADMIN_ID))
         for role, token in DEMO_TOKENS.items():
             db.execute("INSERT OR IGNORE INTO sessions(token_hash,user_id,created_at,expires_at)"
                        " VALUES(?,?,?,?)",
@@ -93,12 +105,16 @@ def _remove_demo_access(fixture: dict) -> None:
                 user_id(fixture["teams"][0]["members"][0])]
     with closing(connect()) as db:
         db.execute("BEGIN IMMEDIATE")
+        db.execute("UPDATE users SET is_admin=0 WHERE id=?", (DEMO_ADMIN_ID,))
         for token in DEMO_TOKENS.values():
             db.execute("DELETE FROM sessions WHERE token_hash=?", (token_hash(token),))
         for uid in set(accounts):
             row = db.execute("SELECT password_hash FROM users WHERE id=?", (uid,)).fetchone()
             if row and verify_password("BeyondBugDemo2026!", row["password_hash"]):
                 db.execute("UPDATE users SET password_hash=NULL WHERE id=?", (uid,))
+        admin = db.execute("SELECT password_hash FROM users WHERE id=?", (DEMO_ADMIN_ID,)).fetchone()
+        if admin and verify_password("BeyondBugDemo2026!", admin["password_hash"]):
+            db.execute("UPDATE users SET password_hash=NULL WHERE id=?", (DEMO_ADMIN_ID,))
         db.commit()
 
 

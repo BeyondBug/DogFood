@@ -1,0 +1,117 @@
+"""Portable event exchange validates before writing and preserves primary data."""
+
+import os
+import tempfile
+import unittest
+from contextlib import closing
+from pathlib import Path
+from unittest.mock import patch
+
+from fastapi import HTTPException
+from starlette.requests import Request
+
+from src.auth import Principal
+from src.auth import verify_password
+from src.db import connect, initialize
+from src.portable_bundle import Bundle, export_portable, import_portable
+from src.seed import seed
+
+
+class PortableBundleTests(unittest.TestCase):
+    def test_fixture_bundle_keeps_all_forty_one_projects(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(__file__).resolve().parents[1]
+            with patch.dict(os.environ, {"DOGFOOD_DB_PATH": str(Path(directory) / "portal.sqlite3"),
+                                         "DOGFOOD_FIXTURES_PATH": str(root / "fixtures.json"),
+                                         "DOGFOOD_DEMO_MODE": "0"}):
+                initialize()
+                seed()
+                with closing(connect()) as db:
+                    db.execute("INSERT INTO events(id,name,submissions_close,created_by,created_at)"
+                               " VALUES('target','Target','2026-10-10T00:00:00Z','org_demo','2026-09-29T00:00:00Z')")
+                    db.execute("INSERT INTO event_roles(event_id,user_id,role) VALUES('target','org_demo','organizer')")
+                    db.commit()
+                request = Request({"type": "http", "method": "POST", "path": "/api/events/target/imports/portable.json", "headers": []})
+                with patch("src.portable_bundle.require_login", return_value=Principal("org_demo", "organizer@beyondbug.local", "Organizer", False)):
+                    bundle = Bundle.model_validate(export_portable("evt_01", request))
+                    self.assertEqual(sum(len(team.projects) for team in bundle.teams), 41)
+                    imported = import_portable("target", bundle, request, dry_run=False)
+                self.assertEqual(imported["projects"], 41)
+                with closing(connect()) as db:
+                    self.assertEqual(db.execute("SELECT COUNT(*) FROM projects WHERE event_id='target'").fetchone()[0], 41)
+                    self.assertEqual(db.execute("SELECT COUNT(*) FROM teams WHERE event_id='target'").fetchone()[0], 40)
+
+    def test_dry_run_and_round_trip(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(os.environ, {"DOGFOOD_DB_PATH": str(Path(directory) / "portal.sqlite3")}):
+                initialize()
+                with closing(connect()) as db:
+                    for user in ("org", "member", "judge", "outsider"):
+                        db.execute("INSERT INTO users(id,email,name,created_at) VALUES(?,?,?,'2026-09-29T00:00:00Z')",
+                                   (user, user + "@example.org", user))
+                    for event in ("source", "target"):
+                        db.execute("INSERT INTO events(id,name,submissions_close,created_by,created_at)"
+                                   " VALUES(?,?,?,?,?)", (event, event.title(), "2026-10-10T00:00:00Z", "org", "2026-09-29T00:00:00Z"))
+                        db.execute("INSERT INTO event_roles(event_id,user_id,role) VALUES(?,?,'organizer')", (event, "org"))
+                    db.execute("INSERT INTO tracks(id,event_id,name) VALUES('track','source','Open')")
+                    db.execute("INSERT INTO prizes(id,event_id,name) VALUES('prize','source','Grand prize')")
+                    db.execute("INSERT INTO submission_questions(id,event_id,label,required,sort_order)"
+                               " VALUES('question','source','What did you learn?',1,0)")
+                    db.execute("INSERT INTO event_roles(event_id,user_id,role) VALUES('source','member','participant')")
+                    db.execute("INSERT INTO event_roles(event_id,user_id,role) VALUES('source','judge','judge')")
+                    db.execute("INSERT INTO teams(id,event_id,name,created_by,created_at)"
+                               " VALUES('team','source','Team','member','2026-09-29T00:00:00Z')")
+                    db.execute("INSERT INTO team_members(team_id,user_id,role,joined_at)"
+                               " VALUES('team','member','captain','2026-09-29T00:00:00Z')")
+                    db.execute("INSERT INTO projects(id,event_id,team_id,track_id,title,status,submitted_at,updated_at)"
+                               " VALUES('project','source','team','track','Project','submitted','2026-09-29T00:00:00Z','2026-09-29T00:00:00Z')")
+                    db.execute("INSERT INTO project_answers(project_id,question_id,answer)"
+                               " VALUES('project','question','A careful answer')")
+                    db.execute("INSERT INTO projects(id,event_id,team_id,track_id,title,status,submitted_at,updated_at)"
+                               " VALUES('project2','source','team','track','Project two','submitted','2026-09-29T00:00:00Z','2026-09-29T00:00:00Z')")
+                    db.execute("INSERT INTO project_answers(project_id,question_id,answer)"
+                               " VALUES('project2','question','A second answer')")
+                    db.execute("INSERT INTO judge_profiles(id,event_id,user_id,status)"
+                               " VALUES('profile','source','judge','accepted')")
+                    db.execute("INSERT INTO judge_tracks(judge_id,track_id) VALUES('profile','track')")
+                    db.commit()
+                request = Request({"type": "http", "method": "POST", "path": "/api/events/target/imports/portable.json", "headers": []})
+                organizer = Principal("org", "org@example.org", "org", False)
+                with patch("src.portable_bundle.require_login", return_value=organizer):
+                    exported = export_portable("source", request)
+                    self.assertEqual([project["answers"] for project in exported["teams"][0]["projects"]],
+                                     [{"What did you learn?": "A careful answer"},
+                                      {"What did you learn?": "A second answer"}])
+                    exported["participants"].append({"name": "New participant", "email": "new@example.org"})
+                    bundle = Bundle.model_validate(exported)
+                    invalid = bundle.model_copy(deep=True)
+                    invalid.teams[0].projects[0].track = "Missing track"
+                    with self.assertRaises(HTTPException) as bad_bundle:
+                        import_portable("target", invalid, request, dry_run=False)
+                    self.assertEqual(bad_bundle.exception.status_code, 422)
+                    preflight = import_portable("target", bundle, request, dry_run=True)
+                    self.assertEqual(preflight["projects"], 2)
+                    with closing(connect()) as db:
+                        self.assertEqual(db.execute("SELECT COUNT(*) FROM teams WHERE event_id='target'").fetchone()[0], 0)
+                    imported = import_portable("target", bundle, request, dry_run=False)
+                    self.assertEqual(imported["projects"], 2)
+                    self.assertEqual(len(imported["new_account_credentials"]), 1)
+                    with closing(connect()) as db:
+                        account = db.execute("SELECT password_hash FROM users WHERE email='new@example.org'").fetchone()
+                    self.assertTrue(verify_password(imported["new_account_credentials"][0]["temporary_password"],
+                                                    account["password_hash"]))
+                    copy = export_portable("target", request)
+                    self.assertEqual(sorted(project["answers"]["What did you learn?"]
+                                            for project in copy["teams"][0]["projects"]),
+                                     ["A careful answer", "A second answer"])
+                    with self.assertRaises(HTTPException) as repeated:
+                        import_portable("target", bundle, request, dry_run=False)
+                    self.assertEqual(repeated.exception.status_code, 409)
+                with patch("src.portable_bundle.require_login", return_value=Principal("outsider", "outsider@example.org", "outsider", False)):
+                    with self.assertRaises(HTTPException) as denied:
+                        export_portable("source", request)
+                self.assertEqual(denied.exception.status_code, 403)
+
+
+if __name__ == "__main__":
+    unittest.main()

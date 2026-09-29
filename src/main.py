@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import uuid
 from contextlib import asynccontextmanager, closing
 from datetime import datetime, timezone
@@ -17,11 +18,13 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from .auth import current_principal, has_event_role, require_event_role, require_login
-from .core import csv_safe, reconcile_submitted_duplicates, require_web_url, router as core_router
+from .core import audit, csv_safe, reconcile_submitted_duplicates, require_web_url, router as core_router
 from .judging import router as judging_router
 from .public import router as public_router
 from .certificates import router as certificate_router
 from .stretch import router as stretch_router
+from .submission_questions import router as submission_questions_router, validate_answers, save_answers
+from .portable_bundle import router as portable_bundle_router
 from .ui import router as ui_router
 from .db import connect, initialize, utc_now
 from .seed import seed
@@ -42,6 +45,8 @@ app = FastAPI(title="BeyondBug", version="0.1.0", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
 app.include_router(core_router)
 app.include_router(ui_router)
+app.include_router(submission_questions_router)
+app.include_router(portable_bundle_router)
 
 
 @app.middleware("http")
@@ -68,6 +73,7 @@ class ProjectInput(BaseModel):
     live_url: str = Field(default="", max_length=1000)
     tech_tags: str = Field(default="", max_length=500)
     status: str = "draft"
+    answers: dict[str, str] | None = None
 
 
 def _deadline_passed(value: str) -> bool:
@@ -197,6 +203,34 @@ def public_project(project_id: str):
     return dict(row)
 
 
+@app.get("/widgets/events/{event_id}/gallery", response_class=HTMLResponse)
+def gallery_widget(request: Request, event_id: str, page: int = Query(default=1, ge=1)):
+    """A small, public gallery suitable for embedding as an iframe."""
+    with closing(connect()) as db:
+        event = db.execute("SELECT id,name FROM events WHERE id=?", (event_id,)).fetchone()
+        if event is None:
+            raise HTTPException(status_code=404, detail="Event not found")
+        total = db.execute(
+            "SELECT COUNT(*) FROM projects WHERE event_id=? AND status='submitted'",
+            (event_id,),
+        ).fetchone()[0]
+        page_size = 12
+        last_page = max(1, (total + page_size - 1) // page_size)
+        current_page = min(page, last_page)
+        projects = db.execute(
+            "SELECT p.id,p.title,p.summary,t.name AS track_name,m.name AS team_name"
+            " FROM projects p JOIN tracks t ON t.id=p.track_id"
+            " JOIN teams m ON m.id=p.team_id"
+            " WHERE p.event_id=? AND p.status='submitted'"
+            " ORDER BY p.submitted_at DESC,p.id DESC LIMIT ? OFFSET ?",
+            (event_id, page_size, (current_page - 1) * page_size),
+        ).fetchall()
+    return templates.TemplateResponse(request, "gallery_widget.html", {
+        "event": dict(event), "projects": [dict(row) for row in projects],
+        "page": current_page, "last_page": last_page, "total": total,
+    })
+
+
 @app.post("/api/events/{event_id}/projects", status_code=201)
 def create_project(event_id: str, payload: ProjectInput, request: Request):
     principal = require_login(request)
@@ -237,6 +271,7 @@ def create_project(event_id: str, payload: ProjectInput, request: Request):
         existing = db.execute("SELECT 1 FROM projects WHERE team_id=?", (payload.team_id,)).fetchone()
         if existing:
             raise HTTPException(status_code=409, detail="This team already has a project")
+        answers = validate_answers(db, event_id, None, payload.answers, payload.status)
         project_id = "prj_" + uuid.uuid4().hex[:16]
         now = utc_now()
         db.execute(
@@ -247,12 +282,10 @@ def create_project(event_id: str, payload: ProjectInput, request: Request):
              live_url, payload.tech_tags.strip(), payload.status,
              now if payload.status == "submitted" else None, now, None),
         )
+        save_answers(db, project_id, answers)
         reconcile_submitted_duplicates(db, event_id)
-        db.execute(
-            "INSERT INTO audit_entries(event_id,actor_user_id,action,entity_type,entity_id,created_at)"
-            " VALUES(?,?,?,?,?,?)",
-            (event_id, principal.user_id, "project.created", "project", project_id, now),
-        )
+        audit(db, event_id, principal.user_id, "project.created", "project", project_id,
+              {"status": payload.status})
         db.commit()
     return {"id": project_id, "status": payload.status}
 
@@ -333,9 +366,15 @@ def export_projects(event_id: str, request: Request):
     output = io.StringIO()
     writer = csv.writer(output)
     columns = ("id", "title", "status", "summary", "repo_url", "demo_url", "live_url", "video_url",
-               "thumbnail_url", "image_urls", "tech_tags", "submitted_at", "team", "track")
+               "thumbnail_url", "image_urls", "tech_tags", "submitted_at", "team", "track", "answers_json")
     writer.writerow(columns)
-    writer.writerows(tuple(csv_safe(row[column]) for column in columns) for row in rows)
+    with closing(connect()) as db:
+        for row in rows:
+            answers = {answer["label"]: answer["answer"] for answer in db.execute(
+                "SELECT q.label,a.answer FROM project_answers a JOIN submission_questions q ON q.id=a.question_id"
+                " WHERE a.project_id=? ORDER BY q.sort_order", (row["id"],))}
+            writer.writerow(tuple(csv_safe(row[column]) for column in columns[:-1]) +
+                            (csv_safe(json.dumps(answers, ensure_ascii=False)),))
     return Response(output.getvalue(), media_type="text/csv; charset=utf-8", headers={
         "Content-Disposition": f'attachment; filename="{event_id}-projects.csv"',
     })

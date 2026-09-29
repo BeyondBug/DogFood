@@ -22,7 +22,8 @@ release does not verify inbox ownership. Participant mode excludes accounts
 created after voting opens; it cannot prove that older accounts represent
 distinct humans. Keyed IP digests and rate limits deter bulk retries, but
 shared networks and rotating networks can produce false positives or evade a
-limit. Use a curated invite list for high-stakes public awards. The full
+limit. There is no anonymous open-link ballot; the two active modes require
+a local account. Use a curated invite list for high-stakes public awards. The full
 [threat model](THREAT-MODEL.md) records these residual risks.
 
 Reproduce this evidence with `python3 scripts/test_fresh.py`; it starts an

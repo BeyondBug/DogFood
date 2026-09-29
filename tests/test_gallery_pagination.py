@@ -10,10 +10,33 @@ from unittest.mock import patch
 from starlette.requests import Request
 
 from src.db import connect, initialize
-from src.main import gallery
+from src.main import gallery, gallery_widget
 
 
 class GalleryPaginationTests(unittest.TestCase):
+    def test_widget_shows_submitted_projects_and_keeps_drafts_private(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"DOGFOOD_DB_PATH": str(Path(temp_dir) / "portal.sqlite3")}):
+                initialize()
+                with closing(connect()) as db:
+                    db.execute("INSERT INTO events(id,name,submissions_close,created_at) VALUES(?,?,?,?)",
+                               ("evt_widget", "Widget event", "2030-01-01T00:00:00Z", "2026-09-27T00:00:00Z"))
+                    db.execute("INSERT INTO tracks(id,event_id,name) VALUES(?,?,?)", ("trk_widget", "evt_widget", "Open"))
+                    for name, status in (("Public project", "submitted"), ("Secret draft", "draft")):
+                        suffix = status
+                        db.execute("INSERT INTO teams(id,event_id,name,created_at) VALUES(?,?,?,?)",
+                                   (f"tm_{suffix}", "evt_widget", "Team", "2026-09-27T00:00:00Z"))
+                        db.execute("INSERT INTO projects(id,event_id,team_id,track_id,title,status,updated_at)"
+                                   " VALUES(?,?,?,?,?,?,?)",
+                                   (f"prj_{suffix}", "evt_widget", f"tm_{suffix}", "trk_widget", name,
+                                    status, "2026-09-27T00:00:00Z"))
+                    db.commit()
+                request = Request({"type": "http", "method": "GET", "path": "/widgets/events/evt_widget/gallery", "headers": []})
+                body = gallery_widget(request, "evt_widget", page=1).body.decode()
+                self.assertIn("Public project", body)
+                self.assertNotIn("Secret draft", body)
+                self.assertIn("/projects/prj_submitted", body)
+
     def test_project_after_first_page_remains_browsable(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             with patch.dict(os.environ, {"DOGFOOD_DB_PATH": str(Path(temp_dir) / "portal.sqlite3")}):
