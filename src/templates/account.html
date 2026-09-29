@@ -1,2 +1,26 @@
-{% extends "base.html" %}{% block title %}Sign in · BeyondBug{% endblock %}
-{% block content %}<main class="wrap account-layout" data-next="{{ next_url }}"><section class="account-intro"><p class="section-kicker">Your event desk</p><h1>Good work starts here.</h1><p>Join a team or review the projects assigned to you. Your account stays on this server.</p><div class="account-rule"><span>One place for the whole event lifecycle.</span></div></section><section class="auth-panels"><div class="panel"><h2>Sign in</h2><p>Pick up where you left off.</p><form data-action="login"><label>Email<input name="email" type="email" autocomplete="email" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="button button-primary" type="submit">Sign in</button></form></div><div class="panel panel-tint"><h2>Create an account</h2><p>Join an event as a participant. Judges can also sign in here with credentials given by an administrator.</p><form data-action="register"><label>Name<input name="name" autocomplete="name" required minlength="2"></label><label>Email<input name="email" type="email" autocomplete="email" required></label><label>Password<input name="password" type="password" autocomplete="new-password" required minlength="12"><small>At least 12 characters.</small></label><button class="button button-secondary" type="submit">Create account</button></form></div></section></main>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Sign in · BeyondBug{% endblock %}
+{% block content %}
+<main class="wrap account-layout" data-next="{{ next_url }}">
+  <section class="account-intro">
+    <p class="section-kicker">Your event desk</p>
+    <h1>Good work starts here.</h1>
+    <p>Join a team or review the projects assigned to you. Your account stays on this server.</p>
+    <div class="account-rule"><span>One place for the whole event lifecycle.</span></div>
+    {% if demo_mode %}<div class="panel demo-launcher">
+      <p class="section-kicker">Demo mode</p>
+      <h2>Explore every role.</h2>
+      <p>Open a seeded workspace without entering credentials. These shortcuts disappear when demo mode is disabled.</p>
+      <div class="demo-role-grid">
+        {% for role,label in [('administrator','Administrator'),('organizer','Organizer'),('judge_a','Judge A'),('judge_b','Judge B'),('participant','Participant')] %}
+        <form data-action="demo-login"><input type="hidden" name="role" value="{{ role }}"><button class="button button-secondary" type="submit">{{ label }}</button></form>
+        {% endfor %}
+      </div>
+    </div>{% endif %}
+  </section>
+  <section class="auth-panels">
+    <div class="panel"><h2>Sign in</h2><p>Pick up where you left off.</p><form data-action="login"><label>Email<input name="email" type="email" autocomplete="email" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="button button-primary" type="submit">Sign in</button></form></div>
+    <div class="panel panel-tint"><h2>Create an account</h2><p>Join an event as a participant. Judges can also sign in here with credentials given by an administrator.</p><form data-action="register"><label>Name<input name="name" autocomplete="name" required minlength="2"></label><label>Email<input name="email" type="email" autocomplete="email" required></label><label>Password<input name="password" type="password" autocomplete="new-password" required minlength="12"><small>At least 12 characters.</small></label><button class="button button-secondary" type="submit">Create account</button></form></div>
+  </section>
+</main>
+{% endblock %}

@@ -160,6 +160,10 @@ class LoginInput(BaseModel):
     password: str
 
 
+class DemoLoginInput(BaseModel):
+    role: str
+
+
 class PasswordChange(BaseModel):
     current_password: str
     new_password: str = Field(min_length=12, max_length=256)
@@ -247,6 +251,33 @@ def login(payload: LoginInput, response: Response, request: Request):
     response.set_cookie("session", token, httponly=True, samesite="strict",
                         secure=os.getenv("DOGFOOD_COOKIE_SECURE", "0") == "1", max_age=604800)
     return {"user_id": user["id"], "name": user["name"]}
+
+
+@router.post("/auth/demo-login")
+def demo_login(payload: DemoLoginInput, response: Response):
+    """Create a browser session for a seeded role only in explicit demo mode."""
+    if os.getenv("DOGFOOD_DEMO_MODE", "0") != "1":
+        raise HTTPException(status_code=404, detail="Demo access is disabled")
+    from .seed import DEMO_ADMIN_ID, DEMO_TOKENS, token_hash
+    allowed = {"administrator", "organizer", "judge_a", "judge_b", "participant"}
+    if payload.role not in allowed:
+        raise HTTPException(status_code=422, detail="Unknown demo role")
+    with closing(connect()) as db:
+        db.execute("BEGIN IMMEDIATE")
+        if payload.role == "administrator":
+            user = db.execute("SELECT id,name FROM users WHERE id=? AND is_admin=1", (DEMO_ADMIN_ID,)).fetchone()
+        else:
+            user = db.execute(
+                "SELECT u.id,u.name FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?",
+                (token_hash(DEMO_TOKENS[payload.role]),),
+            ).fetchone()
+        if user is None:
+            raise HTTPException(status_code=503, detail="Demo account is not ready")
+        token = _make_session(db, user["id"])
+        db.commit()
+    response.set_cookie("session", token, httponly=True, samesite="strict",
+                        secure=os.getenv("DOGFOOD_COOKIE_SECURE", "0") == "1", max_age=604800)
+    return {"user_id": user["id"], "name": user["name"], "role": payload.role}
 
 
 @router.post("/auth/logout", status_code=204)

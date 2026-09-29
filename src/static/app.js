@@ -270,6 +270,10 @@ document.addEventListener('submit', async event => {
         await api('POST', `/api/auth/${action}`, data);
         window.location.assign(document.querySelector('[data-next]')?.dataset.next || '/dashboard');
         return;
+      case 'demo-login':
+        await api('POST', '/api/auth/demo-login', { role: data.role });
+        window.location.assign('/dashboard');
+        return;
       case 'logout':
         await api('POST', '/api/auth/logout');
         window.location.assign('/');

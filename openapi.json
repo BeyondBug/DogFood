@@ -134,6 +134,43 @@
         }
       }
     },
+    "/api/auth/demo-login": {
+      "post": {
+        "summary": "Demo Login",
+        "description": "Create a browser session for a seeded role only in explicit demo mode.",
+        "operationId": "demo_login_api_auth_demo_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoLoginInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/logout": {
       "post": {
         "summary": "Logout",
@@ -4545,6 +4582,19 @@
           "weight"
         ],
         "title": "CriterionInput"
+      },
+      "DemoLoginInput": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "title": "DemoLoginInput"
       },
       "DesignInput": {
         "properties": {

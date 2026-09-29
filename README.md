@@ -101,6 +101,11 @@ the clean-build, fresh-volume, restart, and network-disabled checks.
 The default Compose file enables local demo mode. These accounts all use the
 password `BeyondBugDemo2026!` on the seeded portal:
 
+The sign-in page also shows demo-only role buttons for Administrator,
+Organizer, Judge A, Judge B, and Participant. Each button creates a short-lived
+browser session and opens that role's dashboard. The buttons and endpoint are
+unavailable when `DOGFOOD_DEMO_MODE=0`.
+
 | Role | Email | Main page |
 | --- | --- | --- |
 | Organizer | `organizer@beyondbug.local` | `/organizer/evt_01` |
