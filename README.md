@@ -10,6 +10,9 @@ choose Event Desk, Pulse, or Studio visual styles and switch between light and
 dark modes; both choices persist in the browser. Studio uses original local
 illustration; every style uses the same event data and role actions.
 The portal runs on one laptop with FastAPI, SQLite, and locally bundled assets.
+[SCORING-AND-SCOPE.md](SCORING-AND-SCOPE.md) maps the published scoring and
+out-of-scope rules to evidence and remaining limits; [TIER-COVERAGE.md](TIER-COVERAGE.md)
+maps each tier requirement.
 Public visitors can browse and search events at `/events`; each event has its
 own page and event-scoped gallery links. Galleries paginate beyond 48 projects,
 so large events remain browsable.
