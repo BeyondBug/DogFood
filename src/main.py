@@ -21,6 +21,7 @@ from .core import csv_safe, reconcile_submitted_duplicates, require_web_url, rou
 from .judging import router as judging_router
 from .public import router as public_router
 from .certificates import router as certificate_router
+from .stretch import router as stretch_router
 from .ui import router as ui_router
 from .db import connect, initialize, utc_now
 from .seed import seed
@@ -344,3 +345,4 @@ def export_projects(event_id: str, request: Request):
 app.include_router(judging_router)
 app.include_router(public_router)
 app.include_router(certificate_router)
+app.include_router(stretch_router)

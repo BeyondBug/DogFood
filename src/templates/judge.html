@@ -42,5 +42,6 @@
     {% endfor %}
   </div>
   {% else %}<div class="empty-state"><h2>No projects assigned yet</h2><p>When the organizer assigns projects in your tracks, they will appear here.</p></div>{% endif %}
+  {% if pairwise_assignments %}<section class="table-section"><div class="table-heading"><div><h2>Pairwise comparisons</h2><p>Choose the stronger project in each assigned pair. These comparisons produce a separate Bradley–Terry ranking.</p></div></div><div class="pairwise-list">{% for pair in pairwise_assignments %}<form class="panel" data-action="pairwise-vote" data-assignment="{{ pair.id }}"><h3>Which project is stronger?</h3><label><input type="radio" name="winner_id" value="{{ pair.project_a_id }}" {% if pair.winner_id == pair.project_a_id %}checked{% endif %} required> {{ pair.project_a }}</label><label><input type="radio" name="winner_id" value="{{ pair.project_b_id }}" {% if pair.winner_id == pair.project_b_id %}checked{% endif %} required> {{ pair.project_b }}</label><button class="button button-secondary" type="submit" {% if not judging_editable %}disabled{% endif %}>{{ 'Update comparison' if pair.submitted_at else 'Submit comparison' }}</button></form>{% endfor %}</div></section>{% endif %}
 </main>
 {% endblock %}

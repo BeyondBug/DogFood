@@ -23,6 +23,8 @@ official acceptance routes are declared in `.dogfood.toml`.
 | CSV | `GET /api/events/{id}/exports/{projects,participants,teams,judges,assignments,scores,rankings,audit,votes,certificates}.csv` | Event organizer |
 | Awards and certificates | `PUT /api/events/{id}/prizes/{prize}/winner`; `POST/GET /api/events/{id}/certificates`; `GET /api/me/certificates`, `/api/certificates/{id}/verify` | Organizer awards/issues; recipient reads own list; verification is public |
 | Administration | `GET /api/admin/overview`; `POST /api/admin/events/{id}/organizers`, `/judges`, `/api/admin/backups`; `GET /api/admin/backups/{file}`; `PUT /api/admin/events/{id}/certificate-designs/{kind}` | Bootstrapped global admin |
+| Pairwise mode | `POST /api/events/{id}/pairwise/assignments/batch`; `GET /api/events/{id}/pairwise/my-assignments`, `/pairwise/rankings`; `PUT /api/pairwise/assignments/{id}` | Organizer assigns and reads ranking; judge reads and submits own pairs |
+| T4 integrations | `GET /embed/{id}`, `/api/events/{id}/export.json`; `POST/GET /api/events/{id}/webhooks`; `POST /api/events/{id}/judge-records/issue`; `GET /api/judge-records/{id}`; `POST /api/admin/events/{id}/bulk/{participants,judges}` | Public embed and record verification; privileged setup and archive APIs |
 
 API errors use `401` for missing login, `403` for a known forbidden action,
 `404` for missing or unpublished public resources, `409` for phase conflicts,

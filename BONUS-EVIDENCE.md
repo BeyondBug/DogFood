@@ -44,9 +44,14 @@ the weighted 0–5 score.
 - The contract and role boundaries are summarized in
   [API-CONTRACT.md](API-CONTRACT.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## Pairwise Mode — not implemented or claimed
+## Pairwise Mode — implemented
 
-BeyondBug does not include Bradley–Terry estimation or a pairwise comparison
-workflow. The shipped judging engine uses weighted rubric scorecards followed
-by the documented cross-judge calibration model. This is an explicit scope
-boundary, not a partial Pairwise Mode claim.
+- Organizers generate balanced pair assignments after submissions close.
+- Track eligibility, team membership, declared conflicts, assignment ownership,
+  and publication locks are enforced in the backend.
+- Judges choose one project from each assigned pair in their judge desk.
+- A Bradley–Terry minorization-maximization estimator recovers a separate
+  strength ranking with 0.5 pseudo-wins for finite sparse estimates.
+- Pairwise output never silently replaces the weighted rubric ranking.
+- The integration suite proves recovery of the known order `Project 0 >
+  Project 1 > Project 2` from all three pair outcomes.

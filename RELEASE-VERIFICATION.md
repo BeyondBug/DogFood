@@ -5,12 +5,12 @@
 | Check | Result |
 | --- | --- |
 | Official acceptance checker | **7/7 PASS; T1 and T2 verified** |
-| Independent unit and HTTP integration suite | **30/30 PASS** |
-| Disposable fresh-volume test runner | **30/30 PASS:** new Compose project and volume; removed after run |
-| Fresh disposable Compose volume | **PASS on schema 8:** fixture seed, migrations, lifecycle, permissions, scoring, voting, certificates, duplicate adjudication, backup, OpenAPI, and portable ML checks run before the volume is removed |
+| Independent unit and HTTP integration suite | **31/31 PASS** |
+| Disposable fresh-volume test runner | **31/31 PASS:** new Compose project and volume; removed after run |
+| Fresh disposable Compose volume | **PASS on schema 9:** fixture seed, migrations, lifecycle, permissions, scoring, voting, certificates, pairwise ranking, signed records, webhooks, bulk import, embeds, backup, OpenAPI, and portable ML checks run before the volume is removed |
 | Fresh portal checked by official `run.py` | **7/7 PASS** |
 | Restart persistence | **PASS:** same event, project, judge, and local secret counts |
-| Runtime with container network disabled | **PASS on current schema 8 image:** isolated in Docker, local `/health` returned HTTP 200 without external access |
+| Runtime with container network disabled | **PASS on schema 9 image:** isolated in Docker, local `/health` returned HTTP 200; webhooks remain optional |
 | OpenAPI artifact synchronization | **PASS:** test compares committed JSON to FastAPI schema |
 | Desktop and mobile visual review | **PASS:** Event Desk, Pulse, and Studio at 1440 px and 390 px; Studio light/dark, no mobile overflow, theme and mode persisted after reload |
 | Portable ML inference | **PASS:** 300-tree JSON export matches trained scikit-learn decision score on a reference vector; organizer-only panel rendered on fixture in 0.13 s |
