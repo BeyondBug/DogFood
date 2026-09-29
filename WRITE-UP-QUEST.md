@@ -549,7 +549,7 @@ removes only that test environment. It covers deadlines, role denials, team
 limits, conflicts, publication locks, normalization edge cases, stable ballot
 randomization, rate limits, duplicate handling, certificate behavior, backups,
 OpenAPI synchronization, portable ML inference, Pairwise Mode, webhooks,
-bulk import, embeds, and Ed25519 judge records. The release result is 31/31.
+bulk import, embeds, and Ed25519 judge records. The combined release result is 38/38.
 
 We also tested the current schema-9 image with its Docker network disconnected;
 its local health endpoint returned HTTP 200. The five-minute lifecycle video
